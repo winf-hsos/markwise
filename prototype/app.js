@@ -313,9 +313,8 @@ function moduleExport(m) {
   <section class="panel module-form">
     <div class="panel-head"><h2>${m.name} exportieren</h2><a class="btn ghost" href="#/module">Schließen</a></div>
     <div class="panel-body" style="display:grid;gap:12px">
-      <p class="muted" style="margin:0">Das ganze Modul wird eine ZIP-Datei, die sich in Markwise auf einem anderen Rechner wieder importieren lässt.</p>
-      <label class="check-row"><input type="checkbox" checked disabled> <span><b>Fragenpool und Moduldaten</b><span class="muted small">${m.questions} Fragen, Einstellungen des Moduls</span></span></label>
-      <label class="check-row"><input type="checkbox"> <span><b>Klausuren</b><span class="muted small">${m.examCount} ${m.examCount === 1 ? "Klausur" : "Klausuren"} mit Teilnehmenden, Scans und Noten. Nur mitnehmen, wenn die ZIP-Datei bei dir bleibt.</span></span></label>
+      <p class="muted" style="margin:0">Das Modul wird eine ZIP-Datei mit Fragenpool (${m.questions} Fragen) und Moduldaten, die sich in Markwise auf einem anderen Rechner wieder importieren lässt.</p>
+      <label class="check-row"><input type="checkbox"> <span><b>Klausuren exportieren</b><span class="muted small">${m.examCount} ${m.examCount === 1 ? "Klausur" : "Klausuren"} mit Teilnehmenden, Scans und Noten. Nur anhaken, wenn die ZIP-Datei bei dir bleibt.</span></span></label>
       <div class="row" style="flex:none;justify-content:flex-end"><a class="btn" href="#/module">Abbrechen</a><button class="btn primary" data-toast="Gespeichert: ${m.short}.zip">${icon("zip")}ZIP speichern</button></div>
     </div>
   </section>`;
