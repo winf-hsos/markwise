@@ -52,12 +52,16 @@ Examiners who set paper exams with multiple-choice and free-text questions today
 
 **Frozen exams are self-contained.** On freezing, Markwise copies the full content of every question into the exam folder, together with the settings. Later the folder receives booklets, answer key, scans and results. An exam therefore stays complete and traceable even if its questions are changed or deleted in the pool afterwards. Each examiner keeps this folder safe, as they keep their exam documents today.
 
-**Participants.** Import the list of registered participants (CSV or Excel). Names and results live only in the exam folder, never in the question pool.
+**Participants.** Import the list of registered participants from the export of the examination system (name and student number, as CSV or Excel). On the first import Markwise asks which column is which and remembers it. Names and results live only in the exam folder, never in the question pool.
+
+**Personalised or anonymous answer booklets.** Both are possible, personalised is the default.
+- *Personalised* (default): one answer booklet per registered participant, generated from the imported list. Name and student number are printed on the cover, and the QR code on every page already belongs to that participant, so nothing has to be read from handwriting.
+- *Anonymous*: answer booklets without a name. The cover carries a tick grid for the student number, which the scan reads; a handwritten name field is there for the examiner, not for the scan. Uncertain digits go into the doubtful cases.
+- In a personalised exam a few anonymous booklets are printed as spares for late registrations and spoilt booklets.
 
 **Printing.**
 - An exam booklet with the questions (not scanned) and an answer booklet that is scanned: first the tick boxes for all multiple-choice questions, then one answer area per free-text question with a grey point strip "for examiners only" next to it (boxes 0, 1, 2 … up to the maximum, a box for ½ if half points are allowed, two rows for tens and units when the maximum is large).
 - Every page of the answer booklet carries four corner marks and a QR code with exam, variant, page and booklet number.
-- Personalised answer booklets (the QR code already belongs to one participant), plus a few spare booklets with a tick grid for the student number for late registrations.
 - One print-ready PDF for the copier, the answer key, an examiner's copy, and a marking guide per free-text question (expected answer and notes for partial credit).
 
 ## After the exam
@@ -86,13 +90,28 @@ Examiners who set paper exams with multiple-choice and free-text questions today
 | | look at the item analysis, remove odd questions if needed, release grades, export | about 15 min |
 | Inspection | open the participant's inspection copy | a few minutes |
 
+## Optional help from a language model
+
+Markwise works completely without a language model. Examiners who want one can switch it on in the settings and enter an API key there; the key is stored in the Windows credential store, never in question files or exam folders. Every suggestion from the model is shown as a suggestion and has to be accepted by a person; nothing changes without that click. The provider is configurable.
+
+Where it helps:
+
+- **Second opinion on doubtful marks.** For an uncertain tick or point strip, the image crop goes to a vision model, which says how it reads it and why. The examiner still decides. Only the crop of the boxes is sent, without the QR code, the cover page or any name.
+- **Didactic review of questions.** The model checks a question against the writing rules: is the stem clear without the options, are the distractors plausible, does an option give itself away by length or wording, does the level fit, do the German and English versions say the same. It explains its findings and proposes a better wording.
+- **Drafting.** Translating a question into the other language, proposing additional distractors, drafting the expected answer and marking notes for a free-text question.
+- **Reading the item analysis.** For a question that behaved oddly in an exam, the model suggests possible reasons (for example two defensible answers) as a starting point for the examiner's decision.
+
+Not planned: grading free-text answers. Marking stays with the examiner.
+
+Privacy: whatever is sent to the model leaves the computer. Markwise shows which features send what, sends nothing that identifies a participant, and each feature can be switched on separately. Whether a feature may be used for an exam is the examiner's decision under the rules of their institution.
+
 ## Interface for agents and skills
 
 An AI agent maintains questions through the same rules as a person: the command-line program and the local HTTP interface offer create, update, delete, check, build and grade, with validation, the same delete confirmation semantics and JSON output. An agent may also write question files directly; Markwise picks up the change on its next scan of the folder. The existing skill `multiple-choice-pruefung` will later call Markwise instead of Auto Multiple Choice.
 
 ## Privacy
 
-Markwise runs only on the examiner's computer and sends nothing anywhere. Participants' names and results exist only in the exam folder.
+Markwise runs on the examiner's computer and sends nothing anywhere, unless the optional language model is switched on (see above). Participants' names and results exist only in the exam folder.
 
 ## Plan
 
@@ -108,9 +127,10 @@ Markwise runs only on the examiner's computer and sends nothing anywhere. Partic
 
 ## Open decisions
 
-1. Personalised answer booklets instead of a ticked student number (proposed: yes, with spare booklets as a fallback).
+1. ~~Personalised or anonymous answer booklets~~ decided: both, personalised by default, generated from the export of the examination system.
 2. Shuffling: an individual order for every participant, or four groups A to D.
 3. Half points for free text: yes or no.
 4. Second marker: a second point strip for a second examiner, or one strip only.
 5. Who will use Markwise besides the author (this decides installer, interface language and support for other examination regulations).
 6. Marking on screen instead of on paper, as a later addition.
+7. Which language model providers to support first, and whether a model running locally should be possible as well.
