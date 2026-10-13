@@ -21,7 +21,7 @@ Examiners who set paper exams with multiple-choice and free-text questions today
 | App window | Python with pywebview (uses the WebView2 runtime built into Windows) | a real desktop window with a Start menu entry, not a browser tab |
 | User interface | HTML, CSS and JavaScript built with a component framework (proposal: Svelte), shipped as static files | the interface; no Node.js needed at run time |
 | Core | Python package | all logic: reading and checking questions, building exams, reading scans, grading. The interface only calls the core. |
-| Question files | one YAML file per question, in the module folder | the single source of the questions. The folder can be local, on OneDrive or Teams, or on a network drive, so that colleagues can share a pool. No Git is needed. |
+| Module folder | module settings, question pool (one YAML file per question) and exams in one folder; exportable and importable as a ZIP file | the single source of the questions. The folder can be local, on OneDrive or Teams, or on a network drive, so that colleagues can share a pool. No Git is needed. |
 | Search index | SQLite, stored locally for each user (never in the shared folder) | fast search and statistics; rebuilt from the files at any time |
 | Typesetting | Typst, used as a Python package | exam booklets, answer booklets, answer keys, marking guides, inspection copies as PDF |
 | Scan reading | PyMuPDF (pages from the scanner's PDF) and OpenCV (corner marks, QR codes, tick boxes) | reading ticks and point strips |
@@ -31,14 +31,26 @@ Examiners who set paper exams with multiple-choice and free-text questions today
 
 ## Modules
 
-Everything starts with a module, and **Modules** is the first entry of the menu. A module (for example "Digitization and Programming") has its own question pool and its own exams. The examiner sets up a module once:
+Everything starts with a module, and **Modules** is the first entry of the menu. A module (for example "Digitization and Programming") is **one folder** that holds everything belonging to it: the module's settings, its question pool and its exams. A whole module can therefore be exported as a ZIP file and imported again on another computer.
 
-- **Name and short name**, shown in lists and on the printed booklets.
-- **Module folder**: holds the question pool, one YAML file per question, plus a small `module.toml` with the module's settings. It can be a local folder or a shared one (OneDrive, Teams, network drive), so that colleagues can work on the same pool; a colleague adds an existing module folder with "Open existing module folder".
-- **Exam folder**: holds the frozen exams with participants, scans and grades. It is set separately, because it contains personal data and belongs where only the examiner has access, even when the question pool is shared.
-- **Examination regulations** (grading profile) and the **languages** of the questions, per module, because modules of different degree programmes follow different rules.
+```
+DuP/
+  module.toml        name, short name, examination regulations, languages
+  questions/         one YAML file per question
+  exams/
+    2027-02-05 Exam WS 2026-27/
+      exam.toml      frozen: questions, shuffling, rules
+      participants.csv
+      print/  scans/  results/
+```
 
-The menu then shows the chosen module's **Questions** and **Exams**; switching the module switches both. Settings that are not tied to a module (interface language, the examiner's name, the language model) stay in the general settings.
+The examiner sets up a module once: name and short name (shown in lists and on the printed booklets), the module folder, the examination regulations (grading profile) and the languages of the questions. Regulations sit with the module because modules of different degree programmes follow different rules.
+
+**Where the folder lives.** Because the exams contain names, scans and grades, the module folder belongs where only authorised people have access. Colleagues who want to work with a question pool get it as a ZIP export without the exams; Markwise offers that choice on export, with the exams left out by default.
+
+**Import and export.** "Export" writes the module as a ZIP file, with or without its exams. "Import" unpacks such a file into a folder of the examiner's choice. "Open module folder" adds an existing folder, for example after copying it from another computer.
+
+**The current module** is shown in a slim header above every page, with a menu to switch to another module and the folder path on the right. The side menu stays the same for every module: Modules, Questions, Exams, and at the bottom the general settings (interface language, the examiner's name, the language model).
 
 ## Questions
 
@@ -65,9 +77,9 @@ The menu then shows the chosen module's **Questions** and **Exams**; switching t
 
 **Putting an exam together.** Choose a blueprint (how many questions per concept and level), let Markwise draw the questions or choose them by hand, and check the blueprint and the rules (for example no two variants of the same practice question). Preview the booklet, then **freeze** the exam.
 
-**Frozen exams are self-contained.** On freezing, Markwise copies the full content of every question into the exam folder, together with the settings. Later the folder receives booklets, answer key, scans and results. An exam therefore stays complete and traceable even if its questions are changed or deleted in the pool afterwards. Each examiner keeps this folder safe, as they keep their exam documents today.
+**Frozen exams are self-contained.** Every exam gets its own folder under `exams/` in the module folder. On freezing, Markwise copies the full content of every question into it, together with the settings. Later the folder receives booklets, answer key, scans and results. An exam therefore stays complete and traceable even if its questions are changed or deleted in the pool afterwards. Each examiner keeps the module folder safe, as they keep their exam documents today.
 
-**Participants.** Import the list of registered participants from the export of the examination system (name and student number, as CSV or Excel). On the first import Markwise asks which column is which and remembers it. Names and results live only in the exam folder, never in the question pool.
+**Participants.** Import the list of registered participants from the export of the examination system (name and student number, as CSV or Excel). On the first import Markwise asks which column is which and remembers it. Names and results live only in the exam's folder, never in the question pool.
 
 **Personalised or anonymous answer booklets.** Both are possible, personalised is the default.
 - *Personalised* (default): one answer booklet per registered participant, generated from the imported list. Name and student number are printed on the cover, and the QR code on every page already belongs to that participant, so nothing has to be read from handwriting.
@@ -95,7 +107,7 @@ The menu then shows the chosen module's **Questions** and **Exams**; switching t
 
 | When | What | Time |
 |---|---|---|
-| Once per module | set up the module: name, module folder, exam folder, examination regulations | about 5 min |
+| Once per module | set up the module: name, module folder, examination regulations | about 5 min |
 | Weeks before | write questions or have an agent draft them, review and release them in Markwise | depends on the pool |
 | Two weeks before | choose the blueprint, let Markwise draw the exam, check the booklet, freeze | about 30 min |
 | One week before | import participants, create the PDF, print and check one sample, print all | about 20 min plus copier |

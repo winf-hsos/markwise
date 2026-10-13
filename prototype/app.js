@@ -8,6 +8,8 @@ const ICON = {
   panel: '<rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke-width="1.8"/><path d="M9 4.5v15" fill="none" stroke-width="1.8"/>',
   modules: '<path d="M3.5 7.5 12 3l8.5 4.5L12 12 3.5 7.5Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><path d="M3.5 12 12 16.5 20.5 12M3.5 16.5 12 21l8.5-4.5" fill="none" stroke-width="1.7" stroke-linejoin="round"/>',
   folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/>',
+  chevron: '<path d="m7 10 5 5 5-5" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  zip: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><path d="M11 6h1M11 9h1M11 12h1M10.5 15h2v3h-2z" fill="none" stroke-width="1.5"/>',
   questions: '<path d="M4 5h16M4 10h16M4 15h10M4 20h7" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
   exams: '<rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke-width="1.8"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
   settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="none" stroke-width="1.7"/>',
@@ -61,11 +63,11 @@ const QUESTIONS = [
 
 const MODULES = [
   { id: "dup", name: "Digitalisierung und Programmierung", short: "DuP", folder: "OneDrive › Lehre › Digitalisierung und Programmierung",
-    exams: "OneDrive › Klausuren (privat) › DuP", questions: 246, concepts: 18, examCount: 2, last: "Klausur WS 2026/27 in Vorbereitung", po: "BPO Wirtschaftsinformatik, § 5 Abs. 3 AT" },
+    questions: 246, concepts: 18, examCount: 2, last: "Klausur WS 2026/27 in Vorbereitung", po: "BPO Wirtschaftsinformatik, § 5 Abs. 3 AT" },
   { id: "ai", name: "Artificial Intelligence", short: "AI", folder: "OneDrive › Lehre › Artificial Intelligence",
-    exams: "OneDrive › Klausuren (privat) › AI", questions: 132, concepts: 11, examCount: 1, last: "Fragen werden gesammelt", po: "BPO Wirtschaftsinformatik, § 5 Abs. 3 AT" },
-  { id: "da", name: "Data Analytics", short: "DA", folder: "Teams › Data Analytics › Klausurfragen (geteilt)",
-    exams: "OneDrive › Klausuren (privat) › DA", questions: 87, concepts: 9, examCount: 4, last: "letzte Klausur SS 2026, ausgewertet", po: "MPO Data Science, § 7 AT" },
+    questions: 132, concepts: 11, examCount: 1, last: "Fragen werden gesammelt", po: "BPO Wirtschaftsinformatik, § 5 Abs. 3 AT" },
+  { id: "da", name: "Data Analytics", short: "DA", folder: "OneDrive › Lehre › Data Analytics",
+    questions: 87, concepts: 9, examCount: 4, last: "letzte Klausur SS 2026, ausgewertet", po: "MPO Data Science, § 7 AT" },
 ];
 let currentModule = MODULES[0];
 
@@ -91,14 +93,27 @@ function shell(active, content) {
         <span class="brand-name">Markwise</span>
       </div>
       ${navLink("#/module", "Module", "modules", active)}
-      <div class="nav-group" title="${currentModule.name}"><span class="label">${currentModule.name}</span><span class="short">${currentModule.short}</span></div>
       ${navLink("#/fragen", "Fragen", "questions", active)}
       ${navLink("#/klausuren", "Klausuren", "exams", active)}
       <div class="spacer"></div>
       ${navLink("#/einstellungen", "Einstellungen", "settings", active)}
       <button class="nav-toggle" data-toggle-nav title="Menü ein- und ausklappen (Strg+B)" aria-label="Menü ein- und ausklappen">${icon("panel")}<span class="label">Menü einklappen</span></button>
     </nav>
-    <main class="main" id="main">${content}</main>
+    <main class="main" id="main">
+      <header class="topbar">
+        <div class="module-switch">
+          <button class="module-current" data-toggle-switch aria-haspopup="true" aria-expanded="false">
+            <span class="module-short">${currentModule.short}</span><span>${currentModule.name}</span>${icon("chevron")}
+          </button>
+          <div class="module-menu" role="menu">
+            ${MODULES.map((m) => `<a role="menuitem" href="#/oeffnen/${m.id}" class="${m.id === currentModule.id ? "on" : ""}"><span class="module-short">${m.short}</span>${m.name}</a>`).join("")}
+            <a role="menuitem" href="#/module" class="all">Alle Module</a>
+          </div>
+        </div>
+        <span class="path">${icon("folder")}${currentModule.folder}</span>
+      </header>
+      ${content}
+    </main>
   </div>
   <div class="toast" id="toast"></div>`;
 }
@@ -138,7 +153,7 @@ function viewQuestions(sel = "aa-014") {
     <div class="page-head">
       <div>
         <h1>Fragen</h1>
-        <p>Fragenpool von ${currentModule.name}: ${currentModule.questions} Fragen in ${currentModule.concepts} Konzepten <span class="path">${icon("folder")}${currentModule.folder}</span></p>
+        <p>${currentModule.questions} Fragen in ${currentModule.concepts} Konzepten</p>
       </div>
       <div class="actions">
         <button class="btn" data-toast="Import gestartet">Fragen importieren</button>
@@ -235,9 +250,10 @@ function viewModules(editing) {
   return `
   <div class="page">
     <div class="page-head">
-      <div><h1>Module</h1><p>Jedes Modul hat seinen Fragenpool und seine Klausuren in eigenen Ordnern.</p></div>
+      <div><h1>Module</h1><p>Jedes Modul ist ein Ordner mit Fragenpool, Moduldaten und Klausuren.</p></div>
       <div class="actions">
-        <button class="btn" data-toast="Ordner gewählt: das Modul erscheint in der Liste">${icon("folder")}Vorhandenen Modulordner öffnen</button>
+        <button class="btn" data-toast="Modul aus ZIP importiert">${icon("zip")}Modul importieren</button>
+        <button class="btn" data-toast="Ordner gewählt: das Modul erscheint in der Liste">${icon("folder")}Modulordner öffnen</button>
         <a class="btn primary" href="#/module/neu">${icon("plus")}Neues Modul</a>
       </div>
     </div>
@@ -251,12 +267,13 @@ function viewModules(editing) {
               <div class="module-facts"><span>${m.questions} Fragen</span><span>${m.examCount} ${m.examCount === 1 ? "Klausur" : "Klausuren"}</span><span>${m.last}</span></div>
             </div>
             <div class="module-actions">
+              <a class="btn" href="#/module/${m.id}/export" title="Als ZIP exportieren">${icon("zip")}Exportieren</a>
               <a class="btn" href="#/module/${m.id}/einstellungen">Einstellungen</a>
               <a class="btn ${m.id === currentModule.id ? "" : "primary"}" href="#/oeffnen/${m.id}">${m.id === currentModule.id ? "Geöffnet" : "Öffnen"}</a>
             </div>
           </article>`).join("")}
       </div>
-      ${editing ? moduleForm(editing === "neu" ? null : MODULES.find((m) => m.id === editing)) : ""}
+      ${editing ? (editing.endsWith(":export") ? moduleExport(MODULES.find((m) => m.id === editing.split(":")[0])) : moduleForm(editing === "neu" ? null : MODULES.find((m) => m.id === editing))) : ""}
     </div>
   </div>`;
 }
@@ -270,19 +287,36 @@ function moduleForm(m) {
         <label class="field" style="flex:3"><span>Name</span><input class="input" value="${m ? m.name : ""}" placeholder="z. B. Datenbanken"></label>
         <label class="field" style="flex:1"><span>Kürzel</span><input class="input" value="${m ? m.short : ""}" placeholder="DB"></label>
       </div>
-      <div class="field"><span>Modulordner (Fragenpool)</span>
+      <div class="field"><span>Modulordner</span>
         <div class="folder-pick"><span class="path">${icon("folder")}${m ? m.folder : "noch kein Ordner gewählt"}</span><button class="btn" data-toast="Ordnerauswahl von Windows öffnet sich">Ordner wählen</button></div>
-        <span class="muted small">Ein geteilter Ordner (OneDrive, Teams, Netzlaufwerk) erlaubt es Kolleg:innen, am selben Pool zu arbeiten.</span>
+        <span class="muted small">Enthält Fragenpool, Moduldaten und Klausuren. Weil die Klausuren Namen, Scans und Noten enthalten, gehört der Ordner an einen Ort, auf den nur Berechtigte Zugriff haben. Kolleg:innen gibst du den Fragenpool am besten als ZIP ohne Klausuren.</span>
       </div>
-      <div class="field"><span>Klausurordner</span>
-        <div class="folder-pick"><span class="path">${icon("folder")}${m ? m.exams : "noch kein Ordner gewählt"}</span><button class="btn" data-toast="Ordnerauswahl von Windows öffnet sich">Ordner wählen</button></div>
-        <span class="muted small">Hier liegen Teilnehmende, Scans und Noten. Wähle einen Ort, auf den nur du Zugriff hast; er darf vom Modulordner getrennt sein.</span>
-      </div>
+      <details class="tree"><summary>Was im Ordner liegt</summary><pre>${(m ? m.short : "Modul")}/
+  module.toml          Name, Kürzel, Prüfungsordnung, Sprachen
+  fragen/              eine Datei je Frage
+  klausuren/
+    2027-02-05 Klausur WS 2026-27/
+      klausur.toml     eingefroren: Fragen, Mischung, Regeln
+      teilnehmende.csv
+      druck/  scans/  ergebnisse/</pre></details>
       <div class="row">
         <label class="field"><span>Prüfungsordnung</span><select class="select"><option>${m ? m.po : "BPO Wirtschaftsinformatik, § 5 Abs. 3 AT"}</option><option>MPO Data Science, § 7 AT</option><option>Eigene Regeln …</option></select></label>
         <label class="field"><span>Sprachen der Fragen</span><select class="select"><option>Deutsch und Englisch</option><option>Deutsch</option><option>Englisch</option></select></label>
       </div>
       <div class="row" style="flex:none;justify-content:flex-end"><a class="btn" href="#/module">Abbrechen</a><button class="btn primary" data-toast="${m ? "Gespeichert" : "Modul angelegt"}">${m ? "Speichern" : "Modul anlegen"}</button></div>
+    </div>
+  </section>`;
+}
+
+function moduleExport(m) {
+  return `
+  <section class="panel module-form">
+    <div class="panel-head"><h2>${m.name} exportieren</h2><a class="btn ghost" href="#/module">Schließen</a></div>
+    <div class="panel-body" style="display:grid;gap:12px">
+      <p class="muted" style="margin:0">Das ganze Modul wird eine ZIP-Datei, die sich in Markwise auf einem anderen Rechner wieder importieren lässt.</p>
+      <label class="check-row"><input type="checkbox" checked disabled> <span><b>Fragenpool und Moduldaten</b><span class="muted small">${m.questions} Fragen, Einstellungen des Moduls</span></span></label>
+      <label class="check-row"><input type="checkbox"> <span><b>Klausuren</b><span class="muted small">${m.examCount} ${m.examCount === 1 ? "Klausur" : "Klausuren"} mit Teilnehmenden, Scans und Noten. Nur mitnehmen, wenn die ZIP-Datei bei dir bleibt.</span></span></label>
+      <div class="row" style="flex:none;justify-content:flex-end"><a class="btn" href="#/module">Abbrechen</a><button class="btn primary" data-toast="Gespeichert: ${m.short}.zip">${icon("zip")}ZIP speichern</button></div>
     </div>
   </section>`;
 }
@@ -296,7 +330,7 @@ function viewExams() {
   return `
   <div class="page">
     <div class="page-head">
-      <div><h1>Klausuren</h1><p>${currentModule.name}: jede Klausur ist ein eigener Ordner mit allem, was zu ihr gehört <span class="path">${icon("folder")}${currentModule.exams}</span></p></div>
+      <div><h1>Klausuren</h1><p>Jede Klausur liegt im Modulordner unter „Klausuren“, mit allem, was zu ihr gehört.</p></div>
       <div class="actions"><button class="btn primary" data-toast="Neue Klausur angelegt">${icon("plus")}Neue Klausur</button></div>
     </div>
     <div class="exam-list">
@@ -654,7 +688,7 @@ function render() {
     return;
   }
   if (area === "module" || area === "") {
-    const editing = a === "neu" ? "neu" : (a && b === "einstellungen" ? a : null);
+    const editing = a === "neu" ? "neu" : (a && b === "einstellungen" ? a : (a && b === "export" ? a + ":export" : null));
     document.getElementById("root").innerHTML = shell("#/module", viewModules(editing));
     return;
   }
@@ -668,9 +702,11 @@ function render() {
 }
 
 document.addEventListener("click", (e) => {
-  const t = e.target.closest("[data-toggle-nav],[data-toast],[data-advice],[data-close-advice],[data-choice],[data-next],.switch,.seg button,.option-card,.filter-list li,.opt .mark");
+  if (!e.target.closest(".module-switch")) document.querySelectorAll(".module-switch.open").forEach((s) => s.classList.remove("open"));
+  const t = e.target.closest("[data-toggle-switch],[data-toggle-nav],[data-toast],[data-advice],[data-close-advice],[data-choice],[data-next],.switch,.seg button,.option-card,.filter-list li,.opt .mark");
   if (!t) return;
   if (t.hasAttribute("data-toggle-nav")) toggleNav();
+  if (t.hasAttribute("data-toggle-switch")) { const open = t.parentElement.classList.toggle("open"); t.setAttribute("aria-expanded", open); }
   if (t.dataset.toast) toast(t.dataset.toast);
   if (t.hasAttribute("data-advice")) showAdvice();
   if (t.hasAttribute("data-close-advice")) $("#advice").innerHTML = "";
