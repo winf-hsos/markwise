@@ -6,7 +6,8 @@ Status: draft, October 2026. The decisions taken so far are listed at the end.
 
 Examiners who set paper exams with multiple-choice and free-text questions today juggle several tools: a document for the questions, a word processor for the exam booklet, a spreadsheet for the points, and, for automatic marking, a tool such as Auto Multiple Choice that only runs well on Linux. Markwise brings this into one Windows app with a calm, intuitive interface. It covers the whole way from the question to the grade:
 
-1. write and maintain questions,
+0. choose or set up a module,
+1. write and maintain the module's questions,
 2. put an exam together from them,
 3. print personalised booklets and answer sheets,
 4. read the scanned answer sheets,
@@ -20,13 +21,24 @@ Examiners who set paper exams with multiple-choice and free-text questions today
 | App window | Python with pywebview (uses the WebView2 runtime built into Windows) | a real desktop window with a Start menu entry, not a browser tab |
 | User interface | HTML, CSS and JavaScript built with a component framework (proposal: Svelte), shipped as static files | the interface; no Node.js needed at run time |
 | Core | Python package | all logic: reading and checking questions, building exams, reading scans, grading. The interface only calls the core. |
-| Question files | one YAML file per question, in an ordinary folder | the single source of the questions. The folder can be local, on OneDrive or Teams, or on a network drive, so that colleagues can share a pool. No Git is needed. |
+| Question files | one YAML file per question, in the module folder | the single source of the questions. The folder can be local, on OneDrive or Teams, or on a network drive, so that colleagues can share a pool. No Git is needed. |
 | Search index | SQLite, stored locally for each user (never in the shared folder) | fast search and statistics; rebuilt from the files at any time |
 | Typesetting | Typst, used as a Python package | exam booklets, answer booklets, answer keys, marking guides, inspection copies as PDF |
 | Scan reading | PyMuPDF (pages from the scanner's PDF) and OpenCV (corner marks, QR codes, tick boxes) | reading ticks and point strips |
 | Agent interface | a command-line program (`markwise check`, `build`, `grade`, `question create/update/delete`, all with JSON output) and, while the app runs, a local HTTP interface on 127.0.0.1 | lets an AI agent maintain questions and run steps with the same rules as the interface |
 | Installation | first a Python environment with a Start menu entry for the author; once colleagues use it, an installer (PyInstaller and Inno Setup) | |
 | Languages | the interface in German and English, switchable, German by default | |
+
+## Modules
+
+Everything starts with a module, and **Modules** is the first entry of the menu. A module (for example "Digitization and Programming") has its own question pool and its own exams. The examiner sets up a module once:
+
+- **Name and short name**, shown in lists and on the printed booklets.
+- **Module folder**: holds the question pool, one YAML file per question, plus a small `module.toml` with the module's settings. It can be a local folder or a shared one (OneDrive, Teams, network drive), so that colleagues can work on the same pool; a colleague adds an existing module folder with "Open existing module folder".
+- **Exam folder**: holds the frozen exams with participants, scans and grades. It is set separately, because it contains personal data and belongs where only the examiner has access, even when the question pool is shared.
+- **Examination regulations** (grading profile) and the **languages** of the questions, per module, because modules of different degree programmes follow different rules.
+
+The menu then shows the chosen module's **Questions** and **Exams**; switching the module switches both. Settings that are not tied to a module (interface language, the examiner's name, the language model) stay in the general settings.
 
 ## Questions
 
@@ -83,6 +95,7 @@ Examiners who set paper exams with multiple-choice and free-text questions today
 
 | When | What | Time |
 |---|---|---|
+| Once per module | set up the module: name, module folder, exam folder, examination regulations | about 5 min |
 | Weeks before | write questions or have an agent draft them, review and release them in Markwise | depends on the pool |
 | Two weeks before | choose the blueprint, let Markwise draw the exam, check the booklet, freeze | about 30 min |
 | One week before | import participants, create the PDF, print and check one sample, print all | about 20 min plus copier |

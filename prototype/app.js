@@ -6,6 +6,8 @@ const $ = (sel, root = document) => root.querySelector(sel);
 // --- icons (simple strokes, 24px grid; the gear follows Lucide, ISC licence) ----
 const ICON = {
   panel: '<rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke-width="1.8"/><path d="M9 4.5v15" fill="none" stroke-width="1.8"/>',
+  modules: '<path d="M3.5 7.5 12 3l8.5 4.5L12 12 3.5 7.5Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><path d="M3.5 12 12 16.5 20.5 12M3.5 16.5 12 21l8.5-4.5" fill="none" stroke-width="1.7" stroke-linejoin="round"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/>',
   questions: '<path d="M4 5h16M4 10h16M4 15h10M4 20h7" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
   exams: '<rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke-width="1.8"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
   settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="none" stroke-width="1.7"/>',
@@ -57,6 +59,16 @@ const QUESTIONS = [
     stem: "Was seht ihr an der LED, wenn dieses Programm läuft?" },
 ];
 
+const MODULES = [
+  { id: "dup", name: "Digitalisierung und Programmierung", short: "DuP", folder: "OneDrive › Lehre › Digitalisierung und Programmierung",
+    exams: "OneDrive › Klausuren (privat) › DuP", questions: 246, concepts: 18, examCount: 2, last: "Klausur WS 2026/27 in Vorbereitung", po: "BPO Wirtschaftsinformatik, § 5 Abs. 3 AT" },
+  { id: "ai", name: "Artificial Intelligence", short: "AI", folder: "OneDrive › Lehre › Artificial Intelligence",
+    exams: "OneDrive › Klausuren (privat) › AI", questions: 132, concepts: 11, examCount: 1, last: "Fragen werden gesammelt", po: "BPO Wirtschaftsinformatik, § 5 Abs. 3 AT" },
+  { id: "da", name: "Data Analytics", short: "DA", folder: "Teams › Data Analytics › Klausurfragen (geteilt)",
+    exams: "OneDrive › Klausuren (privat) › DA", questions: 87, concepts: 9, examCount: 4, last: "letzte Klausur SS 2026, ausgewertet", po: "MPO Data Science, § 7 AT" },
+];
+let currentModule = MODULES[0];
+
 const PEOPLE = [
   ["Albers, Jana", "1048231"], ["Brandt, Tobias", "1049120"], ["Çelik, Deniz", "1050774"],
   ["Diekmann, Lea", "1047302"], ["Engel, Marvin", "1051188"], ["Fischer, Sophie", "1049967"],
@@ -64,11 +76,8 @@ const PEOPLE = [
 ];
 
 // --- shell ---------------------------------------------------------------------------
-const NAV = [
-  ["#/fragen", "Fragen", "questions"],
-  ["#/klausuren", "Klausuren", "exams"],
-  ["#/einstellungen", "Einstellungen", "settings"],
-];
+const navLink = (href, label, ic, active) =>
+  `<a href="${href}" title="${label}" class="${active === href ? "active" : ""}">${icon(ic)}<span class="label">${label}</span></a>`;
 
 function shell(active, content) {
   return `
@@ -81,9 +90,12 @@ function shell(active, content) {
         </svg>
         <span class="brand-name">Markwise</span>
       </div>
-      ${NAV.map(([href, label, ic]) => `<a href="${href}" title="${label}" class="${href.startsWith(active) ? "active" : ""}">${icon(ic)}<span class="label">${label}</span></a>`).join("")}
+      ${navLink("#/module", "Module", "modules", active)}
+      <div class="nav-group" title="${currentModule.name}"><span class="label">${currentModule.name}</span><span class="short">${currentModule.short}</span></div>
+      ${navLink("#/fragen", "Fragen", "questions", active)}
+      ${navLink("#/klausuren", "Klausuren", "exams", active)}
       <div class="spacer"></div>
-      <div class="who">Fragenordner:<br>OneDrive › Klausurfragen</div>
+      ${navLink("#/einstellungen", "Einstellungen", "settings", active)}
       <button class="nav-toggle" data-toggle-nav title="Menü ein- und ausklappen (Strg+B)" aria-label="Menü ein- und ausklappen">${icon("panel")}<span class="label">Menü einklappen</span></button>
     </nav>
     <main class="main" id="main">${content}</main>
@@ -126,7 +138,7 @@ function viewQuestions(sel = "aa-014") {
     <div class="page-head">
       <div>
         <h1>Fragen</h1>
-        <p>Pool „Digitalisierung und Programmierung“: 246 Fragen in 18 Konzepten</p>
+        <p>Fragenpool von ${currentModule.name}: ${currentModule.questions} Fragen in ${currentModule.concepts} Konzepten <span class="path">${icon("folder")}${currentModule.folder}</span></p>
       </div>
       <div class="actions">
         <button class="btn" data-toast="Import gestartet">Fragen importieren</button>
@@ -218,17 +230,73 @@ function showAdvice() {
     </div>`;
 }
 
+// --- view: modules -------------------------------------------------------------------
+function viewModules(editing) {
+  return `
+  <div class="page">
+    <div class="page-head">
+      <div><h1>Module</h1><p>Jedes Modul hat seinen Fragenpool und seine Klausuren in eigenen Ordnern.</p></div>
+      <div class="actions">
+        <button class="btn" data-toast="Ordner gewählt: das Modul erscheint in der Liste">${icon("folder")}Vorhandenen Modulordner öffnen</button>
+        <a class="btn primary" href="#/module/neu">${icon("plus")}Neues Modul</a>
+      </div>
+    </div>
+    <div class="modules-layout ${editing ? "with-form" : ""}">
+      <div class="module-list">
+        ${MODULES.map((m) => `
+          <article class="panel module-card ${m.id === currentModule.id ? "current" : ""}">
+            <div class="module-main">
+              <div class="module-title"><span class="module-short">${m.short}</span><h3>${m.name}</h3></div>
+              <div class="path">${icon("folder")}${m.folder}</div>
+              <div class="module-facts"><span>${m.questions} Fragen</span><span>${m.examCount} ${m.examCount === 1 ? "Klausur" : "Klausuren"}</span><span>${m.last}</span></div>
+            </div>
+            <div class="module-actions">
+              <a class="btn" href="#/module/${m.id}/einstellungen">Einstellungen</a>
+              <a class="btn ${m.id === currentModule.id ? "" : "primary"}" href="#/oeffnen/${m.id}">${m.id === currentModule.id ? "Geöffnet" : "Öffnen"}</a>
+            </div>
+          </article>`).join("")}
+      </div>
+      ${editing ? moduleForm(editing === "neu" ? null : MODULES.find((m) => m.id === editing)) : ""}
+    </div>
+  </div>`;
+}
+
+function moduleForm(m) {
+  return `
+  <section class="panel module-form">
+    <div class="panel-head"><h2>${m ? "Modul einrichten" : "Neues Modul"}</h2><a class="btn ghost" href="#/module">Schließen</a></div>
+    <div class="panel-body" style="display:grid;gap:14px">
+      <div class="row">
+        <label class="field" style="flex:3"><span>Name</span><input class="input" value="${m ? m.name : ""}" placeholder="z. B. Datenbanken"></label>
+        <label class="field" style="flex:1"><span>Kürzel</span><input class="input" value="${m ? m.short : ""}" placeholder="DB"></label>
+      </div>
+      <div class="field"><span>Modulordner (Fragenpool)</span>
+        <div class="folder-pick"><span class="path">${icon("folder")}${m ? m.folder : "noch kein Ordner gewählt"}</span><button class="btn" data-toast="Ordnerauswahl von Windows öffnet sich">Ordner wählen</button></div>
+        <span class="muted small">Ein geteilter Ordner (OneDrive, Teams, Netzlaufwerk) erlaubt es Kolleg:innen, am selben Pool zu arbeiten.</span>
+      </div>
+      <div class="field"><span>Klausurordner</span>
+        <div class="folder-pick"><span class="path">${icon("folder")}${m ? m.exams : "noch kein Ordner gewählt"}</span><button class="btn" data-toast="Ordnerauswahl von Windows öffnet sich">Ordner wählen</button></div>
+        <span class="muted small">Hier liegen Teilnehmende, Scans und Noten. Wähle einen Ort, auf den nur du Zugriff hast; er darf vom Modulordner getrennt sein.</span>
+      </div>
+      <div class="row">
+        <label class="field"><span>Prüfungsordnung</span><select class="select"><option>${m ? m.po : "BPO Wirtschaftsinformatik, § 5 Abs. 3 AT"}</option><option>MPO Data Science, § 7 AT</option><option>Eigene Regeln …</option></select></label>
+        <label class="field"><span>Sprachen der Fragen</span><select class="select"><option>Deutsch und Englisch</option><option>Deutsch</option><option>Englisch</option></select></label>
+      </div>
+      <div class="row" style="flex:none;justify-content:flex-end"><a class="btn" href="#/module">Abbrechen</a><button class="btn primary" data-toast="${m ? "Gespeichert" : "Modul angelegt"}">${m ? "Speichern" : "Modul anlegen"}</button></div>
+    </div>
+  </section>`;
+}
+
 // --- view: exams overview -----------------------------------------------------------
 function viewExams() {
   const exams = [
-    ["Digitalisierung und Programmierung", "WS 2026/27, Fr 05.02.2027", "Zusammenstellen", 20, "#/klausuren/dup/zusammenstellen"],
-    ["Artificial Intelligence", "WS 2026/27, Termin offen", "Fragen sammeln", 5, "#/klausuren/dup/zusammenstellen"],
-    ["Probeklausur DuP", "Testlauf mit Kopierer-Scans", "Zweifelsfälle", 75, "#/klausuren/dup/zweifelsfaelle"],
+    ["Klausur WS 2026/27", "Freitag 05.02.2027, 60 Minuten", "Zusammenstellen", 20, "#/klausuren/dup/zusammenstellen"],
+    ["Probeklausur", "Testlauf mit Scans vom Kopierer", "Zweifelsfälle", 75, "#/klausuren/dup/zweifelsfaelle"],
   ];
   return `
   <div class="page">
     <div class="page-head">
-      <div><h1>Klausuren</h1><p>Jede Klausur ist ein eigener Ordner mit allem, was zu ihr gehört.</p></div>
+      <div><h1>Klausuren</h1><p>${currentModule.name}: jede Klausur ist ein eigener Ordner mit allem, was zu ihr gehört <span class="path">${icon("folder")}${currentModule.exams}</span></p></div>
       <div class="actions"><button class="btn primary" data-toast="Neue Klausur angelegt">${icon("plus")}Neue Klausur</button></div>
     </div>
     <div class="exam-list">
@@ -257,7 +325,7 @@ function examFrame(step, body) {
   return `
   <div class="page">
     <div class="page-head">
-      <div><h1>Digitalisierung und Programmierung</h1><p>Klausur WS 2026/27, Freitag 05.02.2027, 60 Minuten</p></div>
+      <div><h1>Klausur WS 2026/27</h1><p>${currentModule.name}, Freitag 05.02.2027, 60 Minuten</p></div>
     </div>
     <ol class="steps">
       ${STEPS.map(([s, label], i) => `
@@ -556,10 +624,7 @@ function viewSettings() {
             <label class="field"><span>Sprache der Oberfläche</span><div class="seg"><button class="on">Deutsch</button><button>English</button></div></label>
             <label class="field"><span>Dein Name (für Freigaben)</span><input class="input" value="Nicolas Meseth"></label>
           </div>
-          <div class="row">
-            <label class="field"><span>Fragenordner</span><input class="input" value="C:\\Users\\…\\OneDrive\\Klausurfragen"></label>
-            <label class="field"><span>Prüfungsordnung</span><select class="select"><option>HS Osnabrück, Allgemeiner Teil, § 5 Abs. 3</option></select></label>
-          </div>
+          <p class="muted small" style="margin:0">Ordner und Prüfungsordnung stellst du je Modul ein, unter <a href="#/module">Module</a>.</p>
         </div>
       </section>
       <section class="panel">
@@ -583,6 +648,16 @@ function render() {
   const parts = location.hash.replace(/^#\/?/, "").split("/");
   const [area, a, b] = parts;
   let html;
+  if (area === "oeffnen" && a) {
+    currentModule = MODULES.find((m) => m.id === a) || currentModule;
+    location.hash = "#/fragen";
+    return;
+  }
+  if (area === "module" || area === "") {
+    const editing = a === "neu" ? "neu" : (a && b === "einstellungen" ? a : null);
+    document.getElementById("root").innerHTML = shell("#/module", viewModules(editing));
+    return;
+  }
   if (area === "klausuren" && a) {
     const views = { zusammenstellen: viewCompose, druck: viewPrint, einlesen: viewScan, zweifelsfaelle: viewReview, ergebnisse: viewResults };
     html = shell("#/klausuren", (views[b] || viewCompose)());
