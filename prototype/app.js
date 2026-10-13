@@ -74,10 +74,9 @@ function shell(active, content) {
   <div class="app">
     <nav class="nav" aria-label="Hauptnavigation">
       <div class="brand">
-        <svg class="brand-mark" viewBox="0 0 26 26" aria-hidden="true">
-          <rect x="1" y="1" width="24" height="24" rx="5" fill="#17202b"/>
-          <rect x="6" y="6" width="14" height="14" rx="1.5" fill="none" stroke="#fff" stroke-width="1.6"/>
-          <path d="M8.5 13.2 11.8 16.5 18.6 8.6" fill="none" stroke="#d2373c" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
+          <circle cx="32" cy="32" r="30" fill="#dff3e7"/>
+          <path d="M19 33.5 28 42 46 22" fill="none" stroke="#24895a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
         <span class="brand-name">Markwise</span>
       </div>
