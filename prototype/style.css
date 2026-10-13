@@ -38,6 +38,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 /* --- frame ------------------------------------------------------------------ */
 .app { display: grid; grid-template-columns: 216px 1fr; height: 100vh; }
+.app.collapsed { grid-template-columns: 60px 1fr; }
+.app.collapsed .nav { padding-left: 10px; padding-right: 10px; }
+.app.collapsed .label, .app.collapsed .brand-name, .app.collapsed .who { display: none; }
+.app.collapsed .nav a, .app.collapsed .nav-toggle { justify-content: center; padding-left: 0; padding-right: 0; }
+.app.collapsed .brand { justify-content: center; padding-left: 0; padding-right: 0; }
+.nav-toggle {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin-top: 4px;
+  border: 0; border-radius: var(--radius-s); background: transparent; color: var(--muted); cursor: pointer; text-align: left;
+}
+.nav-toggle:hover { background: rgba(23, 32, 43, 0.06); color: var(--ink); }
+.nav-toggle svg { width: 18px; height: 18px; flex: none; stroke: currentColor; }
 .nav {
   display: flex; flex-direction: column; gap: 2px;
   padding: 18px 12px; border-right: 1px solid var(--line);

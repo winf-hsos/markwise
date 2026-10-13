@@ -5,6 +5,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 
 // --- icons (simple strokes, 24px grid) --------------------------------------------
 const ICON = {
+  panel: '<rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke-width="1.8"/><path d="M9 4.5v15" fill="none" stroke-width="1.8"/>',
   questions: '<path d="M4 5h16M4 10h16M4 15h10M4 20h7" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
   exams: '<rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke-width="1.8"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
   settings: '<circle cx="12" cy="12" r="3" fill="none" stroke-width="1.8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
@@ -71,7 +72,7 @@ const NAV = [
 
 function shell(active, content) {
   return `
-  <div class="app">
+  <div class="app ${navCollapsed() ? "collapsed" : ""}">
     <nav class="nav" aria-label="Hauptnavigation">
       <div class="brand">
         <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
@@ -80,13 +81,24 @@ function shell(active, content) {
         </svg>
         <span class="brand-name">Markwise</span>
       </div>
-      ${NAV.map(([href, label, ic]) => `<a href="${href}" class="${href.startsWith(active) ? "active" : ""}">${icon(ic)}${label}</a>`).join("")}
+      ${NAV.map(([href, label, ic]) => `<a href="${href}" title="${label}" class="${href.startsWith(active) ? "active" : ""}">${icon(ic)}<span class="label">${label}</span></a>`).join("")}
       <div class="spacer"></div>
       <div class="who">Fragenordner:<br>OneDrive › Klausurfragen</div>
+      <button class="nav-toggle" data-toggle-nav title="Menü ein- und ausklappen (Strg+B)" aria-label="Menü ein- und ausklappen">${icon("panel")}<span class="label">Menü einklappen</span></button>
     </nav>
     <main class="main" id="main">${content}</main>
   </div>
   <div class="toast" id="toast"></div>`;
+}
+
+// the menu remembers whether it was collapsed (per viewer, not shared)
+function navCollapsed() {
+  try { return localStorage.getItem("markwise-nav") === "collapsed"; } catch { return false; }
+}
+function toggleNav() {
+  const app = $(".app");
+  const collapsed = app.classList.toggle("collapsed");
+  try { localStorage.setItem("markwise-nav", collapsed ? "collapsed" : "open"); } catch { /* no storage, fine */ }
 }
 
 function toast(text) {
@@ -581,8 +593,9 @@ function render() {
 }
 
 document.addEventListener("click", (e) => {
-  const t = e.target.closest("[data-toast],[data-advice],[data-close-advice],[data-choice],[data-next],.switch,.seg button,.option-card,.filter-list li,.opt .mark");
+  const t = e.target.closest("[data-toggle-nav],[data-toast],[data-advice],[data-close-advice],[data-choice],[data-next],.switch,.seg button,.option-card,.filter-list li,.opt .mark");
   if (!t) return;
+  if (t.hasAttribute("data-toggle-nav")) toggleNav();
   if (t.dataset.toast) toast(t.dataset.toast);
   if (t.hasAttribute("data-advice")) showAdvice();
   if (t.hasAttribute("data-close-advice")) $("#advice").innerHTML = "";
@@ -596,6 +609,7 @@ document.addEventListener("click", (e) => {
 });
 
 document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey && e.key.toLowerCase() === "b") { e.preventDefault(); toggleNav(); return; }
   if (!location.hash.includes("zweifelsfaelle") || e.target.matches("input,textarea,select")) return;
   const map = { 1: "A", 2: "B", 3: "C", 4: "D", 5: "E" };
   if (map[e.key]) document.querySelectorAll(".choice").forEach((c) => c.classList.toggle("on", c.dataset.choice === map[e.key]));
