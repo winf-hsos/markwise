@@ -1,6 +1,6 @@
 # Markwise: concept
 
-Status: draft, October 2026. Open decisions are listed at the end.
+Status: draft, October 2026. The decisions taken so far are listed at the end.
 
 ## What Markwise is for
 
@@ -25,7 +25,8 @@ Examiners who set paper exams with multiple-choice and free-text questions today
 | Typesetting | Typst, used as a Python package | exam booklets, answer booklets, answer keys, marking guides, inspection copies as PDF |
 | Scan reading | PyMuPDF (pages from the scanner's PDF) and OpenCV (corner marks, QR codes, tick boxes) | reading ticks and point strips |
 | Agent interface | a command-line program (`markwise check`, `build`, `grade`, `question create/update/delete`, all with JSON output) and, while the app runs, a local HTTP interface on 127.0.0.1 | lets an AI agent maintain questions and run steps with the same rules as the interface |
-| Installation | first a Python environment with a Start menu entry; later an installer (PyInstaller and Inno Setup) | |
+| Installation | first a Python environment with a Start menu entry for the author; once colleagues use it, an installer (PyInstaller and Inno Setup) | |
+| Languages | the interface in German and English, switchable, German by default | |
 
 ## Questions
 
@@ -35,7 +36,7 @@ Examiners who set paper exams with multiple-choice and free-text questions today
 
 **Multiple choice.** At least four options, each with a short justification of why it is right or wrong.
 
-**Free text.** Maximum points, point steps (whole or half points), the size of the answer area, the expected answer, and marking notes for partial credit.
+**Free text.** Maximum points, whether half points are allowed (set per question), the size of the answer area, the expected answer, and marking notes for partial credit. There is one point strip per question; a second marking is not supported inside Markwise.
 
 **Working with questions.**
 - Browse, search and filter by concept, level, status, type, public or exam, language.
@@ -47,6 +48,8 @@ Examiners who set paper exams with multiple-choice and free-text questions today
 - Export of the public questions for a practice platform.
 
 ## Exams
+
+**Shuffling.** Chosen per exam, in one of three ways: an individual order of questions and options for every participant, four fixed groups A to D, or the same order of questions for everyone with the options shuffled per participant. The QR code tells Markwise which order a booklet has.
 
 **Putting an exam together.** Choose a blueprint (how many questions per concept and level), let Markwise draw the questions or choose them by hand, and check the blueprint and the rules (for example no two variants of the same practice question). Preview the booklet, then **freeze** the exam.
 
@@ -92,7 +95,7 @@ Examiners who set paper exams with multiple-choice and free-text questions today
 
 ## Optional help from a language model
 
-Markwise works completely without a language model. Examiners who want one can switch it on in the settings and enter an API key there; the key is stored in the Windows credential store, never in question files or exam folders. Every suggestion from the model is shown as a suggestion and has to be accepted by a person; nothing changes without that click. The provider is configurable.
+Markwise works completely without a language model. Examiners who want one can switch it on in the settings and enter an API key there; the key is stored in the Windows credential store, never in question files or exam folders. Every suggestion from the model is shown as a suggestion and has to be accepted by a person; nothing changes without that click. The provider is configurable: OpenAI and Anthropic through their APIs, and a model running locally on the examiner's computer (for example through Ollama), so that nothing has to leave the computer.
 
 Where it helps:
 
@@ -126,12 +129,13 @@ Markwise runs on the examiner's computer and sends nothing anywhere, unless the 
 | 5 First real exam | 5 Feb 2027 | multiple-choice exam "Digitization and Programming"; Auto Multiple Choice runs in parallel as a cross-check, results spot-checked by hand |
 | afterwards | | adapt the skill; first exam with free-text questions; marking on screen as an option |
 
-## Open decisions
+## Decisions
 
-1. ~~Personalised or anonymous answer booklets~~ decided: both, personalised by default, generated from the export of the examination system.
-2. Shuffling: an individual order for every participant, or four groups A to D.
-3. Half points for free text: yes or no.
-4. Second marker: a second point strip for a second examiner, or one strip only.
-5. Who will use Markwise besides the author (this decides installer, interface language and support for other examination regulations).
-6. Marking on screen instead of on paper, as a later addition; it is the precondition for transcribing handwriting.
-7. Which language model providers to support first, and whether a model running locally should be possible as well.
+1. **Answer booklets:** personalised by default, generated from the export of the examination system (name and student number); anonymous booklets with a tick grid for the student number are possible as well and serve as spares.
+2. **Shuffling:** chosen per exam (individual order, groups A to D, or options only).
+3. **Half points for free text:** set per question.
+4. **Second marker:** not supported; one point strip per question.
+5. **Users:** first the author, then colleagues. Until the first real exam Markwise is built for one computer and one set of examination regulations; afterwards it gets an installer, help texts and settings for other regulations.
+6. **Marking on screen:** yes, after the first real exam, as a second way next to paper and together with the transcription of handwriting.
+7. **Language model providers:** OpenAI, Anthropic and a locally running model.
+8. **Interface language:** German and English, switchable, German by default.
