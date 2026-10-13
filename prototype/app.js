@@ -3,12 +3,12 @@
 
 const $ = (sel, root = document) => root.querySelector(sel);
 
-// --- icons (simple strokes, 24px grid) --------------------------------------------
+// --- icons (simple strokes, 24px grid; the gear follows Lucide, ISC licence) ----
 const ICON = {
   panel: '<rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke-width="1.8"/><path d="M9 4.5v15" fill="none" stroke-width="1.8"/>',
   questions: '<path d="M4 5h16M4 10h16M4 15h10M4 20h7" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
   exams: '<rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke-width="1.8"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
-  settings: '<circle cx="12" cy="12" r="3" fill="none" stroke-width="1.8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
+  settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="none" stroke-width="1.7"/>',
   search: '<circle cx="11" cy="11" r="6.5" fill="none" stroke-width="1.8"/><path d="m16 16 4.5 4.5" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
   plus: '<path d="M12 5v14M5 12h14" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
