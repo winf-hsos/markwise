@@ -642,6 +642,8 @@ kbd.k { font: 11.5px var(--code); border: 1px solid var(--line); border-bottom-w
 .warn-text { color: var(--amber); }
 .red-text { color: var(--red); }
 .btn.danger { color: var(--red); }
+.icon-btn.danger:hover { color: var(--red); background: var(--red-soft); }
+.attachment-card .icon-btn { width: 30px; height: 30px; }
 
 /* --- settings --------------------------------------------------------------- */
 .settings { display: grid; gap: 36px; max-width: 820px; }

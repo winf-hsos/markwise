@@ -284,8 +284,8 @@
           <div class="attachment-card">
             <span class="attachment-icon"><Icon name="code" /></span>
             <span class="attachment-text"><b>{t("attach.code")}</b><span>{codeLanguageName} · {t(codeLines === 1 ? "attach.line" : "attach.lines", { n: codeLines })}</span></span>
-            <button type="button" class="link-btn" onclick={() => (codeOpen = true)}>{t("edit.edit")}</button>
-            <button type="button" class="link-btn" onclick={removeCode}>{t("attach.remove")}</button>
+            <button type="button" class="icon-btn" title={t("attach.codeEdit")} aria-label={t("attach.codeEdit")} onclick={() => (codeOpen = true)}><Icon name="edit" /></button>
+            <button type="button" class="icon-btn danger" title={t("attach.removeCode")} aria-label={t("attach.removeCode")} onclick={removeCode}><Icon name="trash" /></button>
           </div>
         {/if}
         {#if fields.images.length}
@@ -299,8 +299,8 @@
               <b>{fields.images.length === 1 ? t("edit.image") : t("attach.figures", { n: fields.images.length })}</b>
               <span>{fields.images.length === 1 ? fields.images[0] : layoutName}</span>
             </span>
-            <button type="button" class="link-btn" onclick={() => (imageOpen = true)}>{t("attach.change")}</button>
-            <button type="button" class="link-btn" onclick={() => { fields.images = []; fields.image_columns = 1; }}>{t("attach.remove")}</button>
+            <button type="button" class="icon-btn" title={t("attach.imageChange")} aria-label={t("attach.imageChange")} onclick={() => (imageOpen = true)}><Icon name="edit" /></button>
+            <button type="button" class="icon-btn danger" title={t("attach.removeImages")} aria-label={t("attach.removeImages")} onclick={() => { fields.images = []; fields.image_columns = 1; }}><Icon name="trash" /></button>
           </div>
         {/if}
         <Menu buttonLabel={t("attach.add")} items={addItems} align="left" />

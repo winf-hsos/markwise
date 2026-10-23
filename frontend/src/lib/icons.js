@@ -29,6 +29,7 @@ export const ICONS = {
   code: '<path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   image: '<rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke-width="1.7"/><circle cx="9" cy="10" r="1.8" fill="none" stroke-width="1.6"/><path d="m5 18 5-5 3.5 3.5L16 14l4 4" fill="none" stroke-width="1.7" stroke-linejoin="round"/>',
   formula: '<path d="M17 5H7l6 7-6 7h10" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  trash: '<path d="M4.5 7h15M10 4h4M6.5 7l1 12.5a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-12.5M10 11v6M14 11v6" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
   back: '<path d="m14.5 6-6 6 6 6" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   edit: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><path d="m13.5 6.5 4 4" fill="none" stroke-width="1.7"/>',
 };
