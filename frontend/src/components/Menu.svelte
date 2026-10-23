@@ -20,7 +20,7 @@
 <svelte:window onclick={closeOnOutside} onkeydown={(e) => e.key === "Escape" && (open = false)} />
 
 <div class="menu" class:open bind:this={root}>
-  <button class="icon-btn" aria-label={label} title={label} aria-haspopup="true" aria-expanded={open} onclick={() => (open = !open)}>
+  <button class="icon-btn" aria-label={label} aria-haspopup="true" aria-expanded={open} onclick={() => (open = !open)}>
     <Icon name="more" />
   </button>
   {#if open}
