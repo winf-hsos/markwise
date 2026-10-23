@@ -27,7 +27,7 @@ Examiners who set paper exams with multiple-choice and free-text questions today
 | Typesetting | Typst, used as a Python package | exam booklets, answer booklets, answer keys, marking guides, inspection copies as PDF |
 | Scan reading | PyMuPDF (pages from the scanner's PDF) and OpenCV (corner marks, QR codes, tick boxes) | reading ticks and point strips |
 | Agent interface | a command-line program (`markwise check`, `build`, `grade`, `question create/update/delete`, all with JSON output) and, while the app runs, a local HTTP interface on 127.0.0.1 | lets an AI agent maintain questions and run steps with the same rules as the interface |
-| Installation | first a Python environment with a Start menu entry for the author; once colleagues use it, an installer (PyInstaller and Inno Setup) | |
+| Installation | an installer (PyInstaller and Inno Setup) from the end of November 2026, when a colleague starts testing on a second computer; until then a Python environment for the author | |
 | Languages | the interface in German and English, switchable, German by default | |
 
 ## Modules
@@ -165,11 +165,11 @@ The repository holds code, documentation and invented test data only. Real exams
 | Phase | Until | Result |
 |---|---|---|
 | 0 Concept and clickable prototype | 23 Oct 2026 | this concept, and a clickable interface without logic, to judge the look before anything is built |
-| 1 Foundation and questions | 13 Nov 2026 | core package, question format, import of existing question banks, rules, command-line interface; in parallel a test answer sheet scanned at the university's copier and read back |
-| 2 Building exams | 27 Nov 2026 | blueprint, variants, exam and answer booklets as PDF, app window with the question views |
+| 1 Foundation and questions | 13 Nov 2026 | core package, question format, import of existing question banks, rules, command-line interface, app window with the question views; in parallel a test answer sheet scanned at the university's copier and read back |
+| 2 A version for a second computer, building exams | 27 Nov 2026 | an installer, so that a colleague can test Markwise and enter their own questions; blueprint, variants, exam and answer booklets as PDF |
 | 3 Scanning, doubtful cases, grading | early Dec 2026 | multiple-choice exams end to end, ready for the test exams |
 | 4 Test exams | Dec 2026 | test exams in the modules that follow, results checked by hand against the sheets; fixes from what they show |
-| 5 Output and a second computer | 15 Jan 2027 | item analysis, exports, inspection copies; a version a colleague can install and test |
+| 5 Output | 15 Jan 2027 | item analysis, exports, inspection copies; fixes from the colleague's tests |
 | 6 First real exams | 21 Jan and 5 Feb 2027 | multiple-choice exams "Applications of AI" and "Digitization and Programming" |
 | afterwards | | free-text questions, marking on screen, language model |
 
@@ -179,7 +179,7 @@ The repository holds code, documentation and invented test data only. Real exams
 2. **Shuffling:** chosen per exam (individual order, groups A to D, or options only).
 3. **Half points for free text:** set per question.
 4. **Second marker:** not supported; one point strip per question.
-5. **Users:** first the author; a colleague tests from January 2027 on a second computer. Until the first real exams Markwise is built for one set of examination regulations; afterwards it gets help texts and settings for other regulations.
+5. **Users:** first the author; from the end of November 2026 a colleague tests on a second computer and enters their own questions. Until the first real exams Markwise is built for one set of examination regulations; afterwards it gets help texts and settings for other regulations.
 6. **Marking on screen:** yes, after the first real exams, as a second way next to paper and together with the transcription of handwriting.
 7. **Language model:** not in the first version, but designed for. First use case: reviewing and fixing questions. Providers later: OpenAI, Anthropic and a locally running model; anything from a scan only with the local one.
 8. **Interface language:** German and English, switchable, German by default.
