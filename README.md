@@ -4,7 +4,7 @@ A desktop app for paper exams: keep a bank of questions, build exams from it, re
 
 Markwise runs natively on Windows, needs neither Linux nor LaTeX, and is meant to be used by examiners without any technical background. Agents (for example an AI assistant that drafts questions) work with the same data through a command-line interface, and later through a local HTTP interface.
 
-> **Status (October 2026): phase 1 of the [plan](docs/concept.md#plan).** What works today is managing question pools from the command line (creating, listing, checking, importing and deleting questions, setting up modules) and the first step of the app window: it opens, shows the modules you have opened and keeps your settings. Creating modules and working with questions in the window, building exams, printing, scanning and grading follow; [what is not there yet](#not-there-yet) lists them with their dates. This guide grows with every step, so it always describes what Markwise can do at the time.
+> **Status (October 2026): phase 1 of the [plan](docs/concept.md#plan).** What works today is managing question pools from the command line (creating, listing, checking, importing and deleting questions, setting up modules) and the app window for setting up modules: creating a module with its question pool, opening module folders, adding pools and switching between modules. Working with questions in the window, building exams, printing, scanning and grading follow; [what is not there yet](#not-there-yet) lists them with their dates. This guide grows with every step, so it always describes what Markwise can do at the time.
 
 ## Contents
 
@@ -55,19 +55,34 @@ opens Markwise in its own window (it uses the WebView2 runtime that is part of W
 markwise shortcut
 ```
 
-The entry opens the window without a console. What the window can do so far:
+The entry opens the window without a console.
 
-- **Modules** lists the modules you have opened, with their question pools; a module whose folder is gone is marked in red. Creating and opening modules from the window comes in the next step; until then use `markwise module init` and add the module folder on the settings page (see below).
-- **Settings** switches the interface between German and English and stores your name, which Markwise will write into `reviewed_by` when you release a question.
-- **Ctrl+B** collapses and expands the side menu.
-- **Questions** and **Exams** show what will be there and when.
+### Setting up a module
 
-Your settings live in `%APPDATA%\Markwise\settings.toml`, on your computer only and never in a pool or module folder. Until the window can open modules itself, you can add a module there by hand (single quotes, so that the backslashes stay as they are):
+On the **Modules** page, **New module** asks for:
 
-```toml
-modules = ['D:\Modules\Statistics 1']
-current_module = 'D:\Modules\Statistics 1'
-```
+- the **name** and a **short name** (Markwise suggests one from the capitalised words of the name; type your own if you prefer, for example `DuP`),
+- the **module folder**: the folder where you keep the module's documents anyway, because the exams with names, scans and grades will go there later. It may already contain other files; Markwise only adds `module.toml`. A folder that does not exist yet is created.
+- the **question pool**, in one of three ways:
+  - **New pool**: an empty pool in a folder of its own, with a name and the languages of its questions (German, English or both).
+  - **Existing pool**: a folder that already holds a `pool.toml`, for example a pool a colleague shared with you.
+  - **Import an earlier pool**: the `pool.toml` of a question bank in the earlier YAML format, and a folder for the new pool. The questions are copied and converted; the earlier pool stays unchanged (see [Importing an existing question bank](#importing-an-existing-question-bank)).
+
+**Browse …** next to each path opens the Windows folder dialog; you can also paste a path. Below the field Markwise says what the folder holds, for example that it will be created or already holds a pool. If something is missing or does not fit, the dialog says what to change, and nothing is created until everything fits.
+
+The new module becomes the **current module**, shown in the top bar. Every module in the list shows its folder and its pools with the number of questions; pointing at a pool shows **Show in Explorer** and **Detach pool** (detaching leaves the pool's questions untouched). The **⋯** menu of a module offers **Add pool** (the same three ways as above), **Show in Explorer** and **Remove from list**, which only removes the entry from the list and leaves the folder as it is.
+
+**Open folder** adds a module folder that already has a `module.toml`, for example after copying it from another computer. If the folder turns out to be a question pool, Markwise offers to create a new module with that pool instead.
+
+To switch modules, choose one in the menu of the top bar or click **Make this the current module** in the list.
+
+### Settings
+
+**Settings** switches the interface between German and English and stores your name, which Markwise will write into `reviewed_by` when you release a question. **Ctrl+B** collapses and expands the side menu. Your settings and the list of modules live in `%APPDATA%\Markwise\settings.toml`, on your computer only and never in a pool or module folder.
+
+When the interface is German, new modules file their exams under `01 - Semester\<semester>\Klausur\`, otherwise under `…\Exam\`; `exam_path` in `module.toml` changes that.
+
+**Questions** and **Exams** show what will be there and when.
 
 ## The four things Markwise works with
 
@@ -241,6 +256,8 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise import <old pool.toml> <pool> [--update]` | import a question bank in the earlier format |
 | `markwise module init <folder> --name <name> --short-name <short> --pool <pool>` | create a module |
 | `markwise module show <folder>` | show a module's pools and exams |
+| `markwise module add-pool <folder> <pool>` | let a module draw from another pool |
+| `markwise module remove-pool <folder> <pool>` | detach a pool from a module; the pool stays |
 | `markwise app` | open the app window |
 | `markwise shortcut [--folder <folder>]` | create the Start menu entry (or put it into another folder) |
 | `markwise serve [--port 8765]` | serve the core on 127.0.0.1 for developing the interface in a browser |
@@ -267,7 +284,6 @@ prints for each sheet whether the QR code, the orientation, the student number a
 
 | What | Planned for |
 |---|---|
-| Creating and opening modules and pools in the app window | early November 2026 |
 | Question views in the app window (browse, search, edit with a live preview) | 13 Nov 2026 |
 | Installer for a second computer | 27 Nov 2026 |
 | Building exams: blueprint, variants, exam and answer booklets as PDF | 27 Nov 2026 |

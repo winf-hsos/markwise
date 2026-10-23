@@ -6,7 +6,7 @@
   import Settings from "./pages/Settings.svelte";
   import { t } from "./lib/i18n.svelte.js";
   import { route } from "./lib/router.svelte.js";
-  import { app, load, updateSettings } from "./lib/state.svelte.js";
+  import { app, load, toast, updateSettings } from "./lib/state.svelte.js";
   import { transportName } from "./lib/api.js";
 
   let devMode = $state(false);
@@ -50,3 +50,4 @@
     {/if}
   </main>
 </div>
+<div class="toast" class:show={toast.visible} role="status" aria-live="polite">{toast.text}</div>

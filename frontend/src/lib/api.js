@@ -33,7 +33,12 @@ export async function call(method, ...args) {
     if (!response.ok) throw new Error(`${method}: HTTP ${response.status}`);
     result = await response.json();
   }
-  if (result && result.error) throw new Error(result.error);
+  if (result && result.error) {
+    const error = new Error(result.error);
+    error.code = result.code ?? null;
+    error.params = result.params ?? {};
+    throw error;
+  }
   return result?.data;
 }
 

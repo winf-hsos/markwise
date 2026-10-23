@@ -18,4 +18,7 @@ export const ICONS = {
   spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke-width="1.8"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke-width="1.8"/>',
   download: '<path d="M12 4v12M7 11l5 5 5-5M4 20h16" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  more: '<g fill="currentColor" stroke="none"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></g>',
+  eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.8" fill="none" stroke-width="1.7"/>',
+  remove: '<path d="M5 12h14" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
 };

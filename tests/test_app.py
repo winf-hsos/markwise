@@ -93,3 +93,63 @@ def test_shortcut_in_a_given_folder(tmp_path):
     from markwise.app import create_shortcut
     link = create_shortcut(tmp_path)
     assert link.exists() and link.suffix == ".lnk"
+
+
+# --- step 2: modules and pools from the window ----------------------------------------
+
+
+def test_create_module_with_a_new_pool(tmp_path):
+    api = Api()
+    api.update_settings({"language": "de"})
+    result = api.create_module({"name": "Invented Module", "short_name": "IM", "folder": str(tmp_path / "module"),
+                                "pool": {"mode": "new", "path": str(tmp_path / "pool"), "name": "Invented Pool",
+                                         "languages": ["de"]}})["data"]
+    assert result["pool"] == "created" and result["module"]["pools"][0]["name"] == "Invented Pool"
+    module = Module.open(tmp_path / "module")
+    assert module.exam_path.startswith("01 - Semester/{semester}/Klausur")
+    settings = api.get_settings()["data"]
+    assert settings["current_module"] == result["module"]["path"] and settings["modules"] == [result["module"]["path"]]
+
+
+def test_a_refused_pool_leaves_no_module_behind(tmp_path):
+    api = Api()
+    answer = api.create_module({"name": "M", "short_name": "M", "folder": str(tmp_path / "module"),
+                                "pool": {"mode": "existing", "path": str(tmp_path / "nothing")}})
+    assert answer["code"] == "pool_not_found"
+    assert not (tmp_path / "module").exists()
+
+
+def test_create_module_importing_an_earlier_pool(tmp_path):
+    from test_core import write_legacy
+    legacy = write_legacy(tmp_path / "legacy")
+    result = Api().create_module({"name": "M", "short_name": "M", "folder": str(tmp_path / "module"),
+                                  "pool": {"mode": "import", "source": str(legacy), "path": str(tmp_path / "pool")}})["data"]
+    assert result["pool"] == "imported" and result["created"] == 2
+
+
+def test_open_module_tells_a_pool_from_a_module(tmp_path):
+    pool = Pool.create(tmp_path / "pool", PoolSettings(name="P"))
+    api = Api()
+    assert api.open_module(str(pool.root))["code"] == "is_pool"
+    assert api.open_module(str(tmp_path))["code"] == "no_module"
+    Module.create(tmp_path / "module", "M", "M", pools=[pool.root])
+    assert api.open_module(str(tmp_path / "module"))["data"]["name"] == "M"
+
+
+def test_add_and_remove_pools_and_forget_modules(tmp_path):
+    first = Pool.create(tmp_path / "first", PoolSettings(name="First"))
+    Pool.create(tmp_path / "second", PoolSettings(name="Second"))
+    module = Module.create(tmp_path / "module", "M", "M", pools=[first.root])
+    api = Api()
+    path = api.open_module(str(module.root))["data"]["path"]
+    assert api.add_pool(path, {"mode": "existing", "path": str(first.root)})["code"] == "pool_already_added"
+    added = api.add_pool(path, {"mode": "existing", "path": str(tmp_path / "second")})["data"]
+    assert [p["name"] for p in added["module"]["pools"]] == ["First", "Second"]
+    after = api.remove_pool(path, str(tmp_path / "first"))["data"]
+    assert [p["name"] for p in after["pools"]] == ["Second"]
+    assert api.forget_module(path)["data"]["modules"] == []
+    assert (tmp_path / "module" / "module.toml").exists()  # forgetting never touches the folder
+
+
+def test_dialogs_are_refused_without_a_window():
+    assert Api().pick_folder()["code"] == "no_dialogs"

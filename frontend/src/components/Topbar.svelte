@@ -1,7 +1,7 @@
 <script>
   import Icon from "./Icon.svelte";
   import { t } from "../lib/i18n.svelte.js";
-  import { app } from "../lib/state.svelte.js";
+  import { app, setCurrentModule } from "../lib/state.svelte.js";
 
   let open = $state(false);
 
@@ -27,7 +27,8 @@
     </button>
     <div class="module-menu" role="menu">
       {#each modules as m}
-        <a role="menuitem" href="#/modules" class:on={m.path === current?.path}><span class="module-short">{m.short_name}</span>{m.name}</a>
+        <button role="menuitem" class:on={m.path === current?.path} disabled={!m.exists}
+          onclick={() => { open = false; setCurrentModule(m.path); }}><span class="module-short">{m.short_name}</span>{m.name}</button>
       {/each}
       <a role="menuitem" href="#/modules" class="all" onclick={() => (open = false)}>{t("top.allModules")}</a>
     </div>

@@ -26,9 +26,10 @@ def run(dev: bool = False, debug: bool = False) -> None:
         import ctypes
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
 
-    webview.create_window(
-        "Markwise", DEV_URL if dev else str(index), js_api=Api(),
-        width=1320, height=860, min_size=(960, 640), background_color="#EDF0F3",
+    api = Api()
+    api._window = webview.create_window(
+        "Markwise", DEV_URL if dev else str(index), js_api=api,
+        width=1320, height=860, min_size=(960, 640), background_color="#FFFFFF",
     )
     storage = user_settings.app_dir() / "webview"
     storage.mkdir(parents=True, exist_ok=True)

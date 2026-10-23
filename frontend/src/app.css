@@ -90,6 +90,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .module-menu a:hover { background: var(--surface); }
 .module-menu a.on { font-weight: 600; }
 .module-menu a.all { color: var(--muted); margin-top: 4px; }
+.module-menu:has(button) a.all { border-top: 1px solid var(--line-soft); border-radius: 0 0 var(--radius-m) var(--radius-m); }
 .module-short {
   display: inline-grid; place-items: center; min-width: 30px; height: 22px; padding: 0 6px;
   font: 650 11.5px/1 var(--ui); color: var(--green-strong); background: var(--green-soft); border-radius: 6px;
@@ -127,7 +128,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 a.btn.primary { color: #fff; }
 
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.field > span { font-size: 12.5px; color: var(--muted); }
+.field > span, .field > label { font-size: 12.5px; color: var(--muted); }
 .field > .input, .field > .select { width: 100%; }
 .input, .select, textarea.input {
   height: 34px; padding: 0 12px; min-width: 0;
@@ -359,6 +360,81 @@ kbd.k { font: 11.5px var(--code); border: 1px solid var(--line); border-bottom-w
 .histo div.fail span { background: #9aa4b0; }
 .histo small { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .flag { color: var(--red); font-weight: 600; }
+
+/* --- dialogs and forms ---------------------------------------------------------- */
+.dialog {
+  width: min(560px, calc(100vw - 48px)); max-height: calc(100vh - 64px); padding: 0;
+  border: 0; border-radius: 14px; background: var(--paper); color: var(--ink);
+  box-shadow: 0 24px 64px -20px rgba(27, 31, 39, 0.35), 0 0 0 1px rgba(27, 31, 39, 0.06);
+}
+.dialog.wide { width: min(680px, calc(100vw - 48px)); }
+.dialog[open] { display: flex; flex-direction: column; animation: dialog-in 0.16s ease-out; }
+.dialog::backdrop { background: rgba(27, 31, 39, 0.28); }
+@keyframes dialog-in { from { opacity: 0; transform: translateY(6px) scale(0.99); } }
+.dialog-head { display: flex; align-items: flex-start; gap: 16px; padding: 22px 24px 4px; }
+.dialog-head h2 { margin: 0; font: 650 19px/1.25 var(--ui-display); letter-spacing: -0.01em; }
+.dialog-head p { margin: 6px 0 0; color: var(--muted); font-size: 13px; max-width: 62ch; }
+.dialog-head .icon-btn { margin-left: auto; }
+.dialog-body { padding: 18px 24px 8px; overflow: auto; }
+.dialog-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 24px 20px; }
+
+.form { display: grid; gap: 16px; }
+.form-row { display: flex; gap: 12px; align-items: flex-start; }
+.form-row .grow { flex: 1; }
+.form-row .short { width: 120px; flex: none; }
+.form-section { margin: 10px 0 -4px; padding-top: 18px; border-top: 1px solid var(--line-soft); font: 600 14px/1.3 var(--ui-display); }
+.form-info { margin: 0; padding: 9px 12px; border-radius: var(--radius-m); background: var(--surface); color: var(--ink-soft); font-size: 13px; }
+.form-error { margin: 0; padding: 9px 12px; border-radius: var(--radius-m); background: var(--red-soft); color: var(--red); font-size: 13px; }
+.field .hint, .field .note, p.hint { color: var(--muted); font-size: 12.5px; margin: 0; }
+.field .note { color: var(--green-strong); }
+.path-input { display: flex; gap: 8px; }
+.path-input .input { flex: 1; }
+
+.seg-wide { display: flex; }
+.seg-wide button { flex: 1; }
+.chips { display: flex; gap: 6px; height: 34px; align-items: center; }
+.chip {
+  height: 30px; padding: 0 12px; border: 1px solid var(--line); border-radius: 99px;
+  background: var(--paper); color: var(--muted); cursor: pointer;
+}
+.chip.on { border-color: var(--green); background: var(--green-soft); color: var(--green-strong); font-weight: 600; }
+
+.icon-btn {
+  display: inline-grid; place-items: center; width: 32px; height: 32px; flex: none;
+  border: 0; border-radius: var(--radius-m); background: transparent; color: var(--muted); cursor: pointer;
+}
+.icon-btn:hover { background: var(--surface); color: var(--ink); }
+.icon-btn svg { width: 18px; height: 18px; stroke: currentColor; }
+.link-btn { border: 0; background: none; padding: 0; color: var(--muted); cursor: pointer; font-size: 12.5px; }
+.link-btn:hover { color: var(--green-strong); text-decoration: underline; }
+
+/* --- menus ------------------------------------------------------------------------ */
+.menu { position: relative; }
+.menu-list {
+  position: absolute; right: 0; top: 38px; z-index: 10; min-width: 220px; padding: 6px; display: grid;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-l);
+  box-shadow: 0 16px 40px -16px rgba(27, 31, 39, 0.28);
+}
+.menu-list button, .module-menu button {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px;
+  border: 0; border-radius: var(--radius-m); background: transparent; cursor: pointer; text-align: left; color: var(--ink);
+}
+.menu-list button:hover, .module-menu button:hover { background: var(--surface); }
+.menu-list svg { width: 16px; height: 16px; stroke: var(--muted); }
+.module-menu button.on { font-weight: 600; }
+.module-menu button:disabled { opacity: 0.45; cursor: default; }
+
+/* --- module rows ------------------------------------------------------------------ */
+.module-row { align-items: flex-start; padding-top: 16px; padding-bottom: 16px; }
+.module-row .text { gap: 6px; }
+.row-actions { padding-top: 2px; }
+.pool-list { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 2px; }
+.pool-list li { display: flex; align-items: center; gap: 10px; min-height: 30px; padding: 0 10px; margin-left: -10px; border-radius: var(--radius-m); font-size: 13px; }
+.pool-list li:hover { background: #fafbfc; }
+.pool-list svg { width: 15px; height: 15px; stroke: var(--faint); flex: none; }
+.pool-list .pool-name { font-weight: 500; }
+.pool-actions { margin-left: auto; display: flex; gap: 14px; opacity: 0; transition: opacity 0.12s; }
+.pool-list li:hover .pool-actions, .pool-actions:focus-within { opacity: 1; }
 
 /* --- settings --------------------------------------------------------------- */
 .settings { display: grid; gap: 36px; max-width: 820px; }

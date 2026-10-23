@@ -134,6 +134,22 @@ def cmd_module_show(args) -> int:
     return 0
 
 
+def cmd_module_add_pool(args) -> int:
+    module = Module.open(args.folder)
+    module.add_pool(args.pool)
+    module.save()
+    print(json.dumps({"pools": module.pools}) if args.json else f"{module.name} now draws from: {', '.join(module.pools)}")
+    return 0
+
+
+def cmd_module_remove_pool(args) -> int:
+    module = Module.open(args.folder)
+    module.remove_pool(args.pool)
+    module.save()
+    print(json.dumps({"pools": module.pools}) if args.json else f"{module.name} now draws from: {', '.join(module.pools) or 'no pool'}")
+    return 0
+
+
 def cmd_app(args) -> int:
     from .app import run
     run(dev=args.dev, debug=args.debug)
@@ -214,6 +230,14 @@ def build_parser() -> argparse.ArgumentParser:
     p = module.add_parser("show", parents=[common])
     p.add_argument("folder")
     p.set_defaults(func=cmd_module_show)
+    p = module.add_parser("add-pool", parents=[common], help="let the module draw from another pool")
+    p.add_argument("folder")
+    p.add_argument("pool")
+    p.set_defaults(func=cmd_module_add_pool)
+    p = module.add_parser("remove-pool", parents=[common], help="detach a pool from the module (the pool stays)")
+    p.add_argument("folder")
+    p.add_argument("pool")
+    p.set_defaults(func=cmd_module_remove_pool)
 
     p = sub.add_parser("app", help="open the app window")
     p.add_argument("--dev", action="store_true", help="load the interface from the Vite development server")

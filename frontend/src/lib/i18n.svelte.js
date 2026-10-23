@@ -1,4 +1,4 @@
-// Interface texts in German and English; German is the default.
+// Interface texts in German and English; German is the default. Placeholders like {name} are filled by t().
 
 export const ui = $state({ lang: "de" });
 
@@ -13,6 +13,7 @@ const TEXTS = {
     "nav.toggle": "Menü ein- und ausklappen (Strg+B)",
     "top.noModule": "Kein Modul geöffnet",
     "top.allModules": "Alle Module",
+
     "modules.title": "Module",
     "modules.lead": "Ein Modul bezieht seine Fragen aus einem oder mehreren Pools und hält seine Klausuren in einem eigenen Ordner.",
     "modules.new": "Neues Modul",
@@ -20,14 +21,87 @@ const TEXTS = {
     "modules.empty.title": "Noch kein Modul",
     "modules.empty.text": "Lege ein Modul an oder öffne einen vorhandenen Modulordner. Dabei wählst du auch den Fragenpool, aus dem das Modul seine Fragen bezieht.",
     "modules.pools": "Fragenpools",
+    "modules.noPool": "noch kein Pool",
     "modules.missing": "Ordner nicht gefunden",
-    "soon.step2": "Anlegen und Öffnen kommen im nächsten Schritt.",
+    "modules.poolMissing": "Pool nicht gefunden",
+    "modules.current": "Aktuell",
+    "modules.makeCurrent": "Als aktuelles Modul wählen",
+    "modules.addPool": "Pool hinzufügen",
+    "modules.reveal": "Im Explorer zeigen",
+    "modules.forget": "Aus Liste entfernen",
+    "modules.forgotten": "{name} aus der Liste entfernt. Der Ordner bleibt, wie er ist.",
+    "modules.removePool": "Pool lösen",
+    "modules.poolRemoved": "Pool gelöst. Seine Fragen bleiben, wie sie sind.",
+    "modules.question": "1 Frage",
+    "modules.questions": "{count} Fragen",
+    "modules.switched": "{name} ist jetzt das aktuelle Modul",
+
+    "dialog.cancel": "Abbrechen",
+    "dialog.close": "Schließen",
+    "dialog.browse": "Durchsuchen …",
+
+    "newModule.title": "Neues Modul",
+    "newModule.lead": "Der Modulordner nimmt später auch die Klausuren mit Namen, Scans und Noten auf. Wähle deshalb den Ordner, in dem du die Unterlagen des Moduls ohnehin ablegst.",
+    "newModule.name": "Name",
+    "newModule.namePlaceholder": "Digitalisierung und Programmierung",
+    "newModule.short": "Kürzel",
+    "newModule.shortHint": "Steht in Listen und auf den gedruckten Heften.",
+    "newModule.folder": "Modulordner",
+    "newModule.create": "Modul anlegen",
+    "newModule.created": "Modul {name} angelegt",
+    "newModule.imported": "Modul {name} angelegt, {count} Fragen importiert",
+
+    "pool.section": "Fragenpool",
+    "pool.mode.new": "Neuer Pool",
+    "pool.mode.existing": "Vorhandener Pool",
+    "pool.mode.import": "Alten Pool importieren",
+    "pool.folder": "Ordner des Pools",
+    "pool.folderHint": "Ein eigener Ordner ohne Personendaten, etwa bei den Lehrinhalten. Ihn kannst du mit Kolleginnen und Kollegen teilen.",
+    "pool.name": "Name des Pools",
+    "pool.languages": "Sprachen der Fragen",
+    "pool.source": "pool.toml des alten Pools",
+    "pool.importHint": "Die Fragen werden in den Ordner des neuen Pools übernommen. Der alte Pool bleibt unverändert, und ein späterer Import übernimmt Änderungen.",
+
+    "folder.module": "Hier liegt bereits ein Modul.",
+    "folder.pool": "Hier liegt ein Fragenpool.",
+    "folder.missing": "Der Ordner wird angelegt.",
+    "folder.empty": "Leerer Ordner.",
+    "folder.content": "Der Ordner hat schon Inhalt; Markwise legt nur seine eigene Datei dazu.",
+
+    "openFolder.title": "Modulordner öffnen",
+    "openFolder.lead": "Wähle einen Ordner, in dem eine module.toml liegt, etwa nach dem Kopieren von einem anderen Rechner.",
+    "openFolder.open": "Öffnen",
+    "openFolder.opened": "Modul {name} geöffnet",
+    "openFolder.newWithPool": "Neues Modul mit diesem Pool",
+
+    "addPool.title": "Pool hinzufügen",
+    "addPool.lead": "{name} schöpft dann auch aus diesem Pool.",
+    "addPool.add": "Hinzufügen",
+    "addPool.added": "Pool hinzugefügt",
+
+    "err.module_name_missing": "Gib dem Modul einen Namen.",
+    "err.module_short_missing": "Gib ein Kürzel an.",
+    "err.module_folder_missing": "Wähle einen Ordner für das Modul.",
+    "err.module_exists": "In diesem Ordner liegt schon ein Modul. Öffne es mit „Ordner öffnen“.",
+    "err.pool_folder_missing": "Wähle einen Ordner für den Fragenpool.",
+    "err.pool_exists": "In diesem Ordner liegt schon ein Fragenpool. Wähle „Vorhandener Pool“.",
+    "err.pool_name_missing": "Gib dem Pool einen Namen.",
+    "err.pool_languages_missing": "Wähle mindestens eine Sprache.",
+    "err.pool_not_found": "In diesem Ordner liegt kein Fragenpool, die pool.toml fehlt.",
+    "err.import_source_missing": "Wähle die pool.toml des alten Pools.",
+    "err.no_module": "In diesem Ordner liegt kein Modul, die module.toml fehlt.",
+    "err.is_pool": "Dieser Ordner ist ein Fragenpool und kein Modul. Lege ein Modul an, das aus ihm schöpft.",
+    "err.pool_already_added": "Das Modul schöpft schon aus diesem Pool.",
+    "err.folder_missing": "Diesen Ordner gibt es nicht mehr.",
+    "err.no_dialogs": "Die Ordnerauswahl gibt es nur im App-Fenster. Trag den Pfad hier von Hand ein.",
+
     "questions.title": "Fragen",
     "questions.lead": "Alle Fragen der Pools des aktuellen Moduls.",
-    "questions.empty": "Öffne zuerst ein Modul. Die Fragenliste mit Suche und Filtern kommt in Schritt 3.",
+    "questions.empty": "Die Fragenliste mit Suche und Filtern kommt im nächsten Schritt.",
     "exams.title": "Klausuren",
     "exams.lead": "Zusammenstellen, drucken, einlesen, bewerten.",
     "exams.empty": "Der Klausurbau kommt in Phase 2, bis zum 27. November.",
+
     "settings.title": "Einstellungen",
     "settings.lead": "Sie gelten nur auf diesem Rechner und für dein Benutzerkonto.",
     "settings.general": "Allgemein",
@@ -42,6 +116,7 @@ const TEXTS = {
     "settings.bridge": "Verbindung zum Kern",
     "settings.bridge.webview": "App-Fenster",
     "settings.bridge.http": "Browser über markwise serve",
+
     "dev.http": "Entwicklungsmodus im Browser, verbunden mit markwise serve",
     "error.core": "Der Kern antwortet nicht",
     "loading": "Lädt …",
@@ -56,6 +131,7 @@ const TEXTS = {
     "nav.toggle": "Collapse and expand the menu (Ctrl+B)",
     "top.noModule": "No module open",
     "top.allModules": "All modules",
+
     "modules.title": "Modules",
     "modules.lead": "A module draws its questions from one or more pools and keeps its exams in a folder of its own.",
     "modules.new": "New module",
@@ -63,14 +139,87 @@ const TEXTS = {
     "modules.empty.title": "No module yet",
     "modules.empty.text": "Create a module or open an existing module folder. You also choose the question pool the module draws its questions from.",
     "modules.pools": "Question pools",
+    "modules.noPool": "no pool yet",
     "modules.missing": "Folder not found",
-    "soon.step2": "Creating and opening come in the next step.",
+    "modules.poolMissing": "Pool not found",
+    "modules.current": "Current",
+    "modules.makeCurrent": "Make this the current module",
+    "modules.addPool": "Add pool",
+    "modules.reveal": "Show in Explorer",
+    "modules.forget": "Remove from list",
+    "modules.forgotten": "{name} removed from the list. Its folder stays as it is.",
+    "modules.removePool": "Detach pool",
+    "modules.poolRemoved": "Pool detached. Its questions stay as they are.",
+    "modules.question": "1 question",
+    "modules.questions": "{count} questions",
+    "modules.switched": "{name} is now the current module",
+
+    "dialog.cancel": "Cancel",
+    "dialog.close": "Close",
+    "dialog.browse": "Browse …",
+
+    "newModule.title": "New module",
+    "newModule.lead": "The module folder will also hold the exams with names, scans and grades. Choose the folder where you keep the module's documents anyway.",
+    "newModule.name": "Name",
+    "newModule.namePlaceholder": "Digitization and Programming",
+    "newModule.short": "Short name",
+    "newModule.shortHint": "Shown in lists and on the printed booklets.",
+    "newModule.folder": "Module folder",
+    "newModule.create": "Create module",
+    "newModule.created": "Module {name} created",
+    "newModule.imported": "Module {name} created, {count} questions imported",
+
+    "pool.section": "Question pool",
+    "pool.mode.new": "New pool",
+    "pool.mode.existing": "Existing pool",
+    "pool.mode.import": "Import an earlier pool",
+    "pool.folder": "Pool folder",
+    "pool.folderHint": "A folder of its own without personal data, for example next to the teaching material. You can share it with colleagues.",
+    "pool.name": "Pool name",
+    "pool.languages": "Languages of the questions",
+    "pool.source": "pool.toml of the earlier pool",
+    "pool.importHint": "The questions are copied into the new pool's folder. The earlier pool stays unchanged, and a later import takes over its changes.",
+
+    "folder.module": "This folder already holds a module.",
+    "folder.pool": "This folder holds a question pool.",
+    "folder.missing": "The folder will be created.",
+    "folder.empty": "Empty folder.",
+    "folder.content": "The folder already has content; Markwise only adds its own file.",
+
+    "openFolder.title": "Open a module folder",
+    "openFolder.lead": "Choose a folder that holds a module.toml, for example after copying it from another computer.",
+    "openFolder.open": "Open",
+    "openFolder.opened": "Module {name} opened",
+    "openFolder.newWithPool": "New module with this pool",
+
+    "addPool.title": "Add a pool",
+    "addPool.lead": "{name} will then also draw from this pool.",
+    "addPool.add": "Add",
+    "addPool.added": "Pool added",
+
+    "err.module_name_missing": "Give the module a name.",
+    "err.module_short_missing": "Enter a short name.",
+    "err.module_folder_missing": "Choose a folder for the module.",
+    "err.module_exists": "This folder already holds a module. Open it with “Open folder”.",
+    "err.pool_folder_missing": "Choose a folder for the question pool.",
+    "err.pool_exists": "This folder already holds a question pool. Choose “Existing pool”.",
+    "err.pool_name_missing": "Give the pool a name.",
+    "err.pool_languages_missing": "Choose at least one language.",
+    "err.pool_not_found": "This folder holds no question pool; pool.toml is missing.",
+    "err.import_source_missing": "Choose the pool.toml of the earlier pool.",
+    "err.no_module": "This folder holds no module; module.toml is missing.",
+    "err.is_pool": "This folder is a question pool, not a module. Create a module that draws from it.",
+    "err.pool_already_added": "The module already draws from this pool.",
+    "err.folder_missing": "This folder no longer exists.",
+    "err.no_dialogs": "The folder dialog only works in the app window. Type the path here instead.",
+
     "questions.title": "Questions",
     "questions.lead": "All questions in the pools of the current module.",
-    "questions.empty": "Open a module first. The question list with search and filters comes in step 3.",
+    "questions.empty": "The question list with search and filters comes in the next step.",
     "exams.title": "Exams",
     "exams.lead": "Assemble, print, scan, grade.",
     "exams.empty": "Building exams comes in phase 2, by 27 November.",
+
     "settings.title": "Settings",
     "settings.lead": "They apply to this computer and your user account only.",
     "settings.general": "General",
@@ -85,12 +234,22 @@ const TEXTS = {
     "settings.bridge": "Connection to the core",
     "settings.bridge.webview": "app window",
     "settings.bridge.http": "browser via markwise serve",
+
     "dev.http": "Development mode in a browser, connected to markwise serve",
     "error.core": "The core does not answer",
     "loading": "Loading …",
   },
 };
 
-export function t(key) {
-  return TEXTS[ui.lang]?.[key] ?? TEXTS.de[key] ?? key;
+export function t(key, params = {}) {
+  const text = TEXTS[ui.lang]?.[key] ?? TEXTS.de[key] ?? key;
+  return text.replace(/\{(\w+)\}/g, (_, name) => params[name] ?? `{${name}}`);
+}
+
+// A refusal from the core in the person's language; unknown errors keep the core's message.
+export function errorText(error) {
+  if (error?.code && (TEXTS[ui.lang]?.[`err.${error.code}`] ?? TEXTS.de[`err.${error.code}`])) {
+    return t(`err.${error.code}`, error.params);
+  }
+  return error?.message ?? String(error);
 }
