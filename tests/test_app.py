@@ -203,3 +203,10 @@ def test_cli_list_searches_a_whole_module(module_with_questions, capsys):
     _, path, _ = module_with_questions
     assert main(["question", "list", path, "--search", "sky", "--public", "no", "--json"]) == 0
     assert [r["id"] for r in json.loads(capsys.readouterr().out)] == ["co-002"]
+
+
+def test_colour_scheme_setting():
+    api = Api()
+    assert api.get_settings()["data"]["theme"] == "markwise"
+    assert api.update_settings({"theme": "hsos"})["data"]["theme"] == "hsos"
+    assert "error" in api.update_settings({"theme": "purple"})

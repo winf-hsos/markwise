@@ -138,7 +138,7 @@ Every page keeps its state per module when you leave it: on **Questions** the se
 
 ### Settings
 
-**Settings** switches the interface between German and English and stores your name, which Markwise will write into `reviewed_by` when you release a question. **Ctrl+B** collapses and expands the side menu. Your settings and the list of modules live in `%APPDATA%\Markwise\settings.toml`, on your computer only and never in a pool or module folder.
+**Settings** switches the interface between German and English, chooses the **colour scheme** (Markwise green, or Hochschule Osnabrück with its blue #009ee3; green for correct, red for errors and yellow for warnings stay the same in every scheme) and stores your name, which Markwise will write into `reviewed_by` when you release a question. **Ctrl+B** collapses and expands the side menu. Your settings and the list of modules live in `%APPDATA%\Markwise\settings.toml`, on your computer only and never in a pool or module folder.
 
 When the interface is German, new modules file their exams under `01 - Semester\<semester>\Klausur\`, otherwise under `…\Exam\`; `exam_path` in `module.toml` changes that.
 

@@ -8,6 +8,8 @@
   let transport = $state("");
   transportName().then((name) => (transport = name));
 
+  const THEMES = [["markwise", "#1f8452"], ["hsos", "#009ee3"]];
+
   const changed = $derived(examiner.trim() !== (app.settings?.examiner ?? ""));
 
   async function setLanguage(lang) {
@@ -39,6 +41,17 @@
           <div class="seg" role="group" aria-label={t("settings.language")}>
             <button class:on={app.settings?.language === "de"} onclick={() => setLanguage("de")}>Deutsch</button>
             <button class:on={app.settings?.language === "en"} onclick={() => setLanguage("en")}>English</button>
+          </div>
+        </div>
+        <div class="row-item">
+          <div class="text"><b>{t("settings.theme")}</b><span class="hint">{t("settings.themeHint")}</span></div>
+          <div class="theme-choice" role="radiogroup" aria-label={t("settings.theme")}>
+            {#each THEMES as [id, swatch]}
+              <button type="button" role="radio" aria-checked={(app.settings?.theme ?? "markwise") === id}
+                class="theme-option" class:on={(app.settings?.theme ?? "markwise") === id} onclick={() => updateSettings({ theme: id })}>
+                <span class="swatch" style="background: {swatch}"></span>{t(`settings.theme.${id}`)}
+              </button>
+            {/each}
           </div>
         </div>
         <form class="row-item" onsubmit={saveExaminer}>

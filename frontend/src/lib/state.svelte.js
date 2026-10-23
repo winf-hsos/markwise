@@ -18,6 +18,7 @@ export async function load() {
     app.settings = settings;
     app.workspace = workspace;
     ui.lang = settings.language;
+    applyTheme(settings.theme);
     app.error = null;
   } catch (err) {
     app.error = err.message;
@@ -28,6 +29,17 @@ export async function load() {
 export async function updateSettings(changes) {
   app.settings = await call("update_settings", changes);
   ui.lang = app.settings.language;
+  applyTheme(app.settings.theme);
+}
+
+// The colour scheme is a data attribute on the page; the styles define each scheme's accent colours.
+export function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme || "markwise";
+  try {
+    localStorage.setItem("markwise-theme", theme || "markwise"); // read by main.js before the first paint
+  } catch {
+    /* no storage: the scheme appears once the settings are loaded */
+  }
 }
 
 export async function refreshWorkspace() {
