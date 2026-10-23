@@ -1,5 +1,5 @@
 """Optional help from a language model while writing questions: checking a question text or the whole question,
-translating it into the other languages of the pool and proposing distractors.
+translating it into the other languages of the pool, proposing distractors and new numbers for a calculation.
 
 Off unless the examiner switches it on in the settings and enters an API key, which lives in the Windows
 credential store, never in a file. Only the question's own texts are sent: question text, options and their
@@ -329,6 +329,40 @@ def translate(fields: dict, languages: list[str], source: str, answer_lang: str)
     )
     answer = _ask(system, _question_text(fields, languages), "translation", schema)
     return {"findings": _findings(answer, names), "changes": _flatten(fields, answer.get("translations", []), names, targets)}
+
+
+def vary_numbers(fields: dict, languages: list[str], answer_lang: str) -> dict:
+    """For a free-text calculation: other numbers in the task, with the expected answer and marking notes worked out
+    again. Returns the proposed texts per field and language and the calculation, for the examiner to check."""
+    if fields.get("type") != "free_text":
+        raise AssistError("llm_not_free_text", "new numbers are proposed for free-text questions only")
+    names = ["stem", "expected", "marking_notes"]
+    schema = {
+        "type": "object", "additionalProperties": False, "required": ["calculation", "findings", "changes"],
+        "properties": {
+            "calculation": {"type": "string"},
+            "findings": _findings_schema(names),
+            "changes": _changes_schema(names, languages),
+        },
+    }
+    system = (
+        "You help an examiner write a variant of a free-text exam question: the same task with other numbers.\n\n" +
+        LABELS + "\n\n"
+        "Choose new numbers for the task so that it tests exactly the same thing at the same difficulty: the same "
+        "steps, the same units, values of a similar size and a result as easy or hard to state as in the original "
+        "(no awkward rounding unless the original has it). Change nothing else in the question text. Then work out "
+        "the new result yourself, step by step, and write the expected answer and the marking notes for the new "
+        "numbers, in the same form and detail as the original; where the marking notes give points for steps, keep "
+        "the points and adapt the steps.\n\n"
+        f"Give the calculation, every step with its numbers and units, in {LANGUAGE_NAMES.get(answer_lang, 'English')}, "
+        f"so that the examiner can check it. Propose the complete new texts for `stem`, `expected` and "
+        f"`marking_notes` in each of these languages: {_named(languages)}; leave out a field that has no text in the "
+        f"original. If the task has no numbers to vary, or a new result cannot be worked out reliably, say so as a "
+        f"finding in one short sentence and propose no changes."
+    )
+    answer = _ask(system, _question_text(fields, languages), "number_variant", schema)
+    return {"calculation": str(answer.get("calculation") or "").strip(), "findings": _findings(answer, names),
+            "changes": _flatten(fields, answer.get("changes", []), names, languages)}
 
 
 def distractors(fields: dict, languages: list[str], count: int, answer_lang: str) -> list[dict]:

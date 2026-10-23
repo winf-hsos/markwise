@@ -511,6 +511,11 @@ class Api:
         return self._assist(assist.check_stem, fields, languages, lang, user_settings.load().language)
 
     @_answer
+    def assist_vary_numbers(self, pool_path: str, fields: dict) -> dict:
+        languages = Pool.open(pool_path).settings.languages
+        return self._assist(assist.vary_numbers, fields, languages, user_settings.load().language)
+
+    @_answer
     def assist_translate(self, pool_path: str, fields: dict, source: str) -> dict:
         languages = Pool.open(pool_path).settings.languages
         return self._assist(assist.translate, fields, languages, source, user_settings.load().language)

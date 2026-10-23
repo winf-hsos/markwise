@@ -207,3 +207,36 @@ def test_http_errors_become_readable_codes(monkeypatch):
     with pytest.raises(assist.AssistError) as caught:
         assist.list_models("sk-x")
     assert caught.value.code == "llm_quota" and "quota" in str(caught.value)
+
+
+def test_new_numbers_come_with_the_worked_out_answer_in_every_language(provider):
+    provider["store"]["key"] = "sk-good"
+    switch_on()
+    task = {"type": "free_text", "created_by": "Examiner A",
+            "stem": {"de": "3 MB werden mit 8 Mbit/s gesendet. Wie lange dauert das?", "en": "3 MB are sent at 8 Mbit/s. How long?"},
+            "expected": {"de": "3 s", "en": "3 s"}, "marking_notes": {"de": "", "en": ""}}
+    provider["answers"]["number_variant"] = {
+        "calculation": "5 MB = 40 Mbit; 40 Mbit / 10 Mbit/s = 4 s",
+        "findings": [],
+        "changes": [{"field": "stem", "texts": {"de": "5 MB werden mit 10 Mbit/s gesendet. Wie lange dauert das?",
+                                                 "en": "5 MB are sent at 10 Mbit/s. How long?"}},
+                    {"field": "expected", "texts": {"de": "4 s", "en": "4 s"}},
+                    {"field": "marking_notes", "texts": {"de": "", "en": ""}}]}  # empty in the original: nothing
+    answer = assist.vary_numbers(task, LANGS, "de")
+    assert answer["calculation"].endswith("= 4 s")
+    assert [(c["field"], c["lang"]) for c in answer["changes"]] == [("stem", "de"), ("stem", "en"), ("expected", "de"), ("expected", "en")]
+    sent_text = json.dumps(provider["sent"][-1]["body"]["messages"], ensure_ascii=False)
+    assert "[de] 3 MB werden" in sent_text and "Examiner A" not in sent_text
+    with pytest.raises(assist.AssistError) as caught:
+        assist.vary_numbers(QUESTION, LANGS, "de")
+    assert caught.value.code == "llm_not_free_text"
+
+
+def test_the_command_line_shows_the_model_a_variant_with_its_inherited_settings(provider, tmp_path):
+    from markwise import lifecycle
+    from markwise.cli import _model_fields
+    pool = Pool.create(tmp_path / "pool", PoolSettings(name="P", languages=["de"]))
+    task = pool.new_question("transfer", "free_text", author="")
+    variant = lifecycle.create_variant(pool, task.id, "")
+    fields = _model_fields(pool, variant.id)
+    assert "type" not in variant.data and fields["type"] == "free_text" and fields["lines"] == 8

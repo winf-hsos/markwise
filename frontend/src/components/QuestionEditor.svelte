@@ -183,10 +183,19 @@
   let asking = $state(""); // which of them is being asked for
   let distractorsOpen = $state(false);
 
+  // The question as the model has to see it: a variant with the settings it inherits filled in.
+  function effectiveFields() {
+    const snapshot = $state.snapshot(fields);
+    for (const [key, value] of Object.entries(inherited)) {
+      if (isVariant && (snapshot[key] == null || snapshot[key] === "")) snapshot[key] = value;
+    }
+    return snapshot;
+  }
+
   async function askModel(kind, method, ...args) {
     asking = kind;
     try {
-      return await call(method, base.pool, $state.snapshot(fields), ...args);
+      return await call(method, base.pool, effectiveFields(), ...args);
     } catch (err) {
       showToast(errorText(err));
       return null;
@@ -206,6 +215,13 @@
 
   async function reviewWhole() {
     whole = await askModel("whole", "assist_review_question", lang);
+  }
+
+  // For a free-text variant: the same calculation with other numbers, the answer worked out again.
+  let numbers = $state(null);
+
+  async function varyNumbers() {
+    numbers = await askModel("numbers", "assist_vary_numbers");
   }
 
   async function translate() {
@@ -505,6 +521,17 @@
             <AssistChanges findings={whole.findings} changes={whole.changes} label={fieldLabel} showLang={languages.length > 1}
               onapply={(chosen) => applyTo(whole, chosen)} onclose={() => (whole = null)} />
           {/if}
+          {#if isVariant && qtype === "free_text"}
+            <button type="button" class="btn ghost" onclick={varyNumbers} disabled={asking === "numbers" || !fields.stem[lang]?.trim()}
+              title={t("assist.numbersHint")}>
+              <Icon name="wand" />{asking === "numbers" ? t("assist.working") : t("assist.numbers")}
+            </button>
+            {#if numbers}
+              <AssistChanges findings={numbers.findings} changes={numbers.changes} label={fieldLabel} showLang={languages.length > 1}
+                note={{ title: t("assist.calculation"), text: numbers.calculation }}
+                onapply={(chosen) => applyTo(numbers, chosen)} onclose={() => (numbers = null)} />
+            {/if}
+          {/if}
         </div>
       {/if}
 
@@ -518,7 +545,7 @@
     </form>
 
     {#if isChoice}
-      <DistractorDialog bind:open={distractorsOpen} pool={base.pool} {fields} {lang}
+      <DistractorDialog bind:open={distractorsOpen} pool={base.pool} fields={effectiveFields()} {lang}
         room={Math.max(1, 5 - fields.options.filter((o) => o.text?.[lang]?.trim()).length)} onapply={addDistractors} />
     {/if}
     <CodeDialog bind:open={codeOpen} code={fields.code} language={fields.code_language} onapply={applyCode} />

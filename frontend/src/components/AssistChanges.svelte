@@ -4,16 +4,20 @@
   import { t } from "../lib/i18n.svelte.js";
 
   // What the language model found and proposes, per field and language, each change to apply on its own or
-  // all at once. `label(field)` names a field, `showLang` adds the language to each change.
-  let { findings = [], changes = [], label, showLang = false, onapply, onclose } = $props();
+  // all at once. `label(field)` names a field, `showLang` adds the language to each change, and `note`
+  // ({ title, text }) shows something to check first, such as the model's calculation.
+  let { findings = [], changes = [], label, showLang = false, note = null, onapply, onclose } = $props();
 
   const missing = $derived(changes.filter((c) => !c.before?.trim()));
 </script>
 
 <div class="assist-review">
+  {#if note?.text}
+    <div class="assist-note"><span class="hint">{note.title}</span><p>{note.text}</p></div>
+  {/if}
   {#if findings.length}
     <ul>{#each findings as f}<li>{#if f.about}<b>{label(f.about)}:</b> {/if}{f.text}</li>{/each}</ul>
-  {:else if !changes.length}
+  {:else if !changes.length && !note?.text}
     <p class="check-ok"><Icon name="check" />{t("assist.nothing")}</p>
   {/if}
   {#each changes as change (change.field + change.lang)}

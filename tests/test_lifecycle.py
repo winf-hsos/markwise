@@ -190,3 +190,10 @@ def test_a_free_text_question_can_have_variants_that_inherit_lines_and_half_poin
     assert pool.find(variant.id).get("lines") == 8
     row = next(r for r in catalog.rows(pool) if r["id"] == task.id)
     assert row["variants"] == [variant.id]
+
+
+def test_the_check_while_editing_a_variant_counts_empty_settings_as_inherited(pool):
+    variant = lifecycle.create_variant(pool, "co-001", "Examiner B")
+    fields = {"type": None, "level": None, "time_seconds": None, "coverage": "", "misconception": ""}
+    codes = {f["code"] for f in editing.check_fields(pool, variant.id, fields)}
+    assert "field_missing" not in codes

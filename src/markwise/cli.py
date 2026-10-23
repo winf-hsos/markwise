@@ -258,11 +258,17 @@ def cmd_llm_use(args) -> int:
     return 0
 
 
-def cmd_assist_check(args) -> int:
+def _model_fields(pool: Pool, qid: str) -> dict:
+    """A question as the language model sees it: for a variant, with the settings it inherits filled in."""
     from .catalog import plain
+    question = pool.find(qid)
+    return {**plain(question.data), **plain(question.inherited())}
+
+
+def cmd_assist_check(args) -> int:
     pool = Pool.open(args.pool)
     lang = args.lang or pool.settings.languages[0]
-    answer = assist.check_stem(plain(pool.find(args.id).data), pool.settings.languages, lang, "de")
+    answer = assist.check_stem(_model_fields(pool, args.id), pool.settings.languages, lang, "de")
     if args.json:
         _print_json(answer)
     else:
@@ -281,10 +287,9 @@ def _print_changes(answer: dict) -> None:
 
 
 def cmd_assist_review(args) -> int:
-    from .catalog import plain
     pool = Pool.open(args.pool)
     lang = args.lang or pool.settings.languages[0]
-    answer = assist.review_question(plain(pool.find(args.id).data), pool.settings.languages, lang, "de")
+    answer = assist.review_question(_model_fields(pool, args.id), pool.settings.languages, lang, "de")
     if args.json:
         _print_json(answer)
     else:
@@ -292,11 +297,21 @@ def cmd_assist_review(args) -> int:
     return 0
 
 
+def cmd_assist_numbers(args) -> int:
+    pool = Pool.open(args.pool)
+    answer = assist.vary_numbers(_model_fields(pool, args.id), pool.settings.languages, "de")
+    if args.json:
+        _print_json(answer)
+    else:
+        print(f"Calculation:\n{answer['calculation']}\n")
+        _print_changes(answer)
+    return 0
+
+
 def cmd_assist_translate(args) -> int:
-    from .catalog import plain
     pool = Pool.open(args.pool)
     source = args.source or pool.settings.languages[0]
-    answer = assist.translate(plain(pool.find(args.id).data), pool.settings.languages, source, "de")
+    answer = assist.translate(_model_fields(pool, args.id), pool.settings.languages, source, "de")
     if args.json:
         _print_json(answer)
     else:
@@ -305,9 +320,8 @@ def cmd_assist_translate(args) -> int:
 
 
 def cmd_assist_distractors(args) -> int:
-    from .catalog import plain
     pool = Pool.open(args.pool)
-    proposals = assist.distractors(plain(pool.find(args.id).data), pool.settings.languages, args.count, "de")
+    proposals = assist.distractors(_model_fields(pool, args.id), pool.settings.languages, args.count, "de")
     if args.json:
         _print_json(proposals)
     else:
@@ -503,6 +517,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("id")
     p.add_argument("--lang", help="language to check (default: the pool's first)")
     p.set_defaults(func=cmd_assist_review)
+    p = helper.add_parser("numbers", parents=[common],
+                          help="propose other numbers for a free-text calculation, with the answer worked out again")
+    p.add_argument("pool")
+    p.add_argument("id")
+    p.set_defaults(func=cmd_assist_numbers)
     p = helper.add_parser("translate", parents=[common], help="translate a question into the pool's other languages")
     p.add_argument("pool")
     p.add_argument("id")

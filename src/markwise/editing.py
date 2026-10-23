@@ -140,6 +140,10 @@ def check_fields(pool: Pool, qid: str, fields: dict) -> list[dict]:
     for key in EDITABLE:
         if key in fields:
             data[key] = fields[key]
+    if data.get("variant_of"):
+        for key in INHERITED:
+            if key in data and _empty(data[key]):
+                del data[key]  # left empty in the editor: inherited, not missing
     draft = pool.attach_parent(Question(data, original.path))
     findings: list[Finding] = check_question(draft, pool) + variant_findings(draft, pool)
     return [f.to_dict() for f in findings]
