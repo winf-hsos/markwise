@@ -495,14 +495,19 @@ class Api:
         return self._assist(assist.list_models)
 
     @_answer
-    def assist_review_question(self, fields: dict, lang: str) -> dict:
-        answer_lang = user_settings.load().language
-        return self._assist(assist.review_question, fields, lang, answer_lang)
+    def assist_review_question(self, pool_path: str, fields: dict, lang: str) -> dict:
+        languages = Pool.open(pool_path).settings.languages
+        return self._assist(assist.review_question, fields, languages, lang, user_settings.load().language)
 
     @_answer
-    def assist_check_stem(self, fields: dict, lang: str) -> dict:
-        answer_lang = user_settings.load().language
-        return self._assist(assist.check_stem, fields, lang, answer_lang)
+    def assist_check_stem(self, pool_path: str, fields: dict, lang: str) -> dict:
+        languages = Pool.open(pool_path).settings.languages
+        return self._assist(assist.check_stem, fields, languages, lang, user_settings.load().language)
+
+    @_answer
+    def assist_translate(self, pool_path: str, fields: dict, source: str) -> dict:
+        languages = Pool.open(pool_path).settings.languages
+        return self._assist(assist.translate, fields, languages, source, user_settings.load().language)
 
     @_answer
     def assist_distractors(self, pool_path: str, fields: dict, count: int) -> list:

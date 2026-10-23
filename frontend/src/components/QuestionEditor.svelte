@@ -5,6 +5,7 @@
   import Menu from "./Menu.svelte";
   import TimeChoice from "./TimeChoice.svelte";
   import DistractorDialog from "./DistractorDialog.svelte";
+  import AssistChanges from "./AssistChanges.svelte";
   import { inline } from "../lib/inline.js";
   import CodeDialog from "./CodeDialog.svelte";
   import ImageDialog from "./ImageDialog.svelte";
@@ -167,43 +168,47 @@
     if (fields.public) fields.variant_of = "";
   }
 
-  // Help from the language model, only when it is switched on in the settings.
-  let review = $state(null); // { lang, findings, suggestion } for the question text
-  let reviewing = $state(false);
+  // Help from the language model, only when it is switched on in the settings. Every answer arrives as
+  // findings and proposed texts per field and language: { findings: [{about, text}], changes: [{field, lang, text, before}] }.
+  // The model sees the question in every language of the pool, so it also notices a text in the wrong language,
+  // and its proposals come with their translations.
+  let review = $state(null); // the question text
+  let whole = $state(null); // the question with its answers
+  let translation = $state(null); // the question in the pool's other languages
+  let asking = $state(""); // which of them is being asked for
   let distractorsOpen = $state(false);
 
-  async function checkStem() {
-    reviewing = true;
+  async function askModel(kind, method, ...args) {
+    asking = kind;
     try {
-      const answer = await call("assist_check_stem", $state.snapshot(fields), lang);
-      review = { lang, ...answer };
+      return await call(method, base.pool, $state.snapshot(fields), ...args);
     } catch (err) {
       showToast(errorText(err));
+      return null;
     } finally {
-      reviewing = false;
+      asking = "";
     }
   }
 
-  function takeSuggestion() {
-    fields.stem[review.lang] = review.suggestion;
-    review = null;
+  async function checkStem() {
+    const answer = await askModel("stem", "assist_check_stem", lang);
+    if (!answer) return;
+    const changes = languages
+      .map((l) => ({ field: "stem", lang: l, text: (answer.suggestion[l] ?? "").trim(), before: fields.stem[l] ?? "" }))
+      .filter((c) => c.text && c.text !== c.before.trim());
+    review = { findings: answer.findings.map((text) => ({ about: null, text })), changes };
   }
-
-  // The question as a whole: do text and answers fit together, are the options clear and distinct.
-  let whole = $state(null); // { lang, findings, changes }
-  let checkingWhole = $state(false);
 
   async function reviewWhole() {
-    checkingWhole = true;
-    try {
-      const answer = await call("assist_review_question", $state.snapshot(fields), lang);
-      whole = { lang, ...answer };
-    } catch (err) {
-      showToast(errorText(err));
-    } finally {
-      checkingWhole = false;
-    }
+    whole = await askModel("whole", "assist_review_question", lang);
   }
+
+  async function translate() {
+    translation = await askModel("translate", "assist_translate", lang);
+  }
+
+  const otherLanguages = $derived(languages.filter((l) => l !== lang));
+  const languageLabel = (l) => (l === "de" ? "Deutsch" : "English");
 
   function fieldLabel(name) {
     if (name === "question") return t("assist.aboutQuestion");
@@ -214,20 +219,18 @@
     return t(part === "text" ? "assist.aboutOption" : "assist.aboutFeedback", { id });
   }
 
-  function applyChange(change) {
-    const l = whole.lang;
-    if (change.field.startsWith("option.")) {
-      const [, id, part] = change.field.split(".");
-      const option = fields.options.find((o) => o.id === id);
-      if (option) option[part][l] = change.text;
-    } else {
-      fields[change.field] = { ...(fields[change.field] ?? blankTexts()), [l]: change.text };
+  // Put proposed texts into the form and take them off the list they came from.
+  function applyTo(result, chosen) {
+    for (const change of chosen) {
+      if (change.field.startsWith("option.")) {
+        const [, id, part] = change.field.split(".");
+        const option = fields.options.find((o) => o.id === id);
+        if (option) option[part][change.lang] = change.text;
+      } else {
+        fields[change.field] = { ...(fields[change.field] ?? blankTexts()), [change.lang]: change.text };
+      }
     }
-    whole.changes = whole.changes.filter((c) => c.field !== change.field);
-  }
-
-  function applyAll() {
-    for (const change of [...whole.changes]) applyChange(change);
+    result.changes = result.changes.filter((c) => !chosen.some((x) => x.field === c.field && x.lang === c.lang));
   }
 
   function addDistractors(chosen) {
@@ -387,38 +390,31 @@
             </button>
           {/each}
         </div>
+        {#if llmReady() && languages.length > 1}
+          <button type="button" class="btn ghost btn-small translate-btn" onclick={translate} disabled={asking === "translate"}
+            title={t("assist.translateHint", { from: languageLabel(lang), to: otherLanguages.map(languageLabel).join(", ") })}>
+            <Icon name="wand" />{asking === "translate" ? t("assist.working") : t("assist.translate")}
+          </button>
+        {/if}
         <a class="lang-hint" href="#/modules" title={t("edit.languagesHint")}>{t(languages.length > 1 ? "edit.languagesPool" : "edit.languagePool")}</a>
       </div>
+      {#if translation}
+        <AssistChanges findings={translation.findings} changes={translation.changes} label={fieldLabel} showLang
+          onapply={(chosen) => applyTo(translation, chosen)} onclose={() => (translation = null)} />
+      {/if}
 
       <div class="field">
         <div class="field-head">
           <label for="stem-input">{t("edit.stem")}</label>
           {#if llmReady()}
-            <button type="button" class="btn ghost btn-small" onclick={checkStem} disabled={reviewing || !fields.stem[lang]?.trim()}
-              title={t("assist.checkHint")}><Icon name="wand" />{reviewing ? t("assist.working") : t("assist.check")}</button>
+            <button type="button" class="btn ghost btn-small" onclick={checkStem} disabled={asking === "stem" || !fields.stem[lang]?.trim()}
+              title={t("assist.checkHint")}><Icon name="wand" />{asking === "stem" ? t("assist.working") : t("assist.check")}</button>
           {/if}
         </div>
         <textarea id="stem-input" class="input grow-text" rows="3" bind:value={fields.stem[lang]}></textarea>
-        {#if review && review.lang === lang}
-          <div class="assist-review">
-            {#if review.findings.length}
-              <ul>{#each review.findings as f}<li>{f}</li>{/each}</ul>
-            {:else}
-              <p class="check-ok"><Icon name="check" />{t("assist.nothing")}</p>
-            {/if}
-            {#if review.suggestion.trim() && review.suggestion.trim() !== fields.stem[lang].trim()}
-              <div class="assist-suggestion">
-                <span class="hint">{t("assist.suggestion")}</span>
-                <div class="stem">{@html inline(review.suggestion)}</div>
-              </div>
-              <div class="assist-actions">
-                <button type="button" class="btn primary btn-small" onclick={takeSuggestion}>{t("attach.apply")}</button>
-                <button type="button" class="btn ghost btn-small" onclick={() => (review = null)}>{t("assist.dismiss")}</button>
-              </div>
-            {:else}
-              <div class="assist-actions"><button type="button" class="btn ghost btn-small" onclick={() => (review = null)}>{t("dialog.close")}</button></div>
-            {/if}
-          </div>
+        {#if review}
+          <AssistChanges findings={review.findings} changes={review.changes} label={fieldLabel} showLang={languages.length > 1}
+            onapply={(chosen) => applyTo(review, chosen)} onclose={() => (review = null)} />
         {/if}
       </div>
 
@@ -494,32 +490,13 @@
 
       {#if llmReady()}
         <div class="assist-whole">
-          <button type="button" class="btn ghost" onclick={reviewWhole} disabled={checkingWhole || !fields.stem[lang]?.trim()}
+          <button type="button" class="btn ghost" onclick={reviewWhole} disabled={asking === "whole" || !fields.stem[lang]?.trim()}
             title={t(isChoice ? "assist.wholeHint" : "assist.wholeHintFree")}>
-            <Icon name="wand" />{checkingWhole ? t("assist.working") : t(isChoice ? "assist.whole" : "assist.wholeFree")}
+            <Icon name="wand" />{asking === "whole" ? t("assist.working") : t(isChoice ? "assist.whole" : "assist.wholeFree")}
           </button>
-          {#if whole && whole.lang === lang}
-            <div class="assist-review">
-              {#if whole.findings.length}
-                <ul>{#each whole.findings as f}<li><b>{fieldLabel(f.about)}:</b> {f.text}</li>{/each}</ul>
-              {:else}
-                <p class="check-ok"><Icon name="check" />{t("assist.nothing")}</p>
-              {/if}
-              {#each whole.changes as change (change.field)}
-                <div class="assist-suggestion">
-                  <div class="assist-change-head">
-                    <span class="hint">{fieldLabel(change.field)}</span>
-                    <button type="button" class="btn primary btn-small" onclick={() => applyChange(change)}>{t("attach.apply")}</button>
-                  </div>
-                  {#if change.before}<div class="assist-before">{@html inline(change.before)}</div>{/if}
-                  <div class="assist-after">{@html inline(change.text)}</div>
-                </div>
-              {/each}
-              <div class="assist-actions">
-                {#if whole.changes.length > 1}<button type="button" class="btn primary btn-small" onclick={applyAll}>{t("assist.applyAll")}</button>{/if}
-                <button type="button" class="btn ghost btn-small" onclick={() => (whole = null)}>{whole.changes.length ? t("assist.dismiss") : t("dialog.close")}</button>
-              </div>
-            </div>
+          {#if whole}
+            <AssistChanges findings={whole.findings} changes={whole.changes} label={fieldLabel} showLang={languages.length > 1}
+              onapply={(chosen) => applyTo(whole, chosen)} onclose={() => (whole = null)} />
           {/if}
         </div>
       {/if}

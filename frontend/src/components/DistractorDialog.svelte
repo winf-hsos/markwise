@@ -61,6 +61,9 @@
             <span>
               <span class="proposal-text">{@html inline(p.text[lang] ?? Object.values(p.text)[0])}</span>
               <span class="option-feedback">{@html inline(p.feedback[lang] ?? Object.values(p.feedback)[0])}</span>
+              {#each Object.entries(p.text).filter(([l]) => l !== lang) as [l, text]}
+                <span class="proposal-other"><span class="lang-tag">{l.toUpperCase()}</span>{@html inline(text)}<span class="muted"> · {@html inline(p.feedback[l] ?? "")}</span></span>
+              {/each}
               {#if p.misconception}<span class="proposal-why">{t("assist.misconception")}: {p.misconception}</span>{/if}
             </span>
           </label>

@@ -142,7 +142,10 @@ The editor shows the form on the left and the question as it reads on paper on t
   What a question carries appears as a small card below the text, with **Edit** or **Change** and **Remove**.
 - Each **option** has a box on the left that marks it correct (for single choice, marking one unmarks the others), its text, and below it the feedback that explains why it is right or wrong. **Add option** adds one, **–** removes one.
 - With the language model switched on (see [Help from a language model](#help-from-a-language-model)), **Check** next to the label of the question text sends the text to the model. Its findings appear below the field, with a corrected wording if it has one; **Apply** puts the wording into the field, **Dismiss** leaves the text as it is. Nothing is saved until you save.
-- Likewise, **Propose wrong answers** below the options (once at least one option is marked correct) asks the model for plausible but wrong options, each with feedback in every language of the pool and the misconception it plays on. Choose how many, tick the ones you want and **Add selected**; they are added as wrong options, which you can then edit like any other. **New proposals** asks again.
+
+  The model always sees the question in every language of the pool, each text marked with the language it belongs to. So it also reports a text written in the wrong language (German in the English field, say), and in a pool with several languages every proposal comes with its translation: each language appears as a change of its own, marked **DE** or **EN**, to apply on its own or with **Apply all**.
+- Likewise, **Propose wrong answers** below the options (once at least one option is marked correct) asks the model for plausible but wrong options, each with feedback in every language of the pool (the dialog shows the other languages below each proposal) and the misconception it plays on. Choose how many, tick the ones you want and **Add selected**; they are added as wrong options, which you can then edit like any other. **New proposals** asks again.
+- **Translate question** next to the language tabs (in a pool with two or more languages) translates every text of the question, the question text, the options and their feedback or the expected answer and marking notes, from the language of the open tab into the others. Each translation is shown next to the text it would replace; **Apply all** takes all of them, **Apply missing only** fills only the texts that are still empty and leaves existing translations as they are. The model also says if the text to be translated is itself in the wrong language.
 - **Check question and answers** below the options looks at the question as a whole: does every option answer what the text asks, are the options clear and mutually exclusive, are exactly the marked options correct, does one stand out by length, detail or wording, are the wrong ones plausible, and does each feedback fit. The findings name the part they concern; below them, each proposed new text shows the old one struck through, with **Apply** for that part alone or **Apply all**. The model never changes which options are correct; if a mark looks wrong, it says so. For a free-text question the button reads **Check question and expected answer** and looks at the question text, the expected answer and the marking notes.
 - **More details** holds where the material is taught and the misconception the question targets.
 - The **check** runs while you type; its findings appear under the preview in the language of the interface.
@@ -374,8 +377,9 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise llm key [--key <key>] [--from-env]` | check an OpenAI API key and store it in the Windows credential store; `--from-env` takes it from `OPENAI_API_KEY`, without either it is asked for without showing it |
 | `markwise llm models` | list the models the stored key may use |
 | `markwise llm use [--model <model>] [--off]` | switch the language model on (and choose the model) or off |
-| `markwise assist check <pool> <id> [--lang de]` | let the model check a question text; prints findings and a suggestion, changes nothing |
+| `markwise assist check <pool> <id> [--lang de]` | let the model check a question text; prints findings and a suggestion in every language of the pool, changes nothing |
 | `markwise assist review <pool> <id> [--lang de]` | let the model check the question with its answers; prints findings and proposed texts per field, changes nothing |
+| `markwise assist translate <pool> <id> [--from de]` | let the model translate a question into the pool's other languages; prints the proposed texts, changes nothing |
 | `markwise assist distractors <pool> <id> [--count 3]` | let the model propose wrong options with feedback; changes nothing |
 | `markwise app` | open the app window |
 | `markwise shortcut [--folder <folder>]` | create the Start menu entry (or put it into another folder) |
@@ -407,7 +411,7 @@ prints for each sheet whether the QR code, the orientation, the student number a
 | Building exams: blueprint, variants, exam and answer booklets as PDF | 27 Nov 2026 |
 | Reading scans, deciding doubtful cases, grading multiple-choice exams | early December 2026 |
 | Item analysis, exports for the examinations office, inspection copies | 15 Jan 2027 |
-| Free-text questions in exams, marking on screen; more help from a language model (translating, checking a whole question, other providers and local models) | after the first exams in early 2027 |
+| Free-text questions in exams, marking on screen; more help from a language model (drafting expected answers, other providers and local models) | after the first exams in early 2027 |
 
 ## Privacy
 

@@ -257,28 +257,45 @@ def cmd_assist_check(args) -> int:
     from .catalog import plain
     pool = Pool.open(args.pool)
     lang = args.lang or pool.settings.languages[0]
-    answer = assist.check_stem(plain(pool.find(args.id).data), lang, args.lang or "de")
+    answer = assist.check_stem(plain(pool.find(args.id).data), pool.settings.languages, lang, "de")
     if args.json:
         _print_json(answer)
     else:
         for finding in answer["findings"] or ["(nothing to change)"]:
             print(f"- {finding}")
-        print(f"\nSuggestion ({lang}):\n{answer['suggestion']}")
+        for code, text in answer["suggestion"].items():
+            print(f"\nSuggestion ({code}):\n{text}")
     return 0
+
+
+def _print_changes(answer: dict) -> None:
+    for finding in answer["findings"] or [{"about": "question", "text": "(nothing to report)"}]:
+        print(f"- [{finding['about']}] {finding['text']}")
+    for change in answer["changes"]:
+        print(f"\n{change['field']} ({change['lang']}):\n  before: {change['before']}\n  after:  {change['text']}")
 
 
 def cmd_assist_review(args) -> int:
     from .catalog import plain
     pool = Pool.open(args.pool)
     lang = args.lang or pool.settings.languages[0]
-    answer = assist.review_question(plain(pool.find(args.id).data), lang, "de")
+    answer = assist.review_question(plain(pool.find(args.id).data), pool.settings.languages, lang, "de")
     if args.json:
         _print_json(answer)
     else:
-        for finding in answer["findings"] or [{"about": "question", "text": "(nothing to change)"}]:
-            print(f"- [{finding['about']}] {finding['text']}")
-        for change in answer["changes"]:
-            print(f"\n{change['field']} ({lang}):\n  before: {change['before']}\n  after:  {change['text']}")
+        _print_changes(answer)
+    return 0
+
+
+def cmd_assist_translate(args) -> int:
+    from .catalog import plain
+    pool = Pool.open(args.pool)
+    source = args.source or pool.settings.languages[0]
+    answer = assist.translate(plain(pool.find(args.id).data), pool.settings.languages, source, "de")
+    if args.json:
+        _print_json(answer)
+    else:
+        _print_changes(answer)
     return 0
 
 
@@ -479,6 +496,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("id")
     p.add_argument("--lang", help="language to check (default: the pool's first)")
     p.set_defaults(func=cmd_assist_review)
+    p = helper.add_parser("translate", parents=[common], help="translate a question into the pool's other languages")
+    p.add_argument("pool")
+    p.add_argument("id")
+    p.add_argument("--from", dest="source", help="language to translate from (default: the pool's first)")
+    p.set_defaults(func=cmd_assist_translate)
     p = helper.add_parser("distractors", parents=[common], help="propose wrong options with feedback")
     p.add_argument("pool")
     p.add_argument("id")

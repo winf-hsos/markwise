@@ -1,5 +1,5 @@
-"""Optional help from a language model while writing questions: checking a question text or the whole question
-and proposing distractors.
+"""Optional help from a language model while writing questions: checking a question text or the whole question,
+translating it into the other languages of the pool and proposing distractors.
 
 Off unless the examiner switches it on in the settings and enters an API key, which lives in the Windows
 credential store, never in a file. Only the question's own texts are sent: question text, options and their
@@ -147,47 +147,43 @@ def _ask(system: str, user: str, schema_name: str, schema: dict) -> dict:
         raise AssistError("llm_failed", "the answer of the model could not be read") from None
 
 
-def _question_text(fields: dict, lang: str) -> str:
-    """The question as the model sees it: text, code, options with their feedback or the expected answer, in one language."""
-    def pick(value):
-        return value.get(lang, "") if isinstance(value, dict) else str(value or "")
-    lines = [f"Question type: {fields.get('type', 'single')}", f"Question text:\n{pick(fields.get('stem'))}"]
+
+
+def _named(languages: list[str]) -> str:
+    return ", ".join(f"{lang} ({LANGUAGE_NAMES.get(lang, lang)})" for lang in languages)
+
+
+LABELS = (
+    "Every text is labelled with the language it must be written in, for example [de] for German. A text written "
+    "in another language than its label (German under [en], say) is a mistake: report it as a finding and propose "
+    "the text in the right language. A text missing in one of the languages is proposed as well, translated from "
+    "the others. All language versions of a field say the same."
+)
+
+
+def _question_text(fields: dict, languages: list[str]) -> str:
+    """The question as the model sees it: text, code, options with their feedback or the expected answer, each text
+    in every language of the pool and labelled with the language it must be written in."""
+    def texts(value, indent="  "):
+        if not isinstance(value, dict):
+            return f"{indent}{value or ''}"
+        return "\n".join(f"{indent}[{lang}] {value.get(lang, '') or '(missing)'}" for lang in languages)
+    lines = [f"Question type: {fields.get('type', 'single')}", f"Question text:\n{texts(fields.get('stem'))}"]
     if fields.get("code"):
-        lines.append(f"Code below the text:\n{fields['code']}")
+        lines.append(f"Code below the text (the same in every language):\n{fields['code']}")
     for option in fields.get("options") or []:
         mark = "correct" if option.get("correct") else "wrong"
-        lines.append(f"Option {option.get('id')} ({mark}): {pick(option.get('text'))}"
-                     + (f"\n  Feedback: {pick(option.get('feedback'))}" if pick(option.get("feedback")) else ""))
-    if pick(fields.get("expected")):
-        lines.append(f"Expected answer:\n{pick(fields.get('expected'))}")
+        lines.append(f"Option {option.get('id')} ({mark}):\n{texts(option.get('text'))}")
+        if any(str((option.get("feedback") or {}).get(lang) or "").strip() for lang in languages):
+            lines.append(f"  Feedback on option {option.get('id')}:\n{texts(option.get('feedback'), '    ')}")
+    if fields.get("type") == "free_text":
+        lines.append(f"Expected answer:\n{texts(fields.get('expected'))}")
+        lines.append(f"Marking notes:\n{texts(fields.get('marking_notes'))}")
     return "\n".join(lines)
 
 
-# --- the kinds of help -----------------------------------------------------------------
-
-
-def check_stem(fields: dict, lang: str, answer_lang: str) -> dict:
-    """Check the question text against the writing rules; returns findings and an improved text."""
-    schema = {
-        "type": "object", "additionalProperties": False, "required": ["findings", "suggestion"],
-        "properties": {
-            "findings": {"type": "array", "items": {"type": "string"}},
-            "suggestion": {"type": "string"},
-        },
-    }
-    system = (
-        "You review questions for university exams and help the examiner improve them.\n\n" + WRITING_RULES +
-        f"\n\nReview only the question text, using the options as context. List what breaks a rule or could be "
-        f"misunderstood, each finding as one short sentence in {LANGUAGE_NAMES.get(answer_lang, 'English')}; an "
-        f"empty list if nothing needs changing. Then give the improved question text in "
-        f"{LANGUAGE_NAMES.get(lang, lang)}, keeping its meaning, its learning goal and its Markdown (backticks for "
-        f"code); if nothing needs changing, return the text unchanged."
-    )
-    return _ask(system, _question_text(fields, lang), "stem_review", schema)
-
-
 def _changeable(fields: dict) -> list[str]:
-    """The fields a review of the whole question may propose new text for."""
+    """The text fields a suggestion may concern."""
     if fields.get("type") == "free_text":
         return ["stem", "expected", "marking_notes"]
     names = ["stem"]
@@ -206,21 +202,76 @@ def _current(fields: dict, name: str, lang: str) -> str:
     return value.get(lang, "") if isinstance(value, dict) else str(value or "")
 
 
-def review_question(fields: dict, lang: str, answer_lang: str) -> dict:
-    """Check the question as a whole, text and answers together; returns findings and proposed new texts per field."""
+def _texts_schema(languages: list[str]) -> dict:
+    return {"type": "object", "additionalProperties": False, "required": languages,
+            "properties": {lang: {"type": "string"} for lang in languages}}
+
+
+def _findings_schema(names: list[str]) -> dict:
+    return {"type": "array", "items": {
+        "type": "object", "additionalProperties": False, "required": ["about", "text"],
+        "properties": {"about": {"type": "string", "enum": ["question"] + names}, "text": {"type": "string"}},
+    }}
+
+
+def _changes_schema(names: list[str], languages: list[str]) -> dict:
+    return {"type": "array", "items": {
+        "type": "object", "additionalProperties": False, "required": ["field", "texts"],
+        "properties": {"field": {"type": "string", "enum": names}, "texts": _texts_schema(languages)},
+    }}
+
+
+def _flatten(fields: dict, proposed: list, names: list[str], languages: list[str]) -> list[dict]:
+    """Proposed texts per field and language, keeping only those that differ from what the question has."""
+    changes, seen = [], set()
+    for change in proposed:
+        name = change.get("field")
+        if name not in names or name in seen:
+            continue
+        seen.add(name)
+        for lang in languages:
+            text = str((change.get("texts") or {}).get(lang) or "").strip()
+            before = _current(fields, name, lang)
+            if text and text != before.strip():
+                changes.append({"field": name, "lang": lang, "text": text, "before": before})
+    return changes
+
+
+def _findings(answer: dict, names: list[str]) -> list[dict]:
+    return [f for f in answer.get("findings", []) if f.get("about") in ["question"] + names and f.get("text", "").strip()]
+
+
+# --- the kinds of help -----------------------------------------------------------------
+
+
+def check_stem(fields: dict, languages: list[str], lang: str, answer_lang: str) -> dict:
+    """Check the question text against the writing rules; returns findings and the improved text in every language
+    of the pool, so that the versions stay alike."""
+    schema = {
+        "type": "object", "additionalProperties": False, "required": ["findings", "suggestion"],
+        "properties": {"findings": {"type": "array", "items": {"type": "string"}}, "suggestion": _texts_schema(languages)},
+    }
+    system = (
+        "You review questions for university exams and help the examiner improve them.\n\n" + WRITING_RULES +
+        f"\n\n{LABELS}\n\nReview only the question text, using the options as context; the examiner is working on "
+        f"the {LANGUAGE_NAMES.get(lang, lang)} version. List what breaks a rule, could be misunderstood or is written "
+        f"in the wrong language, each finding as one short sentence in {LANGUAGE_NAMES.get(answer_lang, 'English')}; "
+        f"an empty list if nothing needs changing. Then give the improved question text in each of these languages: "
+        f"{_named(languages)}, keeping its meaning, its learning goal and its Markdown (backticks for code). A "
+        f"version that needs no change is returned unchanged."
+    )
+    answer = _ask(system, _question_text(fields, languages), "stem_review", schema)
+    suggestion = {code: str((answer.get("suggestion") or {}).get(code) or "") for code in languages}
+    return {"findings": [str(f) for f in answer.get("findings", []) if str(f).strip()], "suggestion": suggestion}
+
+
+def review_question(fields: dict, languages: list[str], lang: str, answer_lang: str) -> dict:
+    """Check the question as a whole, text and answers together; returns findings and proposed new texts per field
+    and language."""
     names = _changeable(fields)
     schema = {
         "type": "object", "additionalProperties": False, "required": ["findings", "changes"],
-        "properties": {
-            "findings": {"type": "array", "items": {
-                "type": "object", "additionalProperties": False, "required": ["about", "text"],
-                "properties": {"about": {"type": "string", "enum": ["question"] + names}, "text": {"type": "string"}},
-            }},
-            "changes": {"type": "array", "items": {
-                "type": "object", "additionalProperties": False, "required": ["field", "text"],
-                "properties": {"field": {"type": "string", "enum": names}, "text": {"type": "string"}},
-            }},
-        },
+        "properties": {"findings": _findings_schema(names), "changes": _changes_schema(names, languages)},
     }
     if fields.get("type") == "free_text":
         task = (
@@ -239,28 +290,50 @@ def review_question(fields: dict, lang: str, answer_lang: str) -> dict:
         )
     system = (
         "You review questions for university exams and help the examiner improve them.\n\n" + WRITING_RULES +
-        f"\n\n{task}\n\nList what you find, each as one short sentence in {LANGUAGE_NAMES.get(answer_lang, 'English')}, "
-        f"naming in `about` the field it concerns (`question` for the question as a whole); an empty list if "
-        f"nothing needs changing. Then propose new texts in {LANGUAGE_NAMES.get(lang, lang)} only for the fields "
-        f"that should change, each with its complete new text, keeping the meaning, the learning goal and the "
+        f"\n\n{LABELS}\n\n{task} The examiner is working on the {LANGUAGE_NAMES.get(lang, lang)} version.\n\n"
+        f"List what you find, each as one short sentence in {LANGUAGE_NAMES.get(answer_lang, 'English')}, naming in "
+        f"`about` the field it concerns (`question` for the question as a whole); an empty list if nothing needs "
+        f"changing. Then propose new texts only for the fields that should change, each with its complete new text "
+        f"in every one of these languages: {_named(languages)}, keeping the meaning, the learning goal and the "
         f"Markdown (backticks for code). Fields are named `stem`, `option.<id>.text`, `option.<id>.feedback`, "
         f"`expected` and `marking_notes`."
     )
-    answer = _ask(system, _question_text(fields, lang), "question_review", schema)
-    findings = [f for f in answer.get("findings", []) if f.get("about") in ["question"] + names and f.get("text", "").strip()]
-    changes, seen = [], set()
-    for change in answer.get("changes", []):
-        name, text = change.get("field"), change.get("text", "").strip()
-        if name in names and name not in seen and text and text != _current(fields, name, lang).strip():
-            changes.append({"field": name, "text": text, "before": _current(fields, name, lang)})
-            seen.add(name)
-    return {"findings": findings, "changes": changes}
+    answer = _ask(system, _question_text(fields, languages), "question_review", schema)
+    return {"findings": _findings(answer, names), "changes": _flatten(fields, answer.get("changes", []), names, languages)}
+
+
+def translate(fields: dict, languages: list[str], source: str, answer_lang: str) -> dict:
+    """Translate the question from one language of the pool into the others; returns proposed texts per field and
+    language, and findings such as a source text written in the wrong language."""
+    targets = [lang for lang in languages if lang != source]
+    if not targets:
+        raise AssistError("llm_one_language", "the pool has only one language")
+    names = [name for name in _changeable(fields) if _current(fields, name, source).strip()]
+    if not names:
+        raise AssistError("llm_nothing_to_translate", f"the question has no text in {source} yet")
+    schema = {
+        "type": "object", "additionalProperties": False, "required": ["findings", "translations"],
+        "properties": {"findings": _findings_schema(names), "translations": _changes_schema(names, targets)},
+    }
+    system = (
+        "You translate questions for university exams.\n\n" + LABELS + "\n\n"
+        f"Translate every text of the question from {LANGUAGE_NAMES.get(source, source)} into {_named(targets)}: "
+        f"each of these fields: {', '.join(f'`{n}`' for n in names)}. Translate faithfully, in the register of a "
+        f"university exam and with the usual technical terms of the subject in the target language; keep the "
+        f"Markdown and leave code, identifiers in backticks, numbers and units as they are. The translation must not "
+        f"make an option easier or harder to recognise than in the original, for example by length or by a word "
+        f"that echoes the question text. Where an existing translation is already right, return it unchanged. "
+        f"If a {LANGUAGE_NAMES.get(source, source)} text is itself in another language, or something cannot be "
+        f"translated faithfully, say so as a finding in one short sentence in "
+        f"{LANGUAGE_NAMES.get(answer_lang, 'English')}; otherwise the list of findings is empty."
+    )
+    answer = _ask(system, _question_text(fields, languages), "translation", schema)
+    return {"findings": _findings(answer, names), "changes": _flatten(fields, answer.get("translations", []), names, targets)}
 
 
 def distractors(fields: dict, languages: list[str], count: int, answer_lang: str) -> list[dict]:
     """Propose wrong options, with feedback, in every language of the pool."""
-    texts = {"type": "object", "additionalProperties": False, "required": languages,
-             "properties": {lang: {"type": "string"} for lang in languages}}
+    texts = _texts_schema(languages)
     schema = {
         "type": "object", "additionalProperties": False, "required": ["distractors"],
         "properties": {"distractors": {"type": "array", "items": {
@@ -268,16 +341,16 @@ def distractors(fields: dict, languages: list[str], count: int, answer_lang: str
             "properties": {"text": texts, "feedback": texts, "misconception": {"type": "string"}},
         }}},
     }
-    names = ", ".join(f"{lang} ({LANGUAGE_NAMES.get(lang, lang)})" for lang in languages)
     system = (
         "You write wrong answer options (distractors) for multiple-choice questions in university exams.\n\n" +
         WRITING_RULES +
-        f"\n\nPropose exactly {count} new distractors for the question. Each must be clearly wrong for someone who "
+        f"\n\nThe question below shows each text in every language of the pool, labelled with its language.\n\n"
+        f"Propose exactly {count} new distractors for the question. Each must be clearly wrong for someone who "
         f"understood the matter, yet plausible for someone with a typical misconception, and different from the "
         f"existing options. Match the existing options in length and register. Give the text and a one-sentence "
-        f"feedback (why it is wrong) in each of these languages: {names}; the versions say the same. Name the "
+        f"feedback (why it is wrong) in each of these languages: {_named(languages)}; each version is written in "
+        f"its own language, even where the question itself still lacks it, and the versions say the same. Name the "
         f"misconception behind each in a few words in {LANGUAGE_NAMES.get(answer_lang, 'English')}."
     )
-    question = "\n\n".join(_question_text(fields, lang) for lang in languages[:1])
-    answer = _ask(system, question, "distractors", schema)
+    answer = _ask(system, _question_text(fields, languages), "distractors", schema)
     return answer.get("distractors", [])[:count]
