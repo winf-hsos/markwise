@@ -23,6 +23,6 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke-width="1.8" stroke-linecap="round" /></svg>
     </button>
   </header>
-  <div class="dialog-body">{@render children()}</div>
+  {#if children}<div class="dialog-body">{@render children()}</div>{/if}
   {#if footer}<footer class="dialog-foot">{@render footer()}</footer>{/if}
 </dialog>

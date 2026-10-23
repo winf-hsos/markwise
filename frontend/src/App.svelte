@@ -6,6 +6,7 @@
   import Concepts from "./pages/Concepts.svelte";
   import Placeholder from "./pages/Placeholder.svelte";
   import Settings from "./pages/Settings.svelte";
+  import ConfirmDialog from "./components/ConfirmDialog.svelte";
   import { t } from "./lib/i18n.svelte.js";
   import { route } from "./lib/router.svelte.js";
   import { app, load, toast, updateSettings } from "./lib/state.svelte.js";
@@ -54,4 +55,5 @@
     {/if}
   </main>
 </div>
+<ConfirmDialog />
 <div class="toast" class:show={toast.visible} role="status" aria-live="polite">{toast.text}</div>

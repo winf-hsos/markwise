@@ -30,7 +30,7 @@ def provider(monkeypatch):
 
     def request(method, path, key, body=None):
         sent.append({"method": method, "path": path, "key": key, "body": body})
-        if key != "sk-good":
+        if not key.startswith("sk-good"):
             raise assist.AssistError("llm_key_invalid", "the API key was not accepted")
         if path == "/models":
             return {"data": [{"id": "gpt-test-mini"}, {"id": "gpt-test"}, {"id": "whisper-1"}, {"id": "text-embedding-3"}]}
@@ -62,6 +62,21 @@ def test_a_key_is_stored_only_after_the_provider_accepts_it(provider):
     models = api.set_llm_key("sk-good")["data"]
     assert models == ["gpt-test-mini", "gpt-test"]  # no speech or embedding models
     assert provider["store"]["key"] == "sk-good" and api.llm_status()["data"]["has_key"] is True
+
+
+def test_a_key_in_the_environment_is_offered_but_never_shown(provider, monkeypatch):
+    api = Api()
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    assert api.llm_status()["data"]["env_key"] == ""
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-good-from-environment")
+    status = api.llm_status()["data"]
+    assert status["env_key"] == "sk-…ment" and "good" not in status["env_key"]
+    assert api.use_env_llm_key()["data"] == ["gpt-test-mini", "gpt-test"]
+    assert provider["store"]["key"] == "sk-good-from-environment"
+    assert api.llm_status()["data"]["env_key"] == ""  # stored now, nothing left to offer
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-bad")
+    provider["store"].clear()
+    assert api.use_env_llm_key()["code"] == "llm_key_invalid" and "key" not in provider["store"]
 
 
 def test_check_stem_sends_only_the_question_and_returns_the_suggestion(provider):

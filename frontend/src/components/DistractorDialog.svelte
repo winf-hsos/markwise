@@ -50,7 +50,7 @@
         {#each [1, 2, 3, 4] as n}<option value={n}>{n}</option>{/each}
       </select>
     </label>
-    <button type="button" class="btn" onclick={ask} disabled={busy}><Icon name="spark" />{busy ? t("assist.working") : proposals.length ? t("assist.again") : t("assist.propose")}</button>
+    <button type="button" class="btn" onclick={ask} disabled={busy}><Icon name="wand" />{busy ? t("assist.working") : proposals.length ? t("assist.again") : t("assist.propose")}</button>
   </div>
   {#if proposals.length}
     <ul class="proposals">

@@ -9,6 +9,7 @@
   import CodeDialog from "./CodeDialog.svelte";
   import ImageDialog from "./ImageDialog.svelte";
   import { CODE_LANGUAGES, detectLanguage } from "../lib/highlight.js";
+  import { ask } from "../lib/confirm.svelte.js";
   import { call } from "../lib/api.js";
   import { errorText, t, ui } from "../lib/i18n.svelte.js";
   import { llmReady, showToast } from "../lib/state.svelte.js";
@@ -233,8 +234,8 @@
     fields = editable(base.data);
   }
 
-  function close() {
-    if (dirty && !confirm(t("edit.confirmLeave", { id: base.data.id }))) return;
+  async function close() {
+    if (dirty && !(await ask({ title: t("edit.leaveTitle"), message: t("edit.confirmLeave", { id: base.data.id }), action: t("edit.discard") }))) return;
     ondraft?.(null);
     onclose?.();
   }
@@ -330,7 +331,7 @@
           <label for="stem-input">{t("edit.stem")}</label>
           {#if llmReady()}
             <button type="button" class="btn ghost btn-small" onclick={checkStem} disabled={reviewing || !fields.stem[lang]?.trim()}
-              title={t("assist.checkHint")}><Icon name="spark" />{reviewing ? t("assist.working") : t("assist.check")}</button>
+              title={t("assist.checkHint")}><Icon name="wand" />{reviewing ? t("assist.working") : t("assist.check")}</button>
           {/if}
         </div>
         <textarea id="stem-input" class="input grow-text" rows="3" bind:value={fields.stem[lang]}></textarea>
@@ -412,7 +413,7 @@
             <button type="button" class="btn ghost" onclick={addOption}><Icon name="plus" />{t("edit.addOption")}</button>
           {/if}
           {#if llmReady() && fields.options.some((o) => o.correct) && fields.options.length < 10}
-            <button type="button" class="btn ghost" onclick={() => (distractorsOpen = true)}><Icon name="spark" />{t("assist.distractors")}</button>
+            <button type="button" class="btn ghost" onclick={() => (distractorsOpen = true)}><Icon name="wand" />{t("assist.distractors")}</button>
           {/if}
         </div>
       {:else}

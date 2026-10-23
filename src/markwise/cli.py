@@ -219,7 +219,9 @@ def cmd_concept_delete(args) -> int:
 
 def cmd_llm_key(args) -> int:
     import getpass
-    key = args.key or getpass.getpass("OpenAI API key (not shown): ")
+    if args.from_env and not assist.env_key():
+        raise ValueError(f"{assist.ENV_VAR} is not set")
+    key = assist.env_key() if args.from_env else args.key or getpass.getpass("OpenAI API key (not shown): ")
     models = assist.list_models(key.strip())
     assist.set_key(key.strip())
     print(json.dumps({"stored": True, "models": len(models)}) if args.json
@@ -429,6 +431,7 @@ def build_parser() -> argparse.ArgumentParser:
     llm = sub.add_parser("llm", help="set up help from a language model (OpenAI)").add_subparsers(dest="action", required=True)
     p = llm.add_parser("key", parents=[common], help="check and store the API key in the Windows credential store")
     p.add_argument("--key", help="the key (otherwise asked for without showing it)")
+    p.add_argument("--from-env", action="store_true", help="take the key from the environment variable OPENAI_API_KEY")
     p.set_defaults(func=cmd_llm_key)
     p = llm.add_parser("models", parents=[common], help="list the models the key can use")
     p.set_defaults(func=cmd_llm_models)

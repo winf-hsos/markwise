@@ -4,6 +4,7 @@
   import QuestionPreview from "../components/QuestionPreview.svelte";
   import QuestionEditor from "../components/QuestionEditor.svelte";
   import NewQuestionDialog from "../components/NewQuestionDialog.svelte";
+  import { ask } from "../lib/confirm.svelte.js";
   import { call } from "../lib/api.js";
   import { errorText, t } from "../lib/i18n.svelte.js";
   import { app, pending, showToast } from "../lib/state.svelte.js";
@@ -200,8 +201,8 @@
 
   async function act(name) {
     const { pool, id } = detail;
-    if (name === "retire" && !confirm(t("life.confirmRetire", { id }))) return;
-    if (name === "delete" && !confirm(t("life.confirmDelete", { id }))) return;
+    if (name === "retire" && !(await ask({ title: t("life.retireTitle", { id }), message: t("life.confirmRetire", { id }), action: t("life.retire") }))) return;
+    if (name === "delete" && !(await ask({ title: t("life.deleteTitle", { id }), message: t("life.confirmDelete", { id }), action: t("life.delete"), danger: true }))) return;
     try {
       if (name === "delete") {
         const result = await call("delete_question", pool, id);

@@ -9,6 +9,7 @@ a person accepts or not.
 from __future__ import annotations
 
 import json
+import os
 import urllib.error
 import urllib.request
 
@@ -17,6 +18,7 @@ from . import settings as user_settings
 API = "https://api.openai.com/v1"
 KEYRING_SERVICE = "Markwise"
 KEYRING_USER = "openai"
+ENV_VAR = "OPENAI_API_KEY"  # offered for use when no key is stored yet
 TIMEOUT = 90
 
 # Models that do not write text in a chat (images, speech, embeddings and the like) stay out of the choice.
@@ -58,6 +60,15 @@ class AssistError(Exception):
 def get_key() -> str:
     import keyring
     return keyring.get_password(KEYRING_SERVICE, KEYRING_USER) or ""
+
+
+def env_key() -> str:
+    return os.environ.get(ENV_VAR, "").strip()
+
+
+def masked(key: str) -> str:
+    """Enough of a key to recognise it, never enough to use it."""
+    return f"{key[:3]}…{key[-4:]}" if len(key) > 12 else "…"
 
 
 def set_key(key: str) -> None:

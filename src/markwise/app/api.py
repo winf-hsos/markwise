@@ -449,7 +449,9 @@ class Api:
             has_key = bool(assist.get_key())
         except Exception:  # no credential store available
             has_key = False
-        return {"enabled": current.llm_enabled, "model": current.llm_model, "has_key": has_key}
+        found = "" if has_key else assist.env_key()
+        return {"enabled": current.llm_enabled, "model": current.llm_model, "has_key": has_key,
+                "env_key": assist.masked(found) if found else "", "env_var": assist.ENV_VAR}
 
     @_answer
     def set_llm_key(self, key: str) -> list:
@@ -457,6 +459,16 @@ class Api:
         key = (key or "").strip()
         if not key:
             raise Refusal("llm_no_key", "enter an API key")
+        models = self._assist(assist.list_models, key)
+        assist.set_key(key)
+        return models
+
+    @_answer
+    def use_env_llm_key(self) -> list:
+        """Like set_llm_key with the key from the environment, which never passes through the interface."""
+        key = assist.env_key()
+        if not key:
+            raise Refusal("llm_no_key", f"{assist.ENV_VAR} is not set")
         models = self._assist(assist.list_models, key)
         assist.set_key(key)
         return models

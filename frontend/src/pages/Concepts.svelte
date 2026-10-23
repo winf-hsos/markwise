@@ -2,6 +2,7 @@
   import { tick, untrack } from "svelte";
   import Icon from "../components/Icon.svelte";
   import Dialog from "../components/Dialog.svelte";
+  import { ask } from "../lib/confirm.svelte.js";
   import { call } from "../lib/api.js";
   import { errorText, t } from "../lib/i18n.svelte.js";
   import { app, pending, showToast } from "../lib/state.svelte.js";
@@ -90,7 +91,7 @@
   }
 
   async function remove() {
-    if (!confirm(t("concepts.confirmDelete", { name: current.name }))) return;
+    if (!(await ask({ title: t("concepts.delete"), message: t("concepts.confirmDelete", { name: current.name }), action: t("concepts.delete"), danger: true }))) return;
     try {
       await call("delete_concept", current.pool, current.id);
       selected = null;

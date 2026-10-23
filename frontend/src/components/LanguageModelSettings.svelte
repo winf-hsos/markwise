@@ -48,6 +48,21 @@
     }
   }
 
+  async function useEnvKey() {
+    busy = true;
+    error = "";
+    try {
+      models = await call("use_env_llm_key");
+      if (!app.settings.llm_model && models.length) await updateSettings({ llm_model: models.find((m) => m.includes("mini")) ?? models[0] });
+      await loadLlm();
+      showToast(t("llm.keySaved"));
+    } catch (err) {
+      error = errorText(err);
+    } finally {
+      busy = false;
+    }
+  }
+
   async function removeKey() {
     await call("remove_llm_key");
     models = [];
@@ -72,6 +87,15 @@
       <button class="switch" class:on={enabled} role="switch" aria-checked={enabled} aria-label={t("llm.use")} onclick={toggle}></button>
     </div>
     {#if enabled}
+      {#if !hasKey && app.llm?.env_key}
+        <div class="row-item env-key">
+          <div class="text">
+            <b>{t("llm.envFound", { name: app.llm.env_var })}</b>
+            <span class="hint">{t("llm.envHint", { key: app.llm.env_key })}</span>
+          </div>
+          <button class="btn primary" type="button" onclick={useEnvKey} disabled={busy}>{busy ? t("llm.checking") : t("llm.useEnv")}</button>
+        </div>
+      {/if}
       <form class="row-item" onsubmit={saveKey}>
         <div class="text">
           <b>{t("llm.key")}</b>
@@ -83,7 +107,7 @@
             <button class="btn ghost" type="button" onclick={removeKey}>{t("llm.removeKey")}</button>
           {:else}
             <input class="input" type="password" bind:value={key} placeholder="sk-…" autocomplete="off" aria-label={t("llm.key")} />
-            <button class="btn primary" type="submit" disabled={busy || !key.trim()}>{busy ? t("llm.checking") : t("llm.saveKey")}</button>
+            <button class="btn {app.llm?.env_key ? '' : 'primary'}" type="submit" disabled={busy || !key.trim()}>{busy ? t("llm.checking") : t("llm.saveKey")}</button>
           {/if}
         </div>
       </form>

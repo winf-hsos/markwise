@@ -161,6 +161,8 @@ Markwise can ask a language model from OpenAI to check question texts and to pro
 
 1. In **Settings**, under **Language model**, switch on **Help from a language model**.
 2. Paste the key into **OpenAI API key** and click **Check and save**. Markwise asks OpenAI whether the key works and only then stores it, in the Windows credential store (Control Panel → Credential Manager → Windows Credentials, entry *Markwise*), never in a file. **Remove key** deletes it from there.
+
+   If the environment variable `OPENAI_API_KEY` is set on your computer, Markwise offers that key first, showing only its beginning and end; **Use this one** checks it and stores it the same way.
 3. Under **Model**, choose one of the models your key may use. Markwise suggests a small, inexpensive one; a larger model checks more thoroughly but takes longer and costs more.
 
 The editor then shows **Check** and **Propose wrong answers** (see [Creating and editing questions](#creating-and-editing-questions)). Only the text, code, options and feedback of the question you are working on are sent, and only when you press one of the buttons; never names, participants, scans or grades, and never who wrote the question. The model's answer is a suggestion: nothing changes until you apply it and save.
@@ -362,7 +364,7 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise module show <folder>` | show a module's pools and exams |
 | `markwise module add-pool <folder> <pool>` | let a module draw from another pool |
 | `markwise module remove-pool <folder> <pool>` | detach a pool from a module; the pool stays |
-| `markwise llm key [--key <key>]` | check an OpenAI API key and store it in the Windows credential store (without `--key` it is asked for without showing it) |
+| `markwise llm key [--key <key>] [--from-env]` | check an OpenAI API key and store it in the Windows credential store; `--from-env` takes it from `OPENAI_API_KEY`, without either it is asked for without showing it |
 | `markwise llm models` | list the models the stored key may use |
 | `markwise llm use [--model <model>] [--off]` | switch the language model on (and choose the model) or off |
 | `markwise assist check <pool> <id> [--lang de]` | let the model check a question text; prints findings and a suggestion, changes nothing |

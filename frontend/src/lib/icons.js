@@ -15,7 +15,7 @@ export const ICONS = {
   warn: '<path d="M12 4 2.8 19.5h18.4L12 4Z" fill="none" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v4.5M12 17.2v.1" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
   upload: '<path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   print: '<path d="M7 9V3h10v6M7 17H4v-7h16v7h-3M7 14h10v7H7z" fill="none" stroke-width="1.8" stroke-linejoin="round"/>',
-  spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
+  wand: '<path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8 19 13M17.8 6.2 19 5M12.2 6.2 11 5" fill="none" stroke-width="1.8" stroke-linecap="round"/><path d="m3 21 10-10" fill="none" stroke-width="2.4" stroke-linecap="round"/>',
   lock: '<rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke-width="1.8"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke-width="1.8"/>',
   download: '<path d="M12 4v12M7 11l5 5 5-5M4 20h16" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   more: '<g fill="currentColor" stroke="none"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></g>',
