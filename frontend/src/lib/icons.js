@@ -1,0 +1,21 @@
+// Simple stroke icons on a 24px grid, taken over from the prototype (the gear follows Lucide, ISC licence).
+
+export const ICONS = {
+  panel: '<rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke-width="1.8"/><path d="M9 4.5v15" fill="none" stroke-width="1.8"/>',
+  modules: '<path d="M3.5 7.5 12 3l8.5 4.5L12 12 3.5 7.5Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><path d="M3.5 12 12 16.5 20.5 12M3.5 16.5 12 21l8.5-4.5" fill="none" stroke-width="1.7" stroke-linejoin="round"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/>',
+  chevron: '<path d="m7 10 5 5 5-5" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  zip: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><path d="M11 6h1M11 9h1M11 12h1M10.5 15h2v3h-2z" fill="none" stroke-width="1.5"/>',
+  questions: '<path d="M4 5h16M4 10h16M4 15h10M4 20h7" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
+  exams: '<rect x="5" y="3" width="14" height="18" rx="2" fill="none" stroke-width="1.8"/><path d="M9 8h6M9 12h6M9 16h3" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
+  settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="none" stroke-width="1.7"/>',
+  search: '<circle cx="11" cy="11" r="6.5" fill="none" stroke-width="1.8"/><path d="m16 16 4.5 4.5" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
+  plus: '<path d="M12 5v14M5 12h14" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  warn: '<path d="M12 4 2.8 19.5h18.4L12 4Z" fill="none" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v4.5M12 17.2v.1" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
+  upload: '<path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  print: '<path d="M7 9V3h10v6M7 17H4v-7h16v7h-3M7 14h10v7H7z" fill="none" stroke-width="1.8" stroke-linejoin="round"/>',
+  spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke-width="1.8"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke-width="1.8"/>',
+  download: '<path d="M12 4v12M7 11l5 5 5-5M4 20h16" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+};

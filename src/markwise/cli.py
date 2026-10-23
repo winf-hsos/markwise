@@ -134,6 +134,25 @@ def cmd_module_show(args) -> int:
     return 0
 
 
+def cmd_app(args) -> int:
+    from .app import run
+    run(dev=args.dev, debug=args.debug)
+    return 0
+
+
+def cmd_serve(args) -> int:
+    from .app.server import serve
+    serve(args.port)
+    return 0
+
+
+def cmd_shortcut(args) -> int:
+    from .app import create_shortcut
+    link = create_shortcut(Path(args.folder) if args.folder else None)
+    print(json.dumps({"shortcut": str(link)}) if args.json else f"Start menu entry created: {link}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="markwise", description="Paper exams from the question pool to the grade.")
     parser.add_argument("--version", action="version", version=f"markwise {__version__}")
@@ -195,6 +214,19 @@ def build_parser() -> argparse.ArgumentParser:
     p = module.add_parser("show", parents=[common])
     p.add_argument("folder")
     p.set_defaults(func=cmd_module_show)
+
+    p = sub.add_parser("app", help="open the app window")
+    p.add_argument("--dev", action="store_true", help="load the interface from the Vite development server")
+    p.add_argument("--debug", action="store_true", help="allow the developer tools in the window")
+    p.set_defaults(func=cmd_app)
+
+    p = sub.add_parser("serve", help="serve the core on 127.0.0.1 for developing the interface in a browser")
+    p.add_argument("--port", type=int, default=8765)
+    p.set_defaults(func=cmd_serve)
+
+    p = sub.add_parser("shortcut", parents=[common], help="create a Start menu entry for the app window")
+    p.add_argument("--folder", help="create it in this folder instead of the Start menu")
+    p.set_defaults(func=cmd_shortcut)
     return parser
 
 

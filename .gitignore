@@ -2,5 +2,6 @@
 __pycache__/
 *.egg-info/
 .pytest_cache/
+frontend/node_modules/
 # Local working files: generated sheets, scans and other output never go into the repository.
 /work/

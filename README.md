@@ -4,11 +4,12 @@ A desktop app for paper exams: keep a bank of questions, build exams from it, re
 
 Markwise runs natively on Windows, needs neither Linux nor LaTeX, and is meant to be used by examiners without any technical background. Agents (for example an AI assistant that drafts questions) work with the same data through a command-line interface, and later through a local HTTP interface.
 
-> **Status (October 2026): phase 1 of the [plan](docs/concept.md#plan).** What works today is managing question pools from the command line: creating, listing, checking, importing and deleting questions, and setting up modules. The app window, building exams, printing, scanning and grading follow; [what is not there yet](#not-there-yet) lists them with their dates. This guide grows with every step, so it always describes what Markwise can do at the time.
+> **Status (October 2026): phase 1 of the [plan](docs/concept.md#plan).** What works today is managing question pools from the command line (creating, listing, checking, importing and deleting questions, setting up modules) and the first step of the app window: it opens, shows the modules you have opened and keeps your settings. Creating modules and working with questions in the window, building exams, printing, scanning and grading follow; [what is not there yet](#not-there-yet) lists them with their dates. This guide grows with every step, so it always describes what Markwise can do at the time.
 
 ## Contents
 
 - [Installation](#installation)
+- [Opening the app](#opening-the-app)
 - [The four things Markwise works with](#the-four-things-markwise-works-with)
 - [Getting started in ten minutes](#getting-started-in-ten-minutes)
 - [Writing and editing questions](#writing-and-editing-questions)
@@ -41,6 +42,32 @@ markwise --version
 ```
 
 In PowerShell the activation script is `.venv\Scripts\Activate.ps1`; if the execution policy blocks it, use the full path instead. All examples below assume an activated environment.
+
+## Opening the app
+
+```
+markwise app
+```
+
+opens Markwise in its own window (it uses the WebView2 runtime that is part of Windows 11). To get an entry in the Start menu, which you can also pin to the taskbar, run once:
+
+```
+markwise shortcut
+```
+
+The entry opens the window without a console. What the window can do so far:
+
+- **Modules** lists the modules you have opened, with their question pools; a module whose folder is gone is marked in red. Creating and opening modules from the window comes in the next step; until then use `markwise module init` and add the module folder on the settings page (see below).
+- **Settings** switches the interface between German and English and stores your name, which Markwise will write into `reviewed_by` when you release a question.
+- **Ctrl+B** collapses and expands the side menu.
+- **Questions** and **Exams** show what will be there and when.
+
+Your settings live in `%APPDATA%\Markwise\settings.toml`, on your computer only and never in a pool or module folder. Until the window can open modules itself, you can add a module there by hand (single quotes, so that the backslashes stay as they are):
+
+```toml
+modules = ['D:\Modules\Statistics 1']
+current_module = 'D:\Modules\Statistics 1'
+```
 
 ## The four things Markwise works with
 
@@ -214,6 +241,9 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise import <old pool.toml> <pool> [--update]` | import a question bank in the earlier format |
 | `markwise module init <folder> --name <name> --short-name <short> --pool <pool>` | create a module |
 | `markwise module show <folder>` | show a module's pools and exams |
+| `markwise app` | open the app window |
+| `markwise shortcut [--folder <folder>]` | create the Start menu entry (or put it into another folder) |
+| `markwise serve [--port 8765]` | serve the core on 127.0.0.1 for developing the interface in a browser |
 
 Exit codes: `0` success, `1` the check found errors or the import found conflicts or problems, `2` wrong input (for example a folder without `pool.toml`, or a missing `--yes`).
 
@@ -237,7 +267,8 @@ prints for each sheet whether the QR code, the orientation, the student number a
 
 | What | Planned for |
 |---|---|
-| App window with the question views (browse, search, edit with a live preview) | 13 Nov 2026 |
+| Creating and opening modules and pools in the app window | early November 2026 |
+| Question views in the app window (browse, search, edit with a live preview) | 13 Nov 2026 |
 | Installer for a second computer | 27 Nov 2026 |
 | Building exams: blueprint, variants, exam and answer booklets as PDF | 27 Nov 2026 |
 | Reading scans, deciding doubtful cases, grading multiple-choice exams | early December 2026 |
@@ -257,6 +288,17 @@ python -m venv .venv
 .venv\Scripts\python -m pip install -e ".[dev]"
 .venv\Scripts\python -m pytest
 ```
+
+The interface is a Svelte app in `frontend/`. Its build goes into `src/markwise/app/static/` and is part of the repository, so running Markwise needs no Node.js. To work on the interface (Node.js 20 or newer):
+
+```
+cd frontend
+npm install
+npm run dev          # http://localhost:5173, with markwise serve running in a second terminal
+npm run build        # before committing: updates src/markwise/app/static
+```
+
+In the browser the interface reaches the core through `markwise serve`, which listens on 127.0.0.1 only and refuses requests that do not come from the interface. `markwise app --dev` opens the window on the development server instead of the build, and `--debug` allows the developer tools.
 
 The concept is in [docs/concept.md](docs/concept.md), the question format in [docs/question-format.md](docs/question-format.md). A clickable prototype of the interface (look and feel only, sample data, no logic) is in [prototype/](prototype/): open `prototype/index.html` in a browser.
 
