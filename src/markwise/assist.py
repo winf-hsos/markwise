@@ -147,7 +147,7 @@ def _ask(system: str, user: str, schema_name: str, schema: dict) -> dict:
 
 
 def _question_text(fields: dict, lang: str) -> str:
-    """The question as the model sees it: text, code and options with their feedback, in one language."""
+    """The question as the model sees it: text, code, options with their feedback or the expected answer, in one language."""
     def pick(value):
         return value.get(lang, "") if isinstance(value, dict) else str(value or "")
     lines = [f"Question type: {fields.get('type', 'single')}", f"Question text:\n{pick(fields.get('stem'))}"]
@@ -157,6 +157,8 @@ def _question_text(fields: dict, lang: str) -> str:
         mark = "correct" if option.get("correct") else "wrong"
         lines.append(f"Option {option.get('id')} ({mark}): {pick(option.get('text'))}"
                      + (f"\n  Feedback: {pick(option.get('feedback'))}" if pick(option.get("feedback")) else ""))
+    if pick(fields.get("expected")):
+        lines.append(f"Expected answer:\n{pick(fields.get('expected'))}")
     return "\n".join(lines)
 
 

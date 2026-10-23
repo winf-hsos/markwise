@@ -92,6 +92,17 @@ def test_check_stem_sends_only_the_question_and_returns_the_suggestion(provider)
     assert body["response_format"]["json_schema"]["strict"] is True
 
 
+def test_a_free_text_question_can_be_checked_with_its_expected_answer(provider):
+    provider["store"]["key"] = "sk-good"
+    switch_on()
+    provider["answers"]["stem_review"] = {"findings": [], "suggestion": ""}
+    question = {"type": "free_text", "created_by": "Examiner A", "stem": {"en": "How many symbols does the binary system have?"},
+                "expected": {"en": "Two"}, "marking_notes": {"en": ""}}
+    assert assist.check_stem(question, "en", "de") == {"findings": [], "suggestion": ""}
+    sent_text = json.dumps(provider["sent"][-1]["body"]["messages"], ensure_ascii=False)
+    assert "Expected answer:\\nTwo" in sent_text  # newline as encoded in JSON and "Examiner A" not in sent_text
+
+
 def test_distractors_come_in_every_language_and_no_more_than_asked(provider):
     provider["store"]["key"] = "sk-good"
     switch_on()

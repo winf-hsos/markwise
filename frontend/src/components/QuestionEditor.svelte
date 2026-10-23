@@ -435,8 +435,10 @@
       </details>
     </form>
 
-    <DistractorDialog bind:open={distractorsOpen} pool={base.pool} {fields} {lang}
-      room={Math.max(1, 5 - fields.options.filter((o) => o.text?.[lang]?.trim()).length)} onapply={addDistractors} />
+    {#if isChoice}
+      <DistractorDialog bind:open={distractorsOpen} pool={base.pool} {fields} {lang}
+        room={Math.max(1, 5 - fields.options.filter((o) => o.text?.[lang]?.trim()).length)} onapply={addDistractors} />
+    {/if}
     <CodeDialog bind:open={codeOpen} code={fields.code} language={fields.code_language} onapply={applyCode} />
     <ImageDialog bind:open={imageOpen} pool={base.pool} current={fields.images} columns={fields.image_columns} onapply={applyImages} />
 

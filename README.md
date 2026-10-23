@@ -165,7 +165,7 @@ Markwise can ask a language model from OpenAI to check question texts and to pro
    If the environment variable `OPENAI_API_KEY` is set on your computer, Markwise offers that key first, showing only its beginning and end; **Use this one** checks it and stores it the same way.
 3. Under **Model**, choose one of the models your key may use. Markwise suggests a small, inexpensive one; a larger model checks more thoroughly but takes longer and costs more.
 
-The editor then shows **Check** and **Propose wrong answers** (see [Creating and editing questions](#creating-and-editing-questions)). Only the text, code, options and feedback of the question you are working on are sent, and only when you press one of the buttons; never names, participants, scans or grades, and never who wrote the question. The model's answer is a suggestion: nothing changes until you apply it and save.
+The editor then shows **Check** and **Propose wrong answers** (see [Creating and editing questions](#creating-and-editing-questions)). Only the text, code, options and feedback (or, for a free-text question, the expected answer) of the question you are working on are sent, and only when you press one of the buttons; never names, participants, scans or grades, and never who wrote the question. The model's answer is a suggestion: nothing changes until you apply it and save.
 
 **Exams** shows what will be there and when.
 
