@@ -1,0 +1,307 @@
+<script>
+  import { onMount, untrack } from "svelte";
+  import Icon from "./Icon.svelte";
+  import QuestionPreview from "./QuestionPreview.svelte";
+  import { call } from "../lib/api.js";
+  import { errorText, t, ui } from "../lib/i18n.svelte.js";
+  import { showToast } from "../lib/state.svelte.js";
+
+  // Edits one question: form on the left, the question as it reads on the right, checked while typing.
+  // `practice` lists the practice questions of the same pool for the variant choice.
+  let { question, practice = [], onclose, onsaved } = $props();
+  // The editor is created anew for every question (see {#key} in the page), so it starts from this snapshot.
+  const initial = untrack(() => question);
+
+  const EDITABLE = ["type", "level", "public", "variant_of", "coverage", "misconception", "stem", "image", "code",
+    "options", "points", "half_points", "lines", "expected", "marking_notes"];
+  const languages = initial.languages;
+  const blankTexts = () => Object.fromEntries(languages.map((l) => [l, ""]));
+
+  function editable(data) {
+    const fields = {};
+    for (const key of EDITABLE) if (key in data) fields[key] = JSON.parse(JSON.stringify(data[key])); // data may be reactive state
+    // Every text map gets every language, so that the form has a field for each.
+    for (const key of ["stem", "expected", "marking_notes"]) {
+      if (key in fields || (key === "stem")) fields[key] = { ...blankTexts(), ...(fields[key] ?? {}) };
+    }
+    // Optional fields as empty strings, so that inputs bind to them; the core drops empty optional fields.
+    for (const key of ["variant_of", "coverage", "misconception", "image", "code"]) fields[key] ??= "";
+    for (const option of fields.options ?? []) {
+      option.text = { ...blankTexts(), ...(option.text ?? {}) };
+      option.feedback = { ...blankTexts(), ...(option.feedback ?? {}) };
+    }
+    return fields;
+  }
+
+  let base = $state(initial);
+  let fields = $state(editable(initial.data));
+  let saved = $state(JSON.stringify(editable(initial.data)));
+  let lang = $state(languages.includes(ui.lang) ? ui.lang : languages[0]);
+  let findings = $state(initial.findings);
+  let images = $state([]);
+  let showCode = $state(Boolean(initial.data.code));
+  let conflict = $state(false);
+  let busy = $state(false);
+
+  const dirty = $derived(JSON.stringify(fields) !== saved);
+  const isChoice = $derived(fields.type === "single" || fields.type === "multiple");
+  const variantChoices = $derived(practice.filter((p) => p.concept === base.data.concept && p.id !== base.data.id));
+
+  // Languages in which a required text is still empty, for the marks on the language tabs.
+  const missing = $derived(
+    languages.filter((l) =>
+      !fields.stem?.[l]?.trim() ||
+      (isChoice && (fields.options ?? []).some((o) => !o.text?.[l]?.trim())) ||
+      (fields.type === "free_text" && !fields.expected?.[l]?.trim()),
+    ),
+  );
+
+  onMount(() => {
+    call("list_images", base.pool).then((list) => (images = list)).catch(() => {});
+  });
+
+  // Check while typing, a moment after the last keystroke.
+  let timer = null;
+  $effect(() => {
+    const snapshot = $state.snapshot(fields);
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      try {
+        findings = await call("check_question", base.pool, base.data.id, snapshot);
+      } catch {
+        /* the next keystroke tries again */
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  });
+
+  const preview = $derived({ ...base, data: { ...base.data, ...fields }, findings,
+    image_data: fields.image === (base.data.image ?? "") ? base.image_data : null });
+
+  function setCorrect(option) {
+    if (fields.type === "single") for (const o of fields.options) o.correct = o === option;
+    else option.correct = !option.correct;
+  }
+
+  function addOption() {
+    const used = new Set(fields.options.map((o) => o.id));
+    const id = "abcdefghij".split("").find((c) => !used.has(c));
+    fields.options.push({ id, correct: false, text: blankTexts(), feedback: blankTexts() });
+  }
+
+  function removeOption(option) {
+    fields.options = fields.options.filter((o) => o !== option);
+  }
+
+  function setType(type) {
+    fields.type = type;
+    // Single choice keeps only the first correct option.
+    if (type === "single") {
+      let seen = false;
+      for (const o of fields.options) {
+        o.correct = o.correct && !seen;
+        seen ||= o.correct;
+      }
+    }
+  }
+
+  function setUse(isPublic) {
+    fields.public = isPublic;
+    if (isPublic) fields.variant_of = "";
+  }
+
+  async function save(force = false) {
+    if (busy) return;
+    busy = true;
+    try {
+      const result = await call("save_question", base.pool, base.data.id, $state.snapshot(fields), base.mtime_ns, force);
+      const wasReviewed = base.data.status === "reviewed";
+      base = result.question;
+      fields = editable(result.question.data);
+      saved = JSON.stringify(fields);
+      conflict = false;
+      showToast(!result.changed ? t("edit.noChange") : wasReviewed && base.data.status === "draft" ? t("edit.savedDraft") : t("edit.saved"));
+      onsaved?.(result.question);
+    } catch (err) {
+      if (err.code === "conflict") conflict = true;
+      else showToast(errorText(err));
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function loadTheirs() {
+    const fresh = await call("get_question", base.pool, base.data.id);
+    base = fresh;
+    fields = editable(fresh.data);
+    saved = JSON.stringify(fields);
+    conflict = false;
+  }
+
+  function discard() {
+    fields = editable(base.data);
+  }
+
+  function close() {
+    if (dirty && !confirm(t("edit.confirmLeave", { id: base.data.id }))) return;
+    onclose?.();
+  }
+
+  function onkeydown(event) {
+    if (event.ctrlKey && event.key.toLowerCase() === "s") {
+      event.preventDefault();
+      save();
+    }
+  }
+</script>
+
+<svelte:window {onkeydown} />
+
+<div class="editor-shell">
+  <header class="editor-bar">
+    <button class="btn ghost" onclick={close}><Icon name="back" />{t("edit.back")}</button>
+    <span class="qid">{base.data.id}</span>
+    <span class="tag" class:ok={base.data.status === "reviewed"}>{t(`status.${base.data.status}`)}</span>
+    {#if dirty}<span class="unsaved"><i class="dot"></i>{t("edit.unsaved")}</span>{/if}
+    <span class="spacer"></span>
+    <span class="hint">{t("edit.shortcut")}</span>
+    <button class="btn ghost" onclick={discard} disabled={!dirty}>{t("edit.discard")}</button>
+    <button class="btn primary" onclick={() => save()} disabled={busy || !dirty}>{t("edit.save")}</button>
+  </header>
+
+  {#if conflict}
+    <div class="conflict">
+      <p>{t("edit.conflict")}</p>
+      <button class="btn" onclick={loadTheirs}>{t("edit.loadTheirs")}</button>
+      <button class="btn decide" onclick={() => save(true)}>{t("edit.keepMine")}</button>
+    </div>
+  {/if}
+
+  <div class="editor-split">
+    <form class="editor-form" onsubmit={(e) => { e.preventDefault(); save(); }}>
+      {#if base.data.status === "reviewed"}<p class="form-info">{t("edit.reviewedNote")}</p>{/if}
+
+      <div class="form-grid">
+        {#if fields.type !== "free_text"}
+          <div class="field">
+            <span>{t("edit.type")}</span>
+            <div class="seg" role="group">
+              {#each ["single", "multiple"] as v}
+                <button type="button" class:on={fields.type === v} onclick={() => setType(v)}>{t(`type.${v}`)}</button>
+              {/each}
+            </div>
+          </div>
+        {/if}
+        <div class="field">
+          <span>{t("edit.level")}</span>
+          <div class="seg" role="group">
+            {#each ["remember", "understand", "apply"] as v}
+              <button type="button" class:on={fields.level === v} onclick={() => (fields.level = v)}>{t(`level.${v}`)}</button>
+            {/each}
+          </div>
+        </div>
+        <div class="field">
+          <span>{t("edit.use")}</span>
+          <div class="seg" role="group">
+            <button type="button" class:on={fields.public} onclick={() => setUse(true)}>{t("use.practice")}</button>
+            <button type="button" class:on={!fields.public} onclick={() => setUse(false)}>{t("use.exam")}</button>
+          </div>
+        </div>
+        {#if !fields.public}
+          <label class="field">
+            <span>{t("edit.variantOf")}</span>
+            <select class="select" bind:value={fields.variant_of}>
+              <option value="">{t("edit.noVariant")}</option>
+              {#each variantChoices as p}<option value={p.id}>{p.id}: {p.stem.slice(0, 60)}</option>{/each}
+            </select>
+          </label>
+        {/if}
+      </div>
+
+      {#if languages.length > 1}
+        <div class="lang-tabs" role="tablist" aria-label={t("edit.language")}>
+          {#each languages as l}
+            <button type="button" role="tab" aria-selected={lang === l} class:on={lang === l} onclick={() => (lang = l)}
+              title={missing.includes(l) ? t("edit.missingIn", { lang: l.toUpperCase() }) : ""}>
+              {l === "de" ? "Deutsch" : "English"}{#if missing.includes(l)}<i class="dot warn-dot"></i>{/if}
+            </button>
+          {/each}
+        </div>
+      {/if}
+
+      <label class="field">
+        <span>{t("edit.stem")}</span>
+        <textarea class="input grow-text" rows="3" bind:value={fields.stem[lang]}></textarea>
+      </label>
+
+      {#if showCode}
+        <label class="field">
+          <span>{t("edit.code")}</span>
+          <textarea class="input grow-text mono" rows="3" bind:value={fields.code} spellcheck="false"></textarea>
+        </label>
+      {/if}
+      <div class="form-row">
+        {#if !showCode}
+          <button type="button" class="btn ghost" onclick={() => (showCode = true)}><Icon name="plus" />{t("edit.addCode")}</button>
+        {/if}
+        <label class="field grow">
+          <span>{t("edit.image")}</span>
+          <select class="select" bind:value={fields.image}>
+            <option value="">{t("edit.noImage")}</option>
+            {#each images as name}<option value={name}>{name}</option>{/each}
+          </select>
+        </label>
+      </div>
+
+      {#if isChoice}
+        <h3 class="form-section">{t("edit.options")}</h3>
+        <ol class="option-edit">
+          {#each fields.options as option (option.id)}
+            <li class:correct={option.correct}>
+              <button type="button" class="correct-toggle" class:on={option.correct} aria-pressed={option.correct}
+                title={t("edit.correct")} onclick={() => setCorrect(option)}>
+                {#if option.correct}<Icon name="check" />{/if}
+              </button>
+              <div class="option-fields">
+                <span class="option-letter">{option.id}</span>
+                <textarea class="input grow-text" rows="1" aria-label={t("edit.text", { id: option.id })}
+                  bind:value={option.text[lang]}></textarea>
+                <textarea class="input grow-text feedback" rows="1" placeholder={t("edit.feedback", { id: option.id })}
+                  aria-label={t("edit.feedback", { id: option.id })} bind:value={option.feedback[lang]}></textarea>
+              </div>
+              <button type="button" class="icon-btn" aria-label={t("edit.removeOption", { id: option.id })}
+                title={t("edit.removeOption", { id: option.id })} onclick={() => removeOption(option)}>
+                <Icon name="remove" />
+              </button>
+            </li>
+          {/each}
+        </ol>
+        {#if fields.options.length < 10}
+          <button type="button" class="btn ghost" onclick={addOption}><Icon name="plus" />{t("edit.addOption")}</button>
+        {/if}
+      {:else}
+        <div class="form-row">
+          <label class="field"><span>{t("edit.points")}</span>
+            <input class="input" type="number" min="0.5" step="0.5" bind:value={fields.points} style="width: 100px" /></label>
+          <label class="field"><span>{t("edit.lines")}</span>
+            <input class="input" type="number" min="1" bind:value={fields.lines} style="width: 100px" /></label>
+          <label class="check-line"><input type="checkbox" bind:checked={fields.half_points} />{t("edit.halfPoints")}</label>
+        </div>
+        <label class="field"><span>{t("q.expected")}</span>
+          <textarea class="input grow-text" rows="3" bind:value={fields.expected[lang]}></textarea></label>
+        <label class="field"><span>{t("q.markingNotes")}</span>
+          <textarea class="input grow-text" rows="2" bind:value={fields.marking_notes[lang]}></textarea></label>
+      {/if}
+
+      <details class="more">
+        <summary>{t("edit.more")}</summary>
+        <label class="field"><span>{t("edit.coverage")}</span><input class="input" bind:value={fields.coverage} /></label>
+        <label class="field"><span>{t("edit.misconception")}</span><input class="input" bind:value={fields.misconception} /></label>
+      </details>
+    </form>
+
+    <div class="editor-preview">
+      <QuestionPreview question={preview} compact />
+    </div>
+  </div>
+</div>

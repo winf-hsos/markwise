@@ -1,0 +1,135 @@
+"""Editing questions without disturbing the rest of their files, with invented questions only."""
+
+from __future__ import annotations
+
+import os
+
+import pytest
+
+from markwise import editing
+from markwise.app.api import Api
+from markwise.catalog import plain
+from markwise.importer import import_pool
+from markwise.pool import Pool
+from markwise.question import ConflictError
+
+from test_core import write_legacy
+
+
+@pytest.fixture
+def pool(tmp_path, monkeypatch):
+    monkeypatch.setenv("MARKWISE_HOME", str(tmp_path / "home"))
+    import_pool(write_legacy(tmp_path / "legacy"), tmp_path / "pool")
+    return Pool.open(tmp_path / "pool")
+
+
+def fields_of(pool: Pool, qid: str) -> dict:
+    data = pool.find(qid).data
+    return {k: plain(data[k]) for k in editing.EDITABLE if k in data}
+
+
+def test_saving_without_changes_keeps_the_file(pool):
+    path = pool.find("co-001").path
+    before = path.read_bytes()
+    _, changed = editing.save(pool, "co-001", fields_of(pool, "co-001"))
+    assert not changed and path.read_bytes() == before
+
+
+def test_a_change_touches_only_its_own_line(pool):
+    path = pool.find("co-001").path
+    before = path.read_text(encoding="utf-8").splitlines()
+    fields = fields_of(pool, "co-001")
+    fields["options"][1]["text"]["de"] = "Dunkelgrün"
+    editing.save(pool, "co-001", fields)
+    after = path.read_text(encoding="utf-8").splitlines()
+    changed = [(b, a) for b, a in zip(before, after) if b != a]
+    assert len(before) == len(after) and len(changed) == 1
+    assert 'de: "Dunkelgrün"' in changed[0][1]  # the quotes of the original stay
+    assert "# a field the schema does not know" in path.read_text(encoding="utf-8")
+
+
+def test_options_are_matched_by_id(pool):
+    fields = fields_of(pool, "co-001")
+    fields["options"] = [o for o in fields["options"] if o["id"] != "c"]
+    fields["options"].append({"id": "e", "correct": False, "text": {"de": "Lila", "en": "Purple"},
+                              "feedback": {"de": "Nein.", "en": "No."}})
+    editing.save(pool, "co-001", fields)
+    q = pool.find("co-001")
+    assert [o["id"] for o in q.options] == ["a", "b", "d", "e"] and q.options[3]["text"]["en"] == "Purple"
+
+
+def test_emptied_optional_fields_disappear_and_new_ones_find_their_place(pool):
+    fields = fields_of(pool, "co-001")
+    fields["coverage"] = ""
+    fields["code"] = "print('sky')"
+    editing.save(pool, "co-001", fields)
+    q = pool.find("co-001")
+    keys = list(q.data.keys())
+    assert "coverage" not in keys and keys.index("code") == keys.index("image") + 1  # stem, image, code
+
+
+def test_a_reviewed_question_becomes_a_draft_when_its_content_changes(pool):
+    q = pool.find("co-001")
+    q.data["status"] = "reviewed"
+    q.data["reviewed_by"] = ["Examiner A", "Examiner B"]
+    q.save()
+    fields = fields_of(pool, "co-001")
+    fields["stem"]["en"] = "Which colour has the sky on a clear day?"
+    question, changed = editing.save(pool, "co-001", fields)
+    assert changed and question.status == "draft" and "reviewed_by" not in question.data
+
+
+def test_a_change_elsewhere_is_not_overwritten(pool):
+    q = pool.find("co-001")
+    opened = q.path.stat().st_mtime_ns
+    os.utime(q.path, ns=(opened + 10_000_000, opened + 10_000_000))  # someone saved in between
+    fields = fields_of(pool, "co-001")
+    fields["level"] = "apply"
+    with pytest.raises(ConflictError):
+        editing.save(pool, "co-001", fields, expected_mtime_ns=opened)
+    editing.save(pool, "co-001", fields, expected_mtime_ns=opened, force=True)
+    assert pool.find("co-001").level == "apply"
+
+
+def test_check_fields_sees_unsaved_changes(pool):
+    fields = fields_of(pool, "co-001")
+    fields["options"][1]["correct"] = True
+    messages = [f["message"] for f in editing.check_fields(pool, "co-001", fields)]
+    assert any("exactly one correct option" in m for m in messages)
+    assert pool.find("co-001").correct_ids == ["a"]  # nothing was saved
+
+
+@pytest.mark.parametrize("path, value, check", [
+    ("level", "apply", lambda q: q.level == "apply"),
+    ("stem.en", "Sky colour?", lambda q: q.data["stem"]["en"] == "Sky colour?"),
+    ("options.b.correct", "true", lambda q: q.correct_ids == ["a", "b"]),
+    ("public", "false", lambda q: q.public is False),
+])
+def test_set_field_by_dotted_path(pool, path, value, check):
+    editing.set_field(pool, "co-001", path, value)
+    assert check(pool.find("co-001"))
+
+
+def test_set_field_refuses_fields_that_belong_elsewhere(pool):
+    with pytest.raises(ValueError):
+        editing.set_field(pool, "co-001", "status", "reviewed")
+
+
+def test_api_creates_questions_only_in_valid_concepts(pool):
+    api = Api()
+    assert api.create_question(str(pool.root), "Not Valid", "single")["code"] == "concept_invalid"
+    assert api.create_question(str(pool.root), "planets", "single")["code"] == "concept_unknown"  # fixed list
+    created = api.create_question(str(pool.root), "shapes", "multiple")["data"]
+    assert created["id"] == "s-001" and created["data"]["type"] == "multiple"
+
+
+def test_api_save_reports_a_conflict(pool):
+    api = Api()
+    detail = api.get_question(str(pool.root), "co-001")["data"]
+    path = pool.find("co-001").path
+    assert isinstance(detail["mtime_ns"], str)  # nanoseconds do not survive a JavaScript number
+    assert api.save_question(str(pool.root), "co-001", fields_of(pool, "co-001"), detail["mtime_ns"])["data"]["changed"] is False
+    os.utime(path, ns=(int(detail["mtime_ns"]) + 10_000_000,) * 2)
+    fields = fields_of(pool, "co-001")
+    fields["level"] = "remember"
+    assert api.save_question(str(pool.root), "co-001", fields, detail["mtime_ns"])["code"] == "conflict"

@@ -94,25 +94,27 @@ def matches(row: dict, search: str) -> bool:
     return all(word in row["search"] for word in search.lower().split())
 
 
-def _variant_findings(q: Question, pool: Pool) -> list[Finding]:
+def variant_findings(q: Question, pool: Pool) -> list[Finding]:
     """The checks of check_pool that concern a single exam variant, without reading the whole pool."""
     if not q.variant_of or q.status == "retired":
         return []
     out = []
     original = list(pool.questions_dir.glob(f"*/{q.variant_of}.yaml"))
     if not original:
-        out.append(Finding(ERROR, q.id, f"variant_of '{q.variant_of}' does not exist", str(q.path)))
+        out.append(Finding(ERROR, q.id, f"variant_of '{q.variant_of}' does not exist", str(q.path),
+                           "variant_missing", {"id": q.variant_of}))
     elif original[0].parent.name != q.concept:
-        out.append(Finding(ERROR, q.id, f"variant_of '{q.variant_of}' belongs to another concept", str(q.path)))
+        out.append(Finding(ERROR, q.id, f"variant_of '{q.variant_of}' belongs to another concept", str(q.path),
+                           "variant_concept", {"id": q.variant_of}))
     if q.public:
-        out.append(Finding(ERROR, q.id, "an exam variant must not be public", str(q.path)))
+        out.append(Finding(ERROR, q.id, "an exam variant must not be public", str(q.path), "variant_public"))
     return out
 
 
 def detail(pool: Pool, qid: str) -> dict:
-    """Everything about one question, with its findings, for the preview."""
+    """Everything about one question for the preview and the editor, with its findings and file time."""
     question = pool.find(qid)
-    findings = [f.to_dict() for f in check_question(question, pool) + _variant_findings(question, pool)]
+    findings = [f.to_dict() for f in check_question(question, pool) + variant_findings(question, pool)]
     image = question.get("image")
     image_file, image_data = None, None
     if image:
@@ -130,6 +132,8 @@ def detail(pool: Pool, qid: str) -> dict:
         "pool_name": pool.settings.name,
         "languages": pool.settings.languages,
         "path": str(question.path),
+        # As text: nanoseconds exceed the integers JavaScript can hold exactly.
+        "mtime_ns": str(question.path.stat().st_mtime_ns),
         "data": plain(question.data),
         "findings": findings,
         "image_file": image_file,

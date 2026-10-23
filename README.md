@@ -4,7 +4,7 @@ A desktop app for paper exams: keep a bank of questions, build exams from it, re
 
 Markwise runs natively on Windows, needs neither Linux nor LaTeX, and is meant to be used by examiners without any technical background. Agents (for example an AI assistant that drafts questions) work with the same data through a command-line interface, and later through a local HTTP interface.
 
-> **Status (October 2026): phase 1 of the [plan](docs/concept.md#plan).** What works today is managing question pools from the command line (creating, listing, checking, importing and deleting questions, setting up modules) and the app window for setting up modules (creating a module with its question pool, opening module folders, adding pools, switching between modules) and for browsing questions (search, filters, preview with the check's findings). Editing questions in the window, building exams, printing, scanning and grading follow; [what is not there yet](#not-there-yet) lists them with their dates. This guide grows with every step, so it always describes what Markwise can do at the time.
+> **Status (October 2026): phase 1 of the [plan](docs/concept.md#plan).** What works today is managing question pools from the command line (creating, listing, checking, importing and deleting questions, setting up modules) and the app window for setting up modules (creating a module with its question pool, opening module folders, adding pools, switching between modules) and for working with questions (search, filters, a preview with the check's findings, creating and editing questions with a live preview and checks while typing). Releasing and retiring questions, building exams, printing, scanning and grading follow; [what is not there yet](#not-there-yet) lists them with their dates. This guide grows with every step, so it always describes what Markwise can do at the time.
 
 ## Contents
 
@@ -84,7 +84,26 @@ The **Questions** page lists every question in the pools of the current module. 
 - **Filters** narrow the list by pool (if the module has several), concept, level, status, type, use (practice or exam) and findings of the check (with errors, with warnings, without findings). The line below says how many questions are shown out of how many; **Reset filters** clears them.
 - A question with errors carries a red mark in the list, one with warnings a yellow one, and exam variants are marked **Exam**.
 - **Click** a question, or move through the list with the **arrow keys**, to see it on the right as it reads on paper: the text, any code and figure, the options with the correct ones ticked and the feedback below each, then the check's findings and the metadata (concept, level, exam variants of a practice question, coverage, pool, file). **DE** and **EN** switch the language of the preview.
-- **Open in editor** opens the question's file in the program Windows uses for YAML files. Editing in the window comes in the next step; until then, edit the file there, save it, and click **Reload**.
+- **Edit** opens the question in the editor (see below). **Open in editor** opens its file in the program Windows uses for YAML files instead; after saving there, click **Reload**.
+
+### Creating and editing questions
+
+**New question** on the Questions page asks for the pool (if the module has several), the concept and the type. A pool without a fixed list of concepts also accepts a new concept, written in lower-case letters, digits and hyphens (`code-systems`). Markwise creates the question with the next free identifier and opens it in the editor.
+
+The editor shows the form on the left and the question as it reads on paper on the right; the preview follows every keystroke.
+
+- **Type** switches between single and multiple choice (a free-text question stays free text). **Level** and **Use** (practice or exam) are buttons; an exam question can name the practice question it is a **variant of**.
+- **Deutsch** and **English** switch the language of all texts. A yellow dot on a language means a text is still missing there.
+- The **question text** grows with what you type. **Add code** adds a code block below it; **Figure** chooses an image from the pool's `images` folder.
+- Each **option** has a box on the left that marks it correct (for single choice, marking one unmarks the others), its text, and below it the feedback that explains why it is right or wrong. **Add option** adds one, **–** removes one.
+- **More details** holds where the material is taught and the misconception the question targets.
+- The **check** runs while you type; its findings appear under the preview in the language of the interface.
+
+**Save** (or **Ctrl+S**) writes only what you changed: every other line of the file stays as it was, including comments and fields Markwise does not know. **Discard** returns to the saved state, **Back to the list** asks before it drops unsaved changes. If someone else saved the same file in the meantime, for example a colleague in a shared folder, Markwise says so and lets you either load their version or save yours over it.
+
+A **reviewed** question goes back to **draft** when you change its content, because it then needs a new release.
+
+### Settings
 
 ### Settings
 
@@ -203,6 +222,16 @@ markwise question list "D:\Teaching\Statistics\pool" --findings errors     # que
 markwise question show "D:\Teaching\Statistics\pool" r-001
 ```
 
+Single fields can also be changed from the command line, with the same rules as in the window (only what changes is written; a reviewed question goes back to draft):
+
+```
+markwise question set "D:\Teaching\Statistics\pool" r-001 level apply
+markwise question set "D:\Teaching\Statistics\pool" r-001 stem.en "What does the slope tell you?"
+markwise question set "D:\Teaching\Statistics\pool" r-001 options.b.correct true
+```
+
+The command prints the check's findings for the question afterwards and ends with exit code 1 if there are errors.
+
 ## Checking a pool
 
 `markwise check <pool>` reads every question and reports three kinds of findings:
@@ -263,6 +292,7 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise question new <pool> --concept <concept> [--type single\|multiple\|free_text]` | create a question from the template of its type |
 | `markwise question list <pool or module> [--search] [--concept] [--status] [--type] [--level] [--public yes\|no] [--findings errors\|warnings\|none]` | list questions, searched and filtered; a module folder lists all its pools |
 | `markwise question show <pool> <id>` | print a question file |
+| `markwise question set <pool> <id> <field> <value>` | change one field by a dotted path (`level`, `stem.de`, `options.b.correct`); `true`, `false` and numbers are understood |
 | `markwise question delete <pool> <id> --yes [--used-in-exam]` | delete a draft, retire anything else |
 | `markwise check <pool> [--notes]` | check every question of a pool |
 | `markwise import <old pool.toml> <pool> [--update]` | import a question bank in the earlier format |
@@ -296,7 +326,7 @@ prints for each sheet whether the QR code, the orientation, the student number a
 
 | What | Planned for |
 |---|---|
-| Editing questions in the app window, with a live preview | 13 Nov 2026 |
+| Releasing questions (`reviewed_by`), creating exam variants from a practice question, retiring and deleting in the app window | 13 Nov 2026 |
 | Installer for a second computer | 27 Nov 2026 |
 | Building exams: blueprint, variants, exam and answer booklets as PDF | 27 Nov 2026 |
 | Reading scans, deciding doubtful cases, grading multiple-choice exams | early December 2026 |

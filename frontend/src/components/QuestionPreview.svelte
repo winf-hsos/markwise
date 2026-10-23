@@ -1,9 +1,9 @@
 <script>
   import Icon from "./Icon.svelte";
-  import { t, ui } from "../lib/i18n.svelte.js";
+  import { findingText, t, ui } from "../lib/i18n.svelte.js";
 
   // A read-only view of one question: text, options with the correct ones marked, findings and metadata.
-  let { question, variants = [], onopen } = $props();
+  let { question, variants = [], compact = false, onopen, onedit } = $props();
 
   const data = $derived(question.data);
   const languages = $derived(question.languages);
@@ -64,12 +64,13 @@
     {:else}
       <ul class="findings">
         {#each question.findings as f}
-          <li><span class="tag {severityClass[f.severity]}">{t(`sev.${f.severity}`)}</span>{f.message}</li>
+          <li><span class="tag {severityClass[f.severity]}">{t(`sev.${f.severity}`)}</span>{findingText(f)}</li>
         {/each}
       </ul>
     {/if}
   </section>
 
+  {#if !compact}
   <section class="preview-section">
     <dl class="meta">
       <dt>{t("q.meta.concept")}</dt><dd>{data.concept}</dd>
@@ -84,8 +85,9 @@
       <dt>{t("q.meta.file")}</dt><dd class="small">{question.path}</dd>
     </dl>
     <div class="preview-actions">
-      <button class="btn" onclick={() => onopen(question.path)}><Icon name="upload" />{t("q.openFile")}</button>
+      <button class="btn primary" onclick={() => onedit?.()}><Icon name="edit" />{t("edit.edit")}</button>
+      <button class="btn ghost" onclick={() => onopen?.(question.path)}><Icon name="upload" />{t("q.openFile")}</button>
     </div>
-    <p class="hint">{t("q.editHint")}</p>
   </section>
+  {/if}
 </article>

@@ -2,6 +2,8 @@
   import { untrack } from "svelte";
   import Icon from "../components/Icon.svelte";
   import QuestionPreview from "../components/QuestionPreview.svelte";
+  import QuestionEditor from "../components/QuestionEditor.svelte";
+  import NewQuestionDialog from "../components/NewQuestionDialog.svelte";
   import { call } from "../lib/api.js";
   import { errorText, t } from "../lib/i18n.svelte.js";
   import { app, showToast } from "../lib/state.svelte.js";
@@ -15,6 +17,8 @@
   let questions = $state([]);
   let selected = $state(null); // { pool, id }
   let detail = $state(null);
+  let editing = $state(null); // the detail of the question in the editor
+  let newOpen = $state(false);
 
   const blank = { search: "", pool: "", concept: "", level: "", status: "", type: "", use: "", findings: "" };
   let filter = $state({ ...blank });
@@ -41,6 +45,7 @@
     modulePath;
     selected = null;
     detail = null;
+    editing = null;
     untrack(() => {
       filter = { ...blank };
       load();
@@ -80,13 +85,32 @@
 
   // Up and down move through the list while the search field or the list has the focus.
   function onkeydown(event) {
-    if (!["ArrowDown", "ArrowUp"].includes(event.key) || event.target.closest?.("select, .preview")) return;
+    if (editing || !["ArrowDown", "ArrowUp"].includes(event.key) || event.target.closest?.("select, .preview")) return;
     if (!shown.length) return;
     event.preventDefault();
     const index = selectedRow ? shown.indexOf(selectedRow) : -1;
     const next = shown[Math.max(0, Math.min(shown.length - 1, index + (event.key === "ArrowDown" ? 1 : -1)))];
     show(next);
     document.getElementById(`q-${next.pool}-${next.id}`)?.scrollIntoView({ block: "nearest" });
+  }
+
+  // The practice questions of the pool being edited, for the choice "exam variant of".
+  const practice = $derived(editing ? questions.filter((q) => q.pool === editing.pool && q.public && q.type !== "free_text") : []);
+
+  async function edit() {
+    editing = await call("get_question", detail.pool, detail.id);
+  }
+
+  function created(fresh) {
+    showToast(t("newQ.created", { id: fresh.id }));
+    selected = { pool: fresh.pool, id: fresh.id };
+    editing = fresh;
+    load();
+  }
+
+  async function closeEditor() {
+    editing = null;
+    await load();
   }
 
   async function openFile(path) {
@@ -106,9 +130,12 @@
       <h1>{t("questions.title")}</h1>
       <p>{pools.length ? t("q.from", { pools: pools.map((p) => p.name).join(t("q.and")) }) : t("questions.lead")}</p>
     </div>
-    {#if module}
+    {#if module && !editing}
       <div class="actions">
         <button class="btn" onclick={load} disabled={loading}><Icon name="refresh" />{t("q.reload")}</button>
+        {#if pools.some((p) => p.exists)}
+          <button class="btn primary" onclick={() => (newOpen = true)}><Icon name="plus" />{t("q.new")}</button>
+        {/if}
       </div>
     {/if}
   </div>
@@ -122,6 +149,10 @@
     </div>
   {:else if error}
     <p class="form-error">{error}</p>
+  {:else if editing}
+    {#key editing.pool + editing.id}
+      <QuestionEditor question={editing} {practice} onclose={closeEditor} onsaved={() => load()} />
+    {/key}
   {:else if !loading && pools.length === 0}
     <div class="empty"><div class="mark"><Icon name="questions" /></div><p>{t("q.noPool")}</p></div>
   {:else}
@@ -193,7 +224,7 @@
       </div>
       <div class="q-preview-pane">
         {#if detail && selectedRow}
-          <QuestionPreview question={detail} variants={selectedRow.variants} onopen={openFile} />
+          <QuestionPreview question={detail} variants={selectedRow.variants} onopen={openFile} onedit={edit} />
         {:else}
           <div class="empty quiet"><p>{t("q.select")}</p></div>
         {/if}
@@ -201,3 +232,5 @@
     </div>
   {/if}
 </div>
+
+<NewQuestionDialog bind:open={newOpen} {pools} preset={{ pool: filter.pool, concept: filter.concept }} oncreated={created} />

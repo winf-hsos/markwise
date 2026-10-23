@@ -8,13 +8,15 @@ from __future__ import annotations
 
 import functools
 import os
+import re
 import sys
 from pathlib import Path
 
-from .. import __version__, catalog, settings as user_settings
+from .. import __version__, catalog, editing, settings as user_settings
 from ..importer import import_pool
 from ..module import EXAM_PATHS, MODULE_FILE, Module
 from ..pool import POOL_FILE, Pool, PoolSettings
+from ..question import TYPES, ConflictError
 
 
 class Refusal(Exception):
@@ -262,7 +264,8 @@ class Api:
                 continue
             pool = Pool.open(root)
             pools.append({"path": str(root), "name": pool.settings.name, "exists": True,
-                          "languages": pool.settings.languages, "concepts": pool.concepts()})
+                          "languages": pool.settings.languages, "concepts": pool.concepts(),
+                          "fixed_concepts": pool.settings.concepts is not None})
             rows.extend(catalog.rows(pool, language))
         return {"pools": pools, "questions": rows}
 
@@ -285,3 +288,40 @@ class Api:
             raise Refusal("file_outside", f"{path} is not in a pool of an opened module", path=path)
         if sys.platform == "win32":
             os.startfile(target)  # noqa: S606 (a question file inside an opened pool)
+
+    @_answer
+    def create_question(self, pool_path: str, concept: str, qtype: str) -> dict:
+        """A new question from the template of its type, in an existing or a new concept."""
+        pool = Pool.open(pool_path)
+        concept = (concept or "").strip()
+        if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", concept):
+            raise Refusal("concept_invalid", "a concept name uses lower-case letters, digits and hyphens", concept=concept)
+        if pool.settings.concepts is not None and concept not in pool.settings.concepts:
+            raise Refusal("concept_unknown", f"the pool lists its concepts, and {concept} is not among them", concept=concept)
+        if qtype not in TYPES:
+            raise Refusal("type_unknown", f"unknown type {qtype!r}")
+        question = pool.new_question(concept, qtype)
+        return catalog.detail(pool, question.id)
+
+    @_answer
+    def check_question(self, pool_path: str, qid: str, fields: dict) -> list:
+        """Findings for the fields as they stand in the editor, before saving."""
+        return editing.check_fields(Pool.open(pool_path), qid, fields)
+
+    @_answer
+    def save_question(self, pool_path: str, qid: str, fields: dict, mtime_ns: str | None = None,
+                      force: bool = False) -> dict:
+        pool = Pool.open(pool_path)
+        try:
+            question, changed = editing.save(pool, qid, fields, int(mtime_ns) if mtime_ns else None, force)
+        except ConflictError:
+            raise Refusal("conflict", "the file was changed elsewhere since you opened it", id=qid) from None
+        return {"changed": changed, "question": catalog.detail(pool, question.id)}
+
+    @_answer
+    def list_images(self, pool_path: str) -> list:
+        """Names of the figures in the pool's images folder, without extension."""
+        folder = Pool.open(pool_path).images_dir
+        if not folder.is_dir():
+            return []
+        return sorted({p.stem for p in folder.iterdir() if p.suffix.lower() in (".svg", ".png")})

@@ -7,12 +7,12 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__, catalog
+from . import __version__, catalog, editing
 from .checks import ERROR, check_pool, summarize
 from .importer import import_pool
 from .module import Module
 from .pool import Pool, PoolSettings
-from .question import TYPES
+from .question import TYPES, ConflictError
 
 
 def _print_json(data) -> None:
@@ -116,6 +116,19 @@ def cmd_question_new(args) -> int:
     else:
         print(f"{question.id} created: {question.path}")
     return 0
+
+
+def cmd_question_set(args) -> int:
+    pool = Pool.open(args.pool)
+    question, changed = editing.set_field(pool, args.id, args.field, args.value)
+    findings = [f for f in editing.check_fields(pool, args.id, {}) if f["severity"] != "note"]
+    if args.json:
+        _print_json({"id": question.id, "changed": changed, "status": question.status, "findings": findings})
+    else:
+        print(f"{question.id} {'changed' if changed else 'unchanged'}; status {question.status}")
+        for f in findings:
+            print(f"  {f['severity']:<8} {f['message']}")
+    return 1 if any(f["severity"] == "error" for f in findings) else 0
 
 
 def cmd_question_delete(args) -> int:
@@ -235,6 +248,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--concept", required=True)
     p.add_argument("--type", choices=TYPES, default="single")
     p.set_defaults(func=cmd_question_new)
+    p = question.add_parser("set", parents=[common], help="change one field, for example level, stem.de or options.b.correct")
+    p.add_argument("pool")
+    p.add_argument("id")
+    p.add_argument("field", help="dotted path: level, public, variant_of, stem.de, options.b.text.en, options.b.correct …")
+    p.add_argument("value", help="the new value; true, false and numbers are understood, everything else is text")
+    p.set_defaults(func=cmd_question_set)
     p = question.add_parser("delete", parents=[common], help="delete a draft, retire anything else")
     p.add_argument("pool")
     p.add_argument("id")
@@ -282,7 +301,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
-    except (FileNotFoundError, FileExistsError, KeyError, ValueError) as exc:
+    except (FileNotFoundError, FileExistsError, KeyError, ValueError, ConflictError) as exc:
         message = exc.args[0] if exc.args else str(exc)
         if getattr(args, "json", False):
             _print_json({"error": str(message)})
