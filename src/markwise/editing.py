@@ -22,7 +22,7 @@ from .question import FIELD_ORDER, ConflictError, Question
 EDITABLE = tuple(k for k in FIELD_ORDER if k not in ("id", "concept", "status", "reviewed_by"))
 OPTION_KEYS = ("id", "correct", "text", "feedback")
 # Fields that disappear from the file when the editor leaves them empty; all others always stay.
-OPTIONAL = ("variant_of", "coverage", "misconception", "session", "image", "code")
+OPTIONAL = ("variant_of", "coverage", "misconception", "session", "image", "code", "code_language")
 
 
 def _empty(value) -> bool:
@@ -81,6 +81,15 @@ def apply(data: CommentedMap, fields: dict) -> bool:
         if key not in fields:
             continue
         value = fields[key]
+        if key == "exam":
+            # Written only where it differs from its default (exam questions are those not public), so that
+            # files keep their shape until a question is meant for both.
+            public = fields.get("public", data.get("public") is True)
+            if value == (not public):
+                if "exam" in data:
+                    del data["exam"]
+                    changed = True
+                continue
         if key in OPTIONAL and _empty(value):
             if key in data:  # the editor emptied an optional field
                 del data[key]

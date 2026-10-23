@@ -133,3 +133,54 @@ def test_api_save_reports_a_conflict(pool):
     fields = fields_of(pool, "co-001")
     fields["level"] = "remember"
     assert api.save_question(str(pool.root), "co-001", fields, detail["mtime_ns"])["code"] == "conflict"
+
+
+# --- practice and exam at once ---------------------------------------------------------
+
+
+def test_exam_defaults_to_not_public(pool):
+    assert pool.find("co-001").exam is False and pool.find("co-002").exam is True
+
+
+def test_exam_is_written_only_where_it_differs_from_its_default(pool):
+    path = pool.find("co-001").path
+    fields = fields_of(pool, "co-001")
+    fields["exam"] = True  # practice and exam
+    editing.save(pool, "co-001", fields)
+    q = pool.find("co-001")
+    assert q.public and q.exam and list(q.data.keys()).index("exam") == list(q.data.keys()).index("public") + 1
+    fields["exam"] = False  # back to practice only: the field goes again
+    editing.save(pool, "co-001", fields)
+    assert "exam" not in pool.find("co-001").data and "exam:" not in path.read_text(encoding="utf-8")
+
+
+def test_checks_for_the_use_of_a_question(pool):
+    from markwise.checks import check_pool
+    q = pool.find("co-001")
+    q.data["exam"] = True
+    q.save()
+    codes = {f.code for f in check_pool(pool) if f.question == "co-001"}
+    assert "no_variant" not in codes  # a question for both needs no exam variant
+    q = pool.find("co-001")
+    q.data["public"] = False
+    q.data["exam"] = False
+    q.save()
+    assert "no_use" in {f.code for f in check_pool(pool) if f.question == "co-001"}
+
+
+def test_rows_carry_exam_and_modified(pool):
+    from markwise.catalog import rows
+    row = next(r for r in rows(pool) if r["id"] == "co-002")
+    assert row["exam"] is True and row["public"] is False and row["modified"] > 0
+
+
+def test_code_language_is_optional(pool):
+    fields = fields_of(pool, "co-001")
+    fields["code"] = "print('sky')"
+    fields["code_language"] = "python"
+    editing.save(pool, "co-001", fields)
+    assert pool.find("co-001").get("code_language") == "python"
+    fields["code"] = ""
+    fields["code_language"] = ""
+    editing.save(pool, "co-001", fields)
+    assert "code" not in pool.find("co-001").data and "code_language" not in pool.find("co-001").data

@@ -79,6 +79,10 @@ def _keep(row: dict, args) -> bool:
             return False
     if args.public is not None and row["public"] != (args.public == "yes"):
         return False
+    if args.use == "practice" and not row["public"]:
+        return False
+    if args.use == "exam" and not row["exam"]:
+        return False
     if args.findings == "errors" and not row["errors"]:
         return False
     if args.findings == "warnings" and not row["warnings"]:
@@ -86,6 +90,10 @@ def _keep(row: dict, args) -> bool:
     if args.findings == "none" and (row["errors"] or row["warnings"]):
         return False
     return not args.search or catalog.matches(row, args.search)
+
+
+def _use(row: dict) -> str:
+    return "both" if row["public"] and row["exam"] else "practice" if row["public"] else "exam"
 
 
 def cmd_question_list(args) -> int:
@@ -98,7 +106,7 @@ def cmd_question_list(args) -> int:
             stem = " ".join(row["stem"].split())
             stem = stem[:70] + ("…" if len(stem) > 70 else "")
             print(f"{marks} {row['id']:<10} {row['type']:<9} {row['level']:<10} {row['status']:<9} "
-                  f"{'public' if row['public'] else 'exam':<6} {row['concept']:<28} {stem}")
+                  f"{_use(row):<8} {row['concept']:<28} {stem}")
         print(_count(len(rows), "question") + ("  (E = errors, W = warnings; see markwise check)" if any(r["errors"] or r["warnings"] for r in rows) else ""))
     return 0
 
@@ -237,7 +245,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--status")
     p.add_argument("--type", choices=TYPES)
     p.add_argument("--level")
-    p.add_argument("--public", choices=("yes", "no"))
+    p.add_argument("--use", choices=("practice", "exam"), help="questions meant for practice, or for exams (both count for each)")
+    p.add_argument("--public", choices=("yes", "no"), help="only questions that are (not) shown for practice")
     p.set_defaults(func=cmd_question_list)
     p = question.add_parser("show", parents=[common])
     p.add_argument("pool")
@@ -251,7 +260,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = question.add_parser("set", parents=[common], help="change one field, for example level, stem.de or options.b.correct")
     p.add_argument("pool")
     p.add_argument("id")
-    p.add_argument("field", help="dotted path: level, public, variant_of, stem.de, options.b.text.en, options.b.correct …")
+    p.add_argument("field", help="dotted path: level, public, exam, variant_of, stem.de, code_language, options.b.text.en, options.b.correct …")
     p.add_argument("value", help="the new value; true, false and numbers are understood, everything else is text")
     p.set_defaults(func=cmd_question_set)
     p = question.add_parser("delete", parents=[common], help="delete a draft, retire anything else")

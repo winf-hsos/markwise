@@ -61,7 +61,7 @@
         (!filter.level || q.level === filter.level) &&
         (!filter.status || q.status === filter.status) &&
         (!filter.type || q.type === filter.type) &&
-        (!filter.use || (filter.use === "practice") === q.public) &&
+        (!filter.use || (filter.use === "practice" ? q.public : q.exam)) &&
         (!filter.findings ||
           (filter.findings === "errors" && q.errors > 0) ||
           (filter.findings === "warnings" && q.warnings > 0) ||
@@ -69,9 +69,40 @@
         words.every((w) => q.search.includes(w)),
     ),
   );
+  // Sorting: the order is kept per computer, so that the list opens the way it was left.
+  const SORTS = {
+    id: (a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }),
+    concept: (a, b) => a.concept.localeCompare(b.concept) || SORTS.id(a, b),
+    modified: (a, b) => b.modified - a.modified,
+    level: (a, b) => LEVELS.indexOf(a.level) - LEVELS.indexOf(b.level) || SORTS.id(a, b),
+    status: (a, b) => STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status) || SORTS.id(a, b),
+    findings: (a, b) => b.errors - a.errors || b.warnings - a.warnings || SORTS.id(a, b),
+  };
+  const LEVELS = ["remember", "understand", "apply"];
+  const STATUSES = ["draft", "reviewed", "piloted", "retired"];
+  let sort = $state(readSort());
+  function readSort() {
+    try {
+      const saved = localStorage.getItem("markwise-question-sort");
+      return saved in SORTS ? saved : "id";
+    } catch {
+      return "id";
+    }
+  }
+  $effect(() => {
+    try {
+      localStorage.setItem("markwise-question-sort", sort);
+    } catch {
+      /* no storage: the order is simply not kept */
+    }
+  });
+  const sorted = $derived([...shown].sort(SORTS[sort]));
+
   const concepts = $derived([...new Set(questions.filter((q) => !filter.pool || q.pool === filter.pool).map((q) => q.concept))].sort());
   const filtered = $derived(Object.entries(filter).some(([, v]) => v));
-  const selectedRow = $derived(selected ? questions.find((q) => q.id === selected.id && q.pool === selected.pool) : null);
+  // The selection counts only while the question is in the list: a filter or search that drops it empties the
+  // preview, and undoing the filter brings it back.
+  const selectedRow = $derived(selected ? (shown.find((q) => q.id === selected.id && q.pool === selected.pool) ?? null) : null);
 
   async function show(row) {
     selected = { pool: row.pool, id: row.id };
@@ -88,8 +119,8 @@
     if (editing || !["ArrowDown", "ArrowUp"].includes(event.key) || event.target.closest?.("select, .preview")) return;
     if (!shown.length) return;
     event.preventDefault();
-    const index = selectedRow ? shown.indexOf(selectedRow) : -1;
-    const next = shown[Math.max(0, Math.min(shown.length - 1, index + (event.key === "ArrowDown" ? 1 : -1)))];
+    const index = selectedRow ? sorted.indexOf(selectedRow) : -1;
+    const next = sorted[Math.max(0, Math.min(sorted.length - 1, index + (event.key === "ArrowDown" ? 1 : -1)))];
     show(next);
     document.getElementById(`q-${next.pool}-${next.id}`)?.scrollIntoView({ block: "nearest" });
   }
@@ -199,6 +230,12 @@
       <div class="q-count">
         <span>{t("q.count", { shown: shown.length, total: questions.length })}</span>
         {#if filtered}<button class="link-btn" onclick={() => (filter = { ...blank })}>{t("q.reset")}</button>{/if}
+        <label class="sort">
+          <span>{t("sort.label")}</span>
+          <select class="select select-small" bind:value={sort}>
+            {#each Object.keys(SORTS) as key}<option value={key}>{t(`sort.${key}`)}</option>{/each}
+          </select>
+        </label>
       </div>
     </div>
 
@@ -209,14 +246,14 @@
         {:else if shown.length === 0}
           <p class="muted pad">{t("q.noMatch")}</p>
         {/if}
-        {#each shown as q (q.pool + q.id)}
+        {#each sorted as q (q.pool + q.id)}
           <button id={`q-${q.pool}-${q.id}`} class="q-row" class:on={selectedRow === q} role="option" aria-selected={selectedRow === q} onclick={() => show(q)}>
             <span class="q-row-head">
               <span class="qid">{q.id}</span>
               <span class="q-concept">{q.concept}</span>
               {#if q.errors}<span class="tag red"><i class="dot"></i>{q.errors} {t("sev.error")}</span>
               {:else if q.warnings}<span class="tag warn"><i class="dot"></i>{t("sev.warning")}</span>{/if}
-              {#if !q.public}<span class="tag">{t("use.exam")}</span>{/if}
+              {#if q.exam}<span class="tag">{q.public ? t("use.both") : t("use.exam")}</span>{/if}
             </span>
             <span class="q-stem">{q.unreadable ? t("q.unreadable") : q.stem}</span>
           </button>

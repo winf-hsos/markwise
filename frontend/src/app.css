@@ -534,6 +534,32 @@ kbd.k { font: 11.5px var(--code); border: 1px solid var(--line); border-bottom-w
 .more summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 4px 0; }
 .more[open] { display: grid; gap: 12px; }
 
+/* --- code with highlighting -------------------------------------------------------- */
+.code-field { position: relative; border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--surface); }
+.code-field:focus-within { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-ring); }
+.code-layer, .code-input {
+  margin: 0; padding: 10px 12px; font: 12.5px/1.55 var(--code); tab-size: 4;
+  white-space: pre-wrap; overflow-wrap: anywhere; border: 0; letter-spacing: normal;
+}
+.code-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; color: var(--ink); background: transparent; }
+.code-input { position: relative; display: block; width: 100%; min-height: 64px; max-height: 420px; field-sizing: content;
+  resize: vertical; background: transparent; color: transparent; caret-color: var(--ink); outline: none; }
+.code-input::selection { background: rgba(31, 132, 82, 0.22); color: transparent; }
+.field-head { display: flex; align-items: center; gap: 12px; }
+.field-head > span { font-size: 12.5px; color: var(--muted); margin-right: auto; }
+.select-small { height: 28px; padding: 0 8px; font-size: 12.5px; }
+.sort { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
+.code-block code { font: inherit; }
+
+/* token colours, quiet and readable on the light grey of code blocks */
+.hljs-keyword, .hljs-built_in, .hljs-literal, .hljs-type { color: #8a3ab9; }
+.hljs-string, .hljs-regexp, .hljs-symbol { color: #1d7a46; }
+.hljs-number { color: #b5550b; }
+.hljs-comment, .hljs-quote { color: #7d8590; font-style: italic; }
+.hljs-title, .hljs-title.function_, .hljs-section { color: #1f5fbf; }
+.hljs-params, .hljs-variable, .hljs-attr, .hljs-property { color: #8c4a1f; }
+.hljs-meta, .hljs-doctag { color: #6a737d; }
+
 /* --- settings --------------------------------------------------------------- */
 .settings { display: grid; gap: 36px; max-width: 820px; }
 .switch { width: 40px; height: 22px; border-radius: 11px; background: #c9ced5; position: relative; flex: none; cursor: pointer; border: 0; }

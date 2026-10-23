@@ -28,8 +28,9 @@ concept: code-systems      # equals the folder name
 type: single               # single | multiple | free_text
 level: understand          # remember | understand | apply
 status: draft              # draft | reviewed | piloted | retired
-public: true               # true: practice question; false: reserved for exams
-variant_of: cs-001         # exam variants only: the practice question they vary
+public: true               # shown to students for practice
+exam: true                 # may be drawn for an exam; without the field: true exactly when public is false
+variant_of: cs-001         # exam variants only: the practice question they vary (then public: false)
 reviewed_by: []            # who released the question
 coverage: "Deck 08, frames 5 to 7"   # optional: where the material is taught
 misconception: code-equals-encryption # optional
@@ -43,6 +44,7 @@ stem:
 image: decision-levels     # optional: a file in images/ (.svg for the screen, .png for print)
 code: |                    # optional: a code block below the stem
   led.set_color(255, 0, 0)
+code_language: python      # optional: the language of the code, for highlighting; without it Markwise guesses
 
 options:                   # single and multiple only
   - id: a
@@ -56,6 +58,8 @@ options:                   # single and multiple only
 ```
 
 Identifiers are never reused: a question that is not a draft is retired instead of deleted, and its file stays. Only a deleted draft frees its identifier.
+
+A question can be meant for practice, for exams, or for both. An exam variant is never public, because a variant students have seen no longer tests whether they understood the practice question.
 
 `single` has exactly one correct option. `multiple` has at least one; one correct option is allowed, so that the number of correct answers cannot be guessed.
 
@@ -76,9 +80,9 @@ Fields Markwise does not know stay in the file when Markwise saves it, together 
 
 `markwise check <pool>` reports errors (the question cannot be used), warnings (it should be looked at) and notes (worth knowing):
 
-- errors: required fields missing or of the wrong kind, identifier differs from the file name, concept differs from the folder or is unknown, a language missing, too few or too many options, duplicate option ids, the number of correct options does not fit the type, image file missing, `variant_of` pointing to a missing question or another concept, a public exam variant, duplicate identifiers;
+- errors: required fields missing or of the wrong kind, identifier differs from the file name, concept differs from the folder or is unknown, a language missing, too few or too many options, duplicate option ids, the number of correct options does not fit the type, image file missing, `variant_of` pointing to a missing question or another concept, a public exam variant, a question meant neither for practice nor for exams, duplicate identifiers;
 - warnings: an option much longer than the others (it may give itself away), a feedback text or expected answer missing in a language;
-- notes: a practice question without an exam variant, a concept without questions.
+- notes: a question meant only for practice that has no exam variant, a concept without questions.
 
 Retired questions only have to stay readable.
 

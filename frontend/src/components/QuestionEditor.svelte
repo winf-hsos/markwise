@@ -2,6 +2,8 @@
   import { onMount, untrack } from "svelte";
   import Icon from "./Icon.svelte";
   import QuestionPreview from "./QuestionPreview.svelte";
+  import CodeField from "./CodeField.svelte";
+  import { CODE_LANGUAGES } from "../lib/highlight.js";
   import { call } from "../lib/api.js";
   import { errorText, t, ui } from "../lib/i18n.svelte.js";
   import { showToast } from "../lib/state.svelte.js";
@@ -12,8 +14,8 @@
   // The editor is created anew for every question (see {#key} in the page), so it starts from this snapshot.
   const initial = untrack(() => question);
 
-  const EDITABLE = ["type", "level", "public", "variant_of", "coverage", "misconception", "stem", "image", "code",
-    "options", "points", "half_points", "lines", "expected", "marking_notes"];
+  const EDITABLE = ["type", "level", "public", "exam", "variant_of", "coverage", "misconception", "stem", "image", "code",
+    "code_language", "options", "points", "half_points", "lines", "expected", "marking_notes"];
   const languages = initial.languages;
   const blankTexts = () => Object.fromEntries(languages.map((l) => [l, ""]));
 
@@ -25,7 +27,10 @@
       if (key in fields || (key === "stem")) fields[key] = { ...blankTexts(), ...(fields[key] ?? {}) };
     }
     // Optional fields as empty strings, so that inputs bind to them; the core drops empty optional fields.
-    for (const key of ["variant_of", "coverage", "misconception", "image", "code"]) fields[key] ??= "";
+    for (const key of ["variant_of", "coverage", "misconception", "image", "code", "code_language"]) fields[key] ??= "";
+    // Without the field, exam questions are exactly those not shown for practice.
+    fields.public = data.public === true;
+    fields.exam = typeof data.exam === "boolean" ? data.exam : !fields.public;
     for (const option of fields.options ?? []) {
       option.text = { ...blankTexts(), ...(option.text ?? {}) };
       option.feedback = { ...blankTexts(), ...(option.feedback ?? {}) };
@@ -105,9 +110,19 @@
     }
   }
 
-  function setUse(isPublic) {
-    fields.public = isPublic;
-    if (isPublic) fields.variant_of = "";
+  // Practice and exam can both be on; at least one stays on. A practice question is no exam variant.
+  function toggleUse(which) {
+    const next = { public: fields.public, exam: fields.exam, [which]: !fields[which] };
+    if (!next.public && !next.exam) return;
+    fields.public = next.public;
+    fields.exam = next.exam;
+    if (fields.public) fields.variant_of = "";
+  }
+
+  function removeCode() {
+    fields.code = "";
+    fields.code_language = "";
+    showCode = false;
   }
 
   async function save(force = false) {
@@ -202,9 +217,9 @@
         </div>
         <div class="field">
           <span>{t("edit.use")}</span>
-          <div class="seg" role="group">
-            <button type="button" class:on={fields.public} onclick={() => setUse(true)}>{t("use.practice")}</button>
-            <button type="button" class:on={!fields.public} onclick={() => setUse(false)}>{t("use.exam")}</button>
+          <div class="chips" role="group" aria-label={t("edit.use")}>
+            <button type="button" class="chip" class:on={fields.public} aria-pressed={fields.public} onclick={() => toggleUse("public")}>{t("use.practice")}</button>
+            <button type="button" class="chip" class:on={fields.exam} aria-pressed={fields.exam} onclick={() => toggleUse("exam")}>{t("use.exam")}</button>
           </div>
         </div>
         {#if !fields.public}
@@ -235,10 +250,17 @@
       </label>
 
       {#if showCode}
-        <label class="field">
-          <span>{t("edit.code")}</span>
-          <textarea class="input grow-text mono" rows="3" bind:value={fields.code} spellcheck="false"></textarea>
-        </label>
+        <div class="field">
+          <div class="field-head">
+            <span>{t("edit.code")}</span>
+            <select class="select select-small" bind:value={fields.code_language} aria-label={t("edit.codeLanguage")}>
+              <option value="">{t("edit.autoLanguage")}</option>
+              {#each CODE_LANGUAGES as [id, name]}<option value={id}>{name}</option>{/each}
+            </select>
+            <button type="button" class="link-btn" onclick={removeCode}>{t("edit.removeCode")}</button>
+          </div>
+          <CodeField bind:value={fields.code} language={fields.code_language} label={t("edit.code")} />
+        </div>
       {/if}
       <div class="form-row">
         {#if !showCode}

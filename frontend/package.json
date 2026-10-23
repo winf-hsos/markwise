@@ -13,6 +13,7 @@
     "vite": "^6.4.5"
   },
   "dependencies": {
-    "@fontsource/source-serif-4": "^5.3.1"
+    "@fontsource/source-serif-4": "^5.3.1",
+    "highlight.js": "^11.12.0"
   }
 }

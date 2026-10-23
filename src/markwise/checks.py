@@ -63,6 +63,10 @@ def check_question(q: Question, pool: Pool) -> list[Finding]:
         add(ERROR, "status_invalid", f"status '{q.status}' is not one of {', '.join(STATUSES)}", value=q.status)
     if "public" in q.data and not isinstance(q.data["public"], bool):
         add(ERROR, "public_bool", "public must be true or false")
+    if "exam" in q.data and not isinstance(q.data["exam"], bool):
+        add(ERROR, "exam_bool", "exam must be true or false")
+    elif q.data.get("public") is False and q.data.get("exam") is False:
+        add(ERROR, "no_use", "the question is meant neither for practice nor for exams")
 
     if q.status == "retired":
         return out  # retired questions only need to stay readable
@@ -160,7 +164,7 @@ def check_pool(pool: Pool, loaded: tuple | None = None) -> list[Finding]:
                 findings.append(Finding(ERROR, q.id, "a question cannot be a variant of itself", str(q.path), "variant_self"))
             if q.public:
                 findings.append(Finding(ERROR, q.id, "an exam variant must not be public", str(q.path), "variant_public"))
-        elif q.public and q.type in ("single", "multiple") and q.id not in has_variant:
+        elif q.public and not q.exam and q.type in ("single", "multiple") and q.id not in has_variant:
             findings.append(Finding(NOTE, q.id, "practice question without an exam variant", str(q.path), "no_variant"))
 
     known = set(pool.concepts())

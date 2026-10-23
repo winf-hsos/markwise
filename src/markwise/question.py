@@ -15,9 +15,9 @@ STATUSES = ("draft", "reviewed", "piloted", "retired")
 
 # Order of the known top-level fields when Markwise writes a new file.
 FIELD_ORDER = (
-    "id", "concept", "type", "level", "status", "public", "variant_of", "reviewed_by",
+    "id", "concept", "type", "level", "status", "public", "exam", "variant_of", "reviewed_by",
     "coverage", "misconception", "session",
-    "stem", "image", "code",
+    "stem", "image", "code", "code_language",
     "options",
     "points", "half_points", "lines", "expected", "marking_notes",
 )
@@ -64,7 +64,14 @@ class Question:
 
     @property
     def public(self) -> bool:
+        """Shown to students for practice."""
         return self.data.get("public") is True
+
+    @property
+    def exam(self) -> bool:
+        """May be drawn for an exam. Without the field: exactly the questions that are not public."""
+        value = self.data.get("exam")
+        return value if isinstance(value, bool) else not self.public
 
     @property
     def variant_of(self) -> str | None:
@@ -93,6 +100,7 @@ class Question:
             "level": self.level,
             "status": self.status,
             "public": self.public,
+            "exam": self.exam,
             "variant_of": self.variant_of,
             "path": str(self.path) if self.path else None,
         }

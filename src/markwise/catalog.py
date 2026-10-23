@@ -38,6 +38,7 @@ def _search_text(q: Question) -> str:
     if isinstance(stem, dict):
         parts.extend(str(v) for v in stem.values())
     parts.append(str(q.get("code") or ""))
+    parts.append(str(q.get("coverage") or ""))
     for option in q.options:
         if isinstance(option, dict):
             for key in ("text", "feedback"):
@@ -70,7 +71,9 @@ def rows(pool: Pool, lang: str = "de") -> list[dict]:
             "level": q.level,
             "status": q.status,
             "public": q.public,
+            "exam": q.exam,
             "variant_of": q.variant_of,
+            "modified": q.path.stat().st_mtime,
             "variants": variants.get(q.id, []),
             "stem": _text(q.get("stem"), lang, languages),
             "options": len(q.options),
@@ -82,7 +85,8 @@ def rows(pool: Pool, lang: str = "de") -> list[dict]:
     for e in load_errors:
         result.append({
             "id": e.path.stem, "pool": str(pool.root), "pool_name": pool.settings.name,
-            "concept": e.path.parent.name, "type": "", "level": "", "status": "", "public": False,
+            "concept": e.path.parent.name, "type": "", "level": "", "status": "", "public": False, "exam": False,
+            "modified": e.path.stat().st_mtime,
             "variant_of": None, "variants": [], "stem": "", "options": 0, "errors": 1, "warnings": 0,
             "path": str(e.path), "search": e.path.stem.lower(), "unreadable": e.message,
         })
@@ -134,6 +138,7 @@ def detail(pool: Pool, qid: str) -> dict:
         "path": str(question.path),
         # As text: nanoseconds exceed the integers JavaScript can hold exactly.
         "mtime_ns": str(question.path.stat().st_mtime_ns),
+        "modified": question.path.stat().st_mtime,
         "data": plain(question.data),
         "findings": findings,
         "image_file": image_file,

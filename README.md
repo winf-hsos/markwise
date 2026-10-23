@@ -82,8 +82,10 @@ The **Questions** page lists every question in the pools of the current module. 
 
 - **Search** looks for every word you type in the question text, the options, the feedback and the identifier, in all languages of the pool. `led farbe` finds questions that mention both.
 - **Filters** narrow the list by pool (if the module has several), concept, level, status, type, use (practice or exam) and findings of the check (with errors, with warnings, without findings). The line below says how many questions are shown out of how many; **Reset filters** clears them.
-- A question with errors carries a red mark in the list, one with warnings a yellow one, and exam variants are marked **Exam**.
-- **Click** a question, or move through the list with the **arrow keys**, to see it on the right as it reads on paper: the text, any code and figure, the options with the correct ones ticked and the feedback below each, then the check's findings and the metadata (concept, level, exam variants of a practice question, coverage, pool, file). **DE** and **EN** switch the language of the preview.
+- A question with errors carries a red mark in the list, one with warnings a yellow one; questions meant for exams are marked **Exam**, or **Practice and exam** if they serve both.
+- **Sort by** orders the list by identifier, concept, last change (newest first), level, status, or findings (questions with errors first). Markwise remembers the order on this computer.
+- When a filter or the search drops the question shown on the right, the preview empties; undoing the filter brings it back.
+- **Click** a question, or move through the list with the **arrow keys**, to see it on the right as it reads on paper: the text, any code and figure, the options with the correct ones ticked and the feedback below each, then the check's findings and the metadata (concept, level, exam variants of a practice question, coverage, pool, when the file was last changed, file). **DE** and **EN** switch the language of the preview.
 - **Edit** opens the question in the editor (see below). **Open in editor** opens its file in the program Windows uses for YAML files instead; after saving there, click **Reload**.
 
 ### Creating and editing questions
@@ -92,9 +94,9 @@ The **Questions** page lists every question in the pools of the current module. 
 
 The editor shows the form on the left and the question as it reads on paper on the right; the preview follows every keystroke.
 
-- **Type** switches between single and multiple choice (a free-text question stays free text). **Level** and **Use** (practice or exam) are buttons; an exam question can name the practice question it is a **variant of**.
+- **Type** switches between single and multiple choice (a free-text question stays free text). **Level** is a choice of three. **Use** has two switches, **Practice** and **Exam**, which can both be on; one of them always stays on. A question meant only for exams can name the practice question it is a **variant of**; an exam variant is never a practice question itself, because students would then know it.
 - **Deutsch** and **English** switch the language of all texts. A yellow dot on a language means a text is still missing there.
-- The **question text** grows with what you type. **Add code** adds a code block below it; **Figure** chooses an image from the pool's `images` folder.
+- The **question text** grows with what you type. **Add code** adds a code block below it, with syntax highlighting as you type; Markwise detects the language, or you choose it next to the field (Python, JavaScript, Java, C, C++, C#, SQL, R, Shell, JSON). **Tab** indents by four spaces, and **Remove code** takes the block out again. **Figure** chooses an image from the pool's `images` folder.
 - Each **option** has a box on the left that marks it correct (for single choice, marking one unmarks the others), its text, and below it the feedback that explains why it is right or wrong. **Add option** adds one, **–** removes one.
 - **More details** holds where the material is taught and the misconception the question targets.
 - The **check** runs while you type; its findings appear under the preview in the language of the interface.
@@ -118,7 +120,7 @@ When the interface is German, new modules file their exams under `01 - Semester\
 | What | Where it lives | Contains |
 |---|---|---|
 | **Question pool** | a folder of its own, for example next to the teaching material | `pool.toml` with the pool's settings and one YAML file per question, sorted into one folder per concept. No personal data, so a pool can be shared with colleagues. |
-| **Question** | `questions/<concept>/<id>.yaml` in a pool | the question text in every language of the pool, the options with feedback, the type, level, status, and whether it is a practice question or reserved for exams |
+| **Question** | `questions/<concept>/<id>.yaml` in a pool | the question text in every language of the pool, the options with feedback, the type, level, status, and whether it is meant for practice, for exams, or both |
 | **Module** | `module.toml` in the folder where you keep the module's exam documents | name, short name, examination regulations, and the pools the module draws from. One pool can serve several modules. |
 | **Exam** | a folder of its own below the module folder (coming in phase 2) | the frozen questions, participants, printouts, scans and results |
 
@@ -216,7 +218,7 @@ To find questions, use `question list` with filters, and `question show` to prin
 
 ```
 markwise question list "D:\Teaching\Statistics\pool" --concept regression --status draft
-markwise question list "D:\Teaching\Statistics\pool" --public no          # exam variants only
+markwise question list "D:\Teaching\Statistics\pool" --use exam          # questions meant for exams (also those for both)
 markwise question list "D:\Modules\Statistics 1" --search "slope line"   # all pools of a module, searched
 markwise question list "D:\Teaching\Statistics\pool" --findings errors     # questions the check rejects
 markwise question show "D:\Teaching\Statistics\pool" r-001
@@ -290,7 +292,7 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 |---|---|
 | `markwise pool init <folder> --name <name> [--languages de,en]` | create an empty pool |
 | `markwise question new <pool> --concept <concept> [--type single\|multiple\|free_text]` | create a question from the template of its type |
-| `markwise question list <pool or module> [--search] [--concept] [--status] [--type] [--level] [--public yes\|no] [--findings errors\|warnings\|none]` | list questions, searched and filtered; a module folder lists all its pools |
+| `markwise question list <pool or module> [--search] [--concept] [--status] [--type] [--level] [--use practice\|exam] [--public yes\|no] [--findings errors\|warnings\|none]` | list questions, searched and filtered; a module folder lists all its pools |
 | `markwise question show <pool> <id>` | print a question file |
 | `markwise question set <pool> <id> <field> <value>` | change one field by a dotted path (`level`, `stem.de`, `options.b.correct`); `true`, `false` and numbers are understood |
 | `markwise question delete <pool> <id> --yes [--used-in-exam]` | delete a draft, retire anything else |

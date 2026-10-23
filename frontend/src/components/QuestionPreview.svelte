@@ -1,5 +1,6 @@
 <script>
   import Icon from "./Icon.svelte";
+  import { highlight } from "../lib/highlight.js";
   import { findingText, t, ui } from "../lib/i18n.svelte.js";
 
   // A read-only view of one question: text, options with the correct ones marked, findings and metadata.
@@ -12,6 +13,10 @@
 
   const pick = (value) => (value && typeof value === "object" ? value[shown] ?? "" : value ?? "");
   const severityClass = { error: "red", warning: "warn", note: "" };
+  const useKey = (d) => {
+    const exam = typeof d.exam === "boolean" ? d.exam : !d.public;
+    return d.public && exam ? "use.both" : d.public ? "use.practice" : "use.exam";
+  };
 </script>
 
 <article class="preview">
@@ -20,7 +25,7 @@
       <span class="qid">{data.id}</span>
       <span class="tag">{t(`type.${data.type}`)}</span>
       <span class="tag" class:ok={data.status === "reviewed" || data.status === "piloted"}>{t(`status.${data.status}`)}</span>
-      <span class="tag">{data.public ? t("use.practice") : t("use.exam")}</span>
+      <span class="tag">{t(useKey(data))}</span>
     </div>
     {#if languages.length > 1}
       <div class="seg seg-small" role="group">
@@ -34,7 +39,7 @@
   {#if data.variant_of}<p class="variant-note">{t("q.variantOf", { id: data.variant_of })}</p>{/if}
 
   <div class="stem">{pick(data.stem)}</div>
-  {#if data.code}<pre class="code-block">{data.code}</pre>{/if}
+  {#if data.code}<pre class="code-block hljs"><code>{@html highlight(data.code, data.code_language)}</code></pre>{/if}
   {#if question.image_data}
     <figure class="figure"><img src={question.image_data} alt={t("q.image")} /></figure>
   {/if}
@@ -82,6 +87,7 @@
       {#if data.misconception}<dt>{t("q.meta.misconception")}</dt><dd>{data.misconception}</dd>{/if}
       {#if data.reviewed_by?.length}<dt>{t("q.meta.reviewed")}</dt><dd>{data.reviewed_by.join(", ")}</dd>{/if}
       <dt>{t("q.meta.pool")}</dt><dd>{question.pool_name}</dd>
+      {#if question.modified}<dt>{t("q.meta.modified")}</dt><dd>{new Date(question.modified * 1000).toLocaleString(ui.lang === "de" ? "de-DE" : "en-GB", { dateStyle: "medium", timeStyle: "short" })}</dd>{/if}
       <dt>{t("q.meta.file")}</dt><dd class="small">{question.path}</dd>
     </dl>
     <div class="preview-actions">
