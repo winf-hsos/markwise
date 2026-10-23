@@ -34,6 +34,8 @@ class Settings:
     theme: str = "markwise"
     examiner: str = ""
     nav_collapsed: bool = False
+    llm_enabled: bool = False  # help from a language model, off until the examiner switches it on
+    llm_model: str = ""
     current_module: str = ""
     modules: list[str] = field(default_factory=list)  # module folders, most recent first
     pools: list[str] = field(default_factory=list)    # pool folders opened on their own, most recent first

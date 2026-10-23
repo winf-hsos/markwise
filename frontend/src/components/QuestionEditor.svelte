@@ -4,12 +4,14 @@
   import QuestionPreview from "./QuestionPreview.svelte";
   import Menu from "./Menu.svelte";
   import TimeChoice from "./TimeChoice.svelte";
+  import DistractorDialog from "./DistractorDialog.svelte";
+  import { inline } from "../lib/inline.js";
   import CodeDialog from "./CodeDialog.svelte";
   import ImageDialog from "./ImageDialog.svelte";
   import { CODE_LANGUAGES, detectLanguage } from "../lib/highlight.js";
   import { call } from "../lib/api.js";
   import { errorText, t, ui } from "../lib/i18n.svelte.js";
-  import { showToast } from "../lib/state.svelte.js";
+  import { llmReady, showToast } from "../lib/state.svelte.js";
 
   // Edits one question: form on the left, the question as it reads on the right, checked while typing.
   // `practice` lists the practice questions of the same pool for the variant choice.
@@ -152,6 +154,37 @@
     if (fields.public) fields.variant_of = "";
   }
 
+  // Help from the language model, only when it is switched on in the settings.
+  let review = $state(null); // { lang, findings, suggestion } for the question text
+  let reviewing = $state(false);
+  let distractorsOpen = $state(false);
+
+  async function checkStem() {
+    reviewing = true;
+    try {
+      const answer = await call("assist_check_stem", $state.snapshot(fields), lang);
+      review = { lang, ...answer };
+    } catch (err) {
+      showToast(errorText(err));
+    } finally {
+      reviewing = false;
+    }
+  }
+
+  function takeSuggestion() {
+    fields.stem[review.lang] = review.suggestion;
+    review = null;
+  }
+
+  function addDistractors(chosen) {
+    for (const d of chosen) {
+      const used = new Set(fields.options.map((o) => o.id));
+      const id = "abcdefghij".split("").find((c) => !used.has(c));
+      if (!id) break;
+      fields.options.push({ id, correct: false, text: { ...blankTexts(), ...d.text }, feedback: { ...blankTexts(), ...d.feedback } });
+    }
+  }
+
   function removeCode() {
     fields.code = "";
     fields.code_language = "";
@@ -292,10 +325,37 @@
         </div>
       {/if}
 
-      <label class="field">
-        <span>{t("edit.stem")}</span>
-        <textarea class="input grow-text" rows="3" bind:value={fields.stem[lang]}></textarea>
-      </label>
+      <div class="field">
+        <div class="field-head">
+          <label for="stem-input">{t("edit.stem")}</label>
+          {#if llmReady()}
+            <button type="button" class="btn ghost btn-small" onclick={checkStem} disabled={reviewing || !fields.stem[lang]?.trim()}
+              title={t("assist.checkHint")}><Icon name="spark" />{reviewing ? t("assist.working") : t("assist.check")}</button>
+          {/if}
+        </div>
+        <textarea id="stem-input" class="input grow-text" rows="3" bind:value={fields.stem[lang]}></textarea>
+        {#if review && review.lang === lang}
+          <div class="assist-review">
+            {#if review.findings.length}
+              <ul>{#each review.findings as f}<li>{f}</li>{/each}</ul>
+            {:else}
+              <p class="check-ok"><Icon name="check" />{t("assist.nothing")}</p>
+            {/if}
+            {#if review.suggestion.trim() && review.suggestion.trim() !== fields.stem[lang].trim()}
+              <div class="assist-suggestion">
+                <span class="hint">{t("assist.suggestion")}</span>
+                <div class="stem">{@html inline(review.suggestion)}</div>
+              </div>
+              <div class="assist-actions">
+                <button type="button" class="btn primary btn-small" onclick={takeSuggestion}>{t("attach.apply")}</button>
+                <button type="button" class="btn ghost btn-small" onclick={() => (review = null)}>{t("assist.dismiss")}</button>
+              </div>
+            {:else}
+              <div class="assist-actions"><button type="button" class="btn ghost btn-small" onclick={() => (review = null)}>{t("dialog.close")}</button></div>
+            {/if}
+          </div>
+        {/if}
+      </div>
 
       <div class="attachments">
         {#if fields.code}
@@ -347,9 +407,14 @@
             </li>
           {/each}
         </ol>
-        {#if fields.options.length < 10}
-          <button type="button" class="btn ghost" onclick={addOption}><Icon name="plus" />{t("edit.addOption")}</button>
-        {/if}
+        <div class="option-tools">
+          {#if fields.options.length < 10}
+            <button type="button" class="btn ghost" onclick={addOption}><Icon name="plus" />{t("edit.addOption")}</button>
+          {/if}
+          {#if llmReady() && fields.options.some((o) => o.correct) && fields.options.length < 10}
+            <button type="button" class="btn ghost" onclick={() => (distractorsOpen = true)}><Icon name="spark" />{t("assist.distractors")}</button>
+          {/if}
+        </div>
       {:else}
         <div class="form-row">
           <label class="field"><span>{t("edit.lines")}</span>
@@ -369,6 +434,8 @@
       </details>
     </form>
 
+    <DistractorDialog bind:open={distractorsOpen} pool={base.pool} {fields} {lang}
+      room={Math.max(1, 5 - fields.options.filter((o) => o.text?.[lang]?.trim()).length)} onapply={addDistractors} />
     <CodeDialog bind:open={codeOpen} code={fields.code} language={fields.code_language} onapply={applyCode} />
     <ImageDialog bind:open={imageOpen} pool={base.pool} current={fields.images} columns={fields.image_columns} onapply={applyImages} />
 

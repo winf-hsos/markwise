@@ -11,7 +11,7 @@ import os
 import sys
 from pathlib import Path
 
-from .. import __version__, catalog, editing, lifecycle, settings as user_settings
+from .. import __version__, assist, catalog, editing, lifecycle, settings as user_settings
 from ..importer import import_pool
 from ..module import EXAM_PATHS, MODULE_FILE, Module
 from ..pool import POOL_FILE, Pool, PoolSettings
@@ -432,3 +432,50 @@ class Api:
         """The name Markwise notes on releases and changes."""
         from ..question import default_author
         return default_author()
+
+    # --- help from a language model ----------------------------------------------------
+
+    @staticmethod
+    def _assist(step, *args):
+        try:
+            return step(*args)
+        except assist.AssistError as exc:
+            raise Refusal(exc.code, str(exc)) from None
+
+    @_answer
+    def llm_status(self) -> dict:
+        current = user_settings.load()
+        try:
+            has_key = bool(assist.get_key())
+        except Exception:  # no credential store available
+            has_key = False
+        return {"enabled": current.llm_enabled, "model": current.llm_model, "has_key": has_key}
+
+    @_answer
+    def set_llm_key(self, key: str) -> list:
+        """Check the key with the provider, store it in the Windows credential store, return the models."""
+        key = (key or "").strip()
+        if not key:
+            raise Refusal("llm_no_key", "enter an API key")
+        models = self._assist(assist.list_models, key)
+        assist.set_key(key)
+        return models
+
+    @_answer
+    def remove_llm_key(self) -> None:
+        assist.remove_key()
+
+    @_answer
+    def llm_models(self) -> list:
+        return self._assist(assist.list_models)
+
+    @_answer
+    def assist_check_stem(self, fields: dict, lang: str) -> dict:
+        answer_lang = user_settings.load().language
+        return self._assist(assist.check_stem, fields, lang, answer_lang)
+
+    @_answer
+    def assist_distractors(self, pool_path: str, fields: dict, count: int) -> list:
+        pool = Pool.open(pool_path)
+        answer_lang = user_settings.load().language
+        return self._assist(assist.distractors, fields, pool.settings.languages, max(1, min(int(count), 6)), answer_lang)

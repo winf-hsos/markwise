@@ -136,6 +136,8 @@ The editor shows the form on the left and the question as it reads on paper on t
 
   What a question carries appears as a small card below the text, with **Edit** or **Change** and **Remove**.
 - Each **option** has a box on the left that marks it correct (for single choice, marking one unmarks the others), its text, and below it the feedback that explains why it is right or wrong. **Add option** adds one, **–** removes one.
+- With the language model switched on (see [Help from a language model](#help-from-a-language-model)), **Check** next to the label of the question text sends the text to the model. Its findings appear below the field, with a corrected wording if it has one; **Apply** puts the wording into the field, **Dismiss** leaves the text as it is. Nothing is saved until you save.
+- Likewise, **Propose wrong answers** below the options (once at least one option is marked correct) asks the model for plausible but wrong options, each with feedback in every language of the pool and the misconception it plays on. Choose how many, tick the ones you want and **Add selected**; they are added as wrong options, which you can then edit like any other. **New proposals** asks again.
 - **More details** holds where the material is taught and the misconception the question targets.
 - The **check** runs while you type; its findings appear under the preview in the language of the interface.
 
@@ -149,11 +151,19 @@ Every page keeps its state per module when you leave it: on **Questions** the se
 
 ### Settings
 
-### Settings
-
 **Settings** switches the interface between German and English, chooses the **colour scheme** (Markwise green, or Hochschule Osnabrück with its blue #009ee3; green for correct, red for errors and yellow for warnings stay the same in every scheme) and stores your name, which Markwise notes on questions you create, change or release (without a name, it takes your Windows user name). **Ctrl+B** collapses and expands the side menu. Your settings and the list of modules live in `%APPDATA%\Markwise\settings.toml`, on your computer only and never in a pool or module folder.
 
 When the interface is German, new modules file their exams under `01 - Semester\<semester>\Klausur\`, otherwise under `…\Exam\`; `exam_path` in `module.toml` changes that.
+
+### Help from a language model
+
+Markwise can ask a language model from OpenAI to check question texts and to propose wrong answers. It is off until you switch it on, and it needs an API key of your own from OpenAI (platform.openai.com, under API keys; using it costs a little per request).
+
+1. In **Settings**, under **Language model**, switch on **Help from a language model**.
+2. Paste the key into **OpenAI API key** and click **Check and save**. Markwise asks OpenAI whether the key works and only then stores it, in the Windows credential store (Control Panel → Credential Manager → Windows Credentials, entry *Markwise*), never in a file. **Remove key** deletes it from there.
+3. Under **Model**, choose one of the models your key may use. Markwise suggests a small, inexpensive one; a larger model checks more thoroughly but takes longer and costs more.
+
+The editor then shows **Check** and **Propose wrong answers** (see [Creating and editing questions](#creating-and-editing-questions)). Only the text, code, options and feedback of the question you are working on are sent, and only when you press one of the buttons; never names, participants, scans or grades, and never who wrote the question. The model's answer is a suggestion: nothing changes until you apply it and save.
 
 **Exams** shows what will be there and when.
 
@@ -352,6 +362,11 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise module show <folder>` | show a module's pools and exams |
 | `markwise module add-pool <folder> <pool>` | let a module draw from another pool |
 | `markwise module remove-pool <folder> <pool>` | detach a pool from a module; the pool stays |
+| `markwise llm key [--key <key>]` | check an OpenAI API key and store it in the Windows credential store (without `--key` it is asked for without showing it) |
+| `markwise llm models` | list the models the stored key may use |
+| `markwise llm use [--model <model>] [--off]` | switch the language model on (and choose the model) or off |
+| `markwise assist check <pool> <id> [--lang de]` | let the model check a question text; prints findings and a suggestion, changes nothing |
+| `markwise assist distractors <pool> <id> [--count 3]` | let the model propose wrong options with feedback; changes nothing |
 | `markwise app` | open the app window |
 | `markwise shortcut [--folder <folder>]` | create the Start menu entry (or put it into another folder) |
 | `markwise serve [--port 8765]` | serve the core on 127.0.0.1 for developing the interface in a browser |
@@ -382,11 +397,11 @@ prints for each sheet whether the QR code, the orientation, the student number a
 | Building exams: blueprint, variants, exam and answer booklets as PDF | 27 Nov 2026 |
 | Reading scans, deciding doubtful cases, grading multiple-choice exams | early December 2026 |
 | Item analysis, exports for the examinations office, inspection copies | 15 Jan 2027 |
-| Free-text questions in exams, marking on screen, a language model for reviewing questions | after the first exams in early 2027 |
+| Free-text questions in exams, marking on screen; more help from a language model (translating, checking a whole question, other providers and local models) | after the first exams in early 2027 |
 
 ## Privacy
 
-Markwise runs on your computer and sends nothing anywhere. Question pools contain no personal data. Names, student numbers, scans and grades exist only in the exam folders below a module folder, which belongs where only authorised people have access, as exam documents do today.
+Markwise runs on your computer and sends nothing anywhere, unless you switch on the language model; then the text of the question you are working on goes to OpenAI when you press **Check** or **Propose wrong answers**, and nothing else. Question pools contain no personal data. Names, student numbers, scans and grades exist only in the exam folders below a module folder, which belongs where only authorised people have access, as exam documents do today.
 
 This repository holds code, documentation and invented test data only. Real exams, scans, participant lists and grades never go into it.
 

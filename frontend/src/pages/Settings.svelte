@@ -2,6 +2,7 @@
   import { t } from "../lib/i18n.svelte.js";
   import { app, updateSettings } from "../lib/state.svelte.js";
   import { transportName } from "../lib/api.js";
+  import LanguageModelSettings from "../components/LanguageModelSettings.svelte";
 
   let examiner = $state(app.settings?.examiner ?? "");
   let saved = $state(false);
@@ -68,6 +69,8 @@
         </form>
       </div>
     </section>
+
+    <LanguageModelSettings />
 
     <section>
       <h2 class="section-title">{t("settings.about")}</h2>

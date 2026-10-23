@@ -7,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__, catalog, editing, lifecycle
+from . import __version__, assist, catalog, editing, lifecycle
 from .checks import ERROR, check_pool, summarize
 from .importer import import_pool
 from .module import Module
@@ -217,6 +217,60 @@ def cmd_concept_delete(args) -> int:
     return 0
 
 
+def cmd_llm_key(args) -> int:
+    import getpass
+    key = args.key or getpass.getpass("OpenAI API key (not shown): ")
+    models = assist.list_models(key.strip())
+    assist.set_key(key.strip())
+    print(json.dumps({"stored": True, "models": len(models)}) if args.json
+          else f"Key stored in the Windows credential store; {len(models)} models available")
+    return 0
+
+
+def cmd_llm_models(args) -> int:
+    models = assist.list_models()
+    print(json.dumps(models) if args.json else "\n".join(models))
+    return 0
+
+
+def cmd_llm_use(args) -> int:
+    from . import settings as user_settings
+    current = user_settings.load()
+    current.update({"llm_enabled": not args.off, **({"llm_model": args.model} if args.model else {})})
+    user_settings.save(current)
+    state = "off" if args.off else f"on, model {current.llm_model or '(none chosen)'}"
+    print(json.dumps({"enabled": current.llm_enabled, "model": current.llm_model}) if args.json else f"Language model {state}")
+    return 0
+
+
+def cmd_assist_check(args) -> int:
+    from .catalog import plain
+    pool = Pool.open(args.pool)
+    lang = args.lang or pool.settings.languages[0]
+    answer = assist.check_stem(plain(pool.find(args.id).data), lang, args.lang or "de")
+    if args.json:
+        _print_json(answer)
+    else:
+        for finding in answer["findings"] or ["(nothing to change)"]:
+            print(f"- {finding}")
+        print(f"\nSuggestion ({lang}):\n{answer['suggestion']}")
+    return 0
+
+
+def cmd_assist_distractors(args) -> int:
+    from .catalog import plain
+    pool = Pool.open(args.pool)
+    proposals = assist.distractors(plain(pool.find(args.id).data), pool.settings.languages, args.count, "de")
+    if args.json:
+        _print_json(proposals)
+    else:
+        for i, d in enumerate(proposals, 1):
+            for lang in pool.settings.languages:
+                print(f"{i}. [{lang}] {d['text'].get(lang, '')}\n   {d['feedback'].get(lang, '')}")
+            print(f"   misconception: {d['misconception']}")
+    return 0
+
+
 def cmd_module_init(args) -> int:
     module = Module.create(args.folder, args.name, args.short_name, pools=args.pool or [])
     print(json.dumps({"module": str(module.root)}) if args.json else f"Module created in {module.root}")
@@ -372,6 +426,30 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("id")
     p.set_defaults(func=cmd_concept_delete)
 
+    llm = sub.add_parser("llm", help="set up help from a language model (OpenAI)").add_subparsers(dest="action", required=True)
+    p = llm.add_parser("key", parents=[common], help="check and store the API key in the Windows credential store")
+    p.add_argument("--key", help="the key (otherwise asked for without showing it)")
+    p.set_defaults(func=cmd_llm_key)
+    p = llm.add_parser("models", parents=[common], help="list the models the key can use")
+    p.set_defaults(func=cmd_llm_models)
+    p = llm.add_parser("use", parents=[common], help="switch the help on (with a model) or off")
+    p.add_argument("--model")
+    p.add_argument("--off", action="store_true")
+    p.set_defaults(func=cmd_llm_use)
+
+    helper = sub.add_parser("assist", help="suggestions from the language model; nothing is changed").add_subparsers(
+        dest="action", required=True)
+    p = helper.add_parser("check", parents=[common], help="check a question text and propose a better one")
+    p.add_argument("pool")
+    p.add_argument("id")
+    p.add_argument("--lang", help="language of the question text to check (default: the pool's first)")
+    p.set_defaults(func=cmd_assist_check)
+    p = helper.add_parser("distractors", parents=[common], help="propose wrong options with feedback")
+    p.add_argument("pool")
+    p.add_argument("id")
+    p.add_argument("--count", type=int, default=3)
+    p.set_defaults(func=cmd_assist_distractors)
+
     module = sub.add_parser("module", help="create and show modules").add_subparsers(dest="action", required=True)
     p = module.add_parser("init", parents=[common], help="create module.toml in the module folder")
     p.add_argument("folder")
@@ -412,7 +490,8 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
-    except (FileNotFoundError, FileExistsError, KeyError, ValueError, ConflictError, lifecycle.LifecycleError) as exc:
+    except (FileNotFoundError, FileExistsError, KeyError, ValueError, ConflictError, lifecycle.LifecycleError,
+            assist.AssistError) as exc:
         message = exc.args[0] if exc.args else str(exc)
         if getattr(args, "json", False):
             _print_json({"error": str(message)})

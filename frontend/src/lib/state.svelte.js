@@ -9,6 +9,7 @@ export const app = $state({
   info: null,
   settings: null,
   workspace: { modules: [], pools: [] },
+  llm: null, // { enabled, model, has_key }
 });
 
 export async function load() {
@@ -20,11 +21,23 @@ export async function load() {
     ui.lang = settings.language;
     applyTheme(settings.theme);
     app.error = null;
+    loadLlm();
   } catch (err) {
     app.error = err.message;
   }
   app.loaded = true;
 }
+
+// Whether help from the language model can be offered: switched on, a key stored, a model chosen.
+export async function loadLlm() {
+  try {
+    app.llm = await call("llm_status");
+  } catch {
+    app.llm = null;
+  }
+}
+
+export const llmReady = () => Boolean(app.llm?.enabled && app.llm?.has_key && app.llm?.model);
 
 export async function updateSettings(changes) {
   app.settings = await call("update_settings", changes);

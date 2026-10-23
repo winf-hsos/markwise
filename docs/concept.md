@@ -136,17 +136,17 @@ For multiple-choice exams under § 5 (3) of the general examination regulations,
 | | look at the item analysis, remove odd questions if needed, release grades, export | about 15 min |
 | Inspection | open the participant's inspection copy | a few minutes |
 
-## Optional help from a language model (later)
+## Optional help from a language model
 
-The first version has no language model at all. The design leaves room for one: the core gets a narrow provider interface, and every place where a model could help works fully without it.
+Every place where a model could help works fully without it. The core has a narrow provider module (`assist.py`); since October 2026 it speaks to OpenAI, and the first two uses below are built: checking a question text with a proposed correction, and proposing wrong answers with feedback. The model answers in a fixed JSON schema, so that its suggestions can be shown and applied field by field.
 
-Once it comes, examiners who want it switch it on in the settings and enter an API key there; the key is stored in the Windows credential store, never in question files or exam folders. Every suggestion from the model is shown as a suggestion and has to be accepted by a person; nothing changes without that click. The provider is configurable: OpenAI and Anthropic through their APIs, and a model running locally on the examiner's computer (for example through Ollama), so that nothing has to leave the computer. **External providers are used only for work on questions**, which contain no personal data. Everything that comes from a scan (tick crops, handwriting) goes to a locally running model or nowhere.
+Examiners who want it switch it on in the settings, enter an API key there and choose a model from those the key may use; the key is stored in the Windows credential store, never in question files or exam folders. Every suggestion from the model is shown as a suggestion and has to be accepted by a person; nothing changes without that click. The provider is to become configurable: OpenAI (built) and Anthropic through their APIs, and a model running locally on the examiner's computer (for example through Ollama), so that nothing has to leave the computer. **External providers are used only for work on questions**, which contain no personal data. Everything that comes from a scan (tick crops, handwriting) goes to a locally running model or nowhere.
 
 Where it helps, the first use case first:
 
-- **Reviewing and fixing questions.** The model checks a question against the writing rules: is the stem clear without the options, are the distractors plausible, does an option give itself away by length or wording, does the level fit, do the German and English versions say the same. It explains its findings and proposes a corrected wording, which the examiner accepts or rejects.
+- **Reviewing and fixing questions** (the question text is built; the whole question is next). The model checks a question against the writing rules: is the stem clear without the options, are the distractors plausible, does an option give itself away by length or wording, does the level fit, do the German and English versions say the same. It explains its findings and proposes a corrected wording, which the examiner accepts or rejects.
 - **Second opinion on doubtful marks**, with a local model only. For an uncertain tick or point strip, the model says how it reads the image crop and why. The examiner still decides.
-- **Drafting.** Translating a question into the other language, proposing additional distractors, drafting the expected answer and marking notes for a free-text question.
+- **Drafting.** Proposing additional distractors (built), translating a question into the other language, drafting the expected answer and marking notes for a free-text question.
 - **Transcribing handwriting for marking.** For free-text answers the model turns the handwriting into typed text, shown next to the scanned original, so that hard-to-read answers can be marked faster and more fairly. The original always stays visible and is what counts; words the model is unsure about are highlighted. This needs the answers scanned before they are marked, so it comes together with marking on screen (decision 6): scan once, read the transcript next to the original, enter the points by keyboard. Handwriting is personal data even without a name, so this feature works only with a locally running model.
 - **Reading the item analysis.** For a question that behaved oddly in an exam, the model suggests possible reasons (for example two defensible answers) as a starting point for the examiner's decision.
 
@@ -175,7 +175,7 @@ The repository holds code, documentation and invented test data only. Real exams
 | 4 Test exams | Dec 2026 | test exams in the modules that follow, results checked by hand against the sheets; fixes from what they show |
 | 5 Output | 15 Jan 2027 | item analysis, exports, inspection copies; fixes from the colleague's tests |
 | 6 First real exams | 21 Jan and 5 Feb 2027 | multiple-choice exams "Applications of AI" and "Digitization and Programming" |
-| afterwards | | free-text questions, marking on screen, language model |
+| afterwards | | free-text questions, marking on screen, further help from a language model |
 
 ## Decisions
 
