@@ -34,6 +34,10 @@
         {/each}
       </div>
     {/if}
+    {#if !compact}
+      <button class="icon-btn" title={t("q.openFile")} aria-label={t("q.openFile")} onclick={() => onopen?.(question.path)}><Icon name="upload" /></button>
+      <button class="btn primary" onclick={() => onedit?.()}><Icon name="edit" />{t("edit.edit")}</button>
+    {/if}
   </header>
 
   {#if data.variant_of}<p class="variant-note">{t("q.variantOf", { id: data.variant_of })}</p>{/if}
@@ -53,7 +57,7 @@
     {#if pick(data.expected)}<h4 class="sub">{t("q.expected")}</h4><p class="prose">{pick(data.expected)}</p>{/if}
     {#if pick(data.marking_notes)}<h4 class="sub">{t("q.markingNotes")}</h4><p class="prose">{pick(data.marking_notes)}</p>{/if}
   {:else}
-    <ol class="options">
+    <ol class="options" class:single={data.type === "single"}>
       {#each data.options ?? [] as option}
         <li class:correct={option.correct}>
           <span class="box" aria-hidden="true">{#if option.correct}<Icon name="check" />{/if}</span>
@@ -94,10 +98,6 @@
       {#if question.modified}<dt>{t("q.meta.modified")}</dt><dd>{new Date(question.modified * 1000).toLocaleString(ui.lang === "de" ? "de-DE" : "en-GB", { dateStyle: "medium", timeStyle: "short" })}</dd>{/if}
       <dt>{t("q.meta.file")}</dt><dd class="small">{question.path}</dd>
     </dl>
-    <div class="preview-actions">
-      <button class="btn primary" onclick={() => onedit?.()}><Icon name="edit" />{t("edit.edit")}</button>
-      <button class="btn ghost" onclick={() => onopen?.(question.path)}><Icon name="upload" />{t("q.openFile")}</button>
-    </div>
   </section>
   {/if}
 </article>

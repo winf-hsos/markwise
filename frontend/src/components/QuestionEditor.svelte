@@ -311,7 +311,7 @@
         <ol class="option-edit">
           {#each fields.options as option (option.id)}
             <li class:correct={option.correct}>
-              <button type="button" class="correct-toggle" class:on={option.correct} aria-pressed={option.correct}
+              <button type="button" class="correct-toggle" class:round={fields.type === "single"} class:on={option.correct} aria-pressed={option.correct}
                 title={t("edit.correct")} onclick={() => setCorrect(option)}>
                 {#if option.correct}<Icon name="check" />{/if}
               </button>

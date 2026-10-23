@@ -610,6 +610,16 @@ kbd.k { font: 11.5px var(--code); border: 1px solid var(--line); border-bottom-w
 .type-icon { display: inline-grid; place-items: center; width: 18px; height: 18px; color: var(--muted); flex: none; }
 .type-icon svg { width: 15px; height: 15px; stroke: currentColor; }
 
+/* single choice is marked with round radio buttons, multiple choice with square boxes, as on paper */
+.options.single .box { border-radius: 50%; }
+.options.single li.correct .box { background: var(--paper); }
+.options.single li.correct .box::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--green); }
+.options.single .box svg { display: none; }
+.correct-toggle.round { border-radius: 50%; }
+.correct-toggle.round.on { background: var(--paper); }
+.correct-toggle.round.on::after { content: ""; width: 11px; height: 11px; border-radius: 50%; background: var(--green); }
+.correct-toggle.round svg { display: none; }
+
 /* --- settings --------------------------------------------------------------- */
 .settings { display: grid; gap: 36px; max-width: 820px; }
 .switch { width: 40px; height: 22px; border-radius: 11px; background: #c9ced5; position: relative; flex: none; cursor: pointer; border: 0; }
