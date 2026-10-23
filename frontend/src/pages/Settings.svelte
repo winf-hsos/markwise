@@ -8,6 +8,8 @@
   let transport = $state("");
   transportName().then((name) => (transport = name));
 
+  const changed = $derived(examiner.trim() !== (app.settings?.examiner ?? ""));
+
   async function setLanguage(lang) {
     await updateSettings({ language: lang });
   }
@@ -29,37 +31,39 @@
   </div>
 
   <div class="settings">
-    <section class="panel">
-      <div class="panel-head"><h2>{t("settings.general")}</h2></div>
-      <div class="panel-body">
-        <div class="switch-row">
+    <section>
+      <h2 class="section-title">{t("settings.general")}</h2>
+      <div class="rows">
+        <div class="row-item">
           <div class="text"><b>{t("settings.language")}</b></div>
           <div class="seg" role="group" aria-label={t("settings.language")}>
             <button class:on={app.settings?.language === "de"} onclick={() => setLanguage("de")}>Deutsch</button>
             <button class:on={app.settings?.language === "en"} onclick={() => setLanguage("en")}>English</button>
           </div>
         </div>
-        <form class="switch-row" onsubmit={saveExaminer}>
+        <form class="row-item" onsubmit={saveExaminer}>
           <div class="text">
             <b>{t("settings.examiner")}</b>
-            <span class="muted small">{t("settings.examinerHint")}</span>
+            <span class="hint">{t("settings.examinerHint")}</span>
           </div>
-          <input class="input" bind:value={examiner} placeholder="Prof. Dr. …" />
-          <button class="btn" type="submit">{saved ? t("settings.saved") : t("settings.save")}</button>
+          <div class="control">
+            <input class="input" bind:value={examiner} placeholder="Prof. Dr. …" aria-label={t("settings.examiner")} />
+            <button class="btn" class:primary={changed} type="submit" disabled={!changed && !saved}>
+              {saved ? t("settings.saved") : t("settings.save")}
+            </button>
+          </div>
         </form>
       </div>
     </section>
 
-    <section class="panel">
-      <div class="panel-head"><h2>{t("settings.about")}</h2></div>
-      <div class="panel-body">
-        <table class="table">
-          <tbody>
-            <tr><td class="muted">{t("settings.version")}</td><td class="mono">{app.info?.version}</td></tr>
-            <tr><td class="muted">{t("settings.file")}</td><td class="mono">{app.info?.settings_file}</td></tr>
-            <tr><td class="muted">{t("settings.bridge")}</td><td>{transport ? t("settings.bridge." + transport) : ""}</td></tr>
-          </tbody>
-        </table>
+    <section>
+      <h2 class="section-title">{t("settings.about")}</h2>
+      <div class="rows">
+        <dl class="about">
+          <dt>{t("settings.version")}</dt><dd>{app.info?.version}</dd>
+          <dt>{t("settings.file")}</dt><dd class="small">{app.info?.settings_file}</dd>
+          <dt>{t("settings.bridge")}</dt><dd>{transport ? t("settings.bridge." + transport) : ""}</dd>
+        </dl>
       </div>
     </section>
   </div>

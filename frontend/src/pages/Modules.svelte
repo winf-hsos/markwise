@@ -19,19 +19,19 @@
   </div>
 
   {#if modules.length === 0}
-    <div class="panel empty">
-      <Icon name="modules" />
+    <div class="empty">
+      <div class="mark"><Icon name="modules" /></div>
       <h2>{t("modules.empty.title")}</h2>
       <p>{t("modules.empty.text")}</p>
       <p class="soon">{t("soon.step2")}</p>
     </div>
   {:else}
-    <div class="module-list">
+    <div class="rows">
       {#each modules as m}
-        <div class="panel module-card" class:current={m.path === app.settings?.current_module}>
-          <div class="module-main">
-            <div class="module-title"><span class="module-short">{m.short_name}</span><h3>{m.name}</h3></div>
-            <div class="module-facts">
+        <div class="row-item module-row" class:current={m.path === app.settings?.current_module}>
+          <div class="text">
+            <div class="title"><span class="module-short">{m.short_name}</span><h3>{m.name}</h3></div>
+            <div class="facts">
               {#if m.exists}
                 <span>{t("modules.pools")}: {m.pools.map((p) => p.name).join(", ") || "–"}</span>
               {:else}

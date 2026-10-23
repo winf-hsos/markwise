@@ -13,8 +13,8 @@
       <p>{t(lead)}</p>
     </div>
   </div>
-  <div class="panel empty">
-    <Icon name={icon} />
+  <div class="empty">
+    <div class="mark"><Icon name={icon} /></div>
     <p>{t(text)}</p>
   </div>
 </div>
