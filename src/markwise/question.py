@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import datetime
+import os
 from pathlib import Path
 from typing import Any
 
@@ -13,13 +15,17 @@ TYPES = ("single", "multiple", "free_text")
 LEVELS = ("remember", "understand", "apply")
 STATUSES = ("draft", "reviewed", "piloted", "retired")
 
+# How long answering a question takes, in seconds, when nobody chose otherwise.
+DEFAULT_SECONDS = {"single": 60, "multiple": 60, "free_text": 300}
+
 # Order of the known top-level fields when Markwise writes a new file.
 FIELD_ORDER = (
-    "id", "concept", "type", "level", "status", "public", "exam", "variant_of", "reviewed_by",
+    "id", "concept", "type", "level", "time_seconds", "status", "public", "exam", "variant_of", "reviewed_by",
+    "created_by", "created_at", "changed_by", "changed_at",
     "coverage", "misconception", "session",
     "stem", "image", "images", "image_columns", "code", "code_language",
     "options",
-    "points", "half_points", "lines", "expected", "marking_notes",
+    "half_points", "lines", "expected", "marking_notes",
 )
 
 
@@ -138,6 +144,16 @@ class Question:
         self._mtime_ns = target.stat().st_mtime_ns
 
 
+def today() -> str:
+    return datetime.date.today().isoformat()
+
+
+def default_author() -> str:
+    """Who is working: the name given in the settings, else the Windows user name."""
+    from . import settings
+    return settings.load().examiner.strip() or os.environ.get("USERNAME") or os.environ.get("USER") or ""
+
+
 def ordered(fields: dict) -> CommentedMap:
     """A new mapping with the known fields in their usual order and any other fields after the metadata."""
     result = CommentedMap()
@@ -149,17 +165,20 @@ def ordered(fields: dict) -> CommentedMap:
     return result
 
 
-def template(qid: str, concept: str, qtype: str, languages: list[str], n_options: int = 4) -> CommentedMap:
+def template(qid: str, concept: str, qtype: str, languages: list[str], n_options: int = 4,
+             author: str = "") -> CommentedMap:
     """An empty question of the given type, ready to be filled in."""
     if qtype not in TYPES:
         raise ValueError(f"unknown type {qtype!r}")
     texts = lambda: CommentedMap((lang, "") for lang in languages)  # noqa: E731
     fields: dict = {
         "id": qid, "concept": concept, "type": qtype, "level": "understand",
-        "status": "draft", "public": True, "stem": texts(),
+        "time_seconds": DEFAULT_SECONDS[qtype], "status": "draft", "public": True, "stem": texts(),
     }
+    if author:
+        fields.update(created_by=author, created_at=today())
     if qtype == "free_text":
-        fields.update(points=2, half_points=False, lines=8, expected=texts(), marking_notes=texts())
+        fields.update(half_points=False, lines=8, expected=texts(), marking_notes=texts())
     else:
         options = []
         for i in range(n_options):

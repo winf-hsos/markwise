@@ -3,6 +3,7 @@
   import Icon from "./Icon.svelte";
   import QuestionPreview from "./QuestionPreview.svelte";
   import Menu from "./Menu.svelte";
+  import TimeChoice from "./TimeChoice.svelte";
   import CodeDialog from "./CodeDialog.svelte";
   import ImageDialog from "./ImageDialog.svelte";
   import { CODE_LANGUAGES, detectLanguage } from "../lib/highlight.js";
@@ -19,7 +20,7 @@
   const kept = untrack(() => draft);
 
   const EDITABLE = ["type", "level", "public", "exam", "variant_of", "coverage", "misconception", "stem", "images", "image_columns", "code",
-    "code_language", "options", "points", "half_points", "lines", "expected", "marking_notes"];
+    "code_language", "options", "time_seconds", "half_points", "lines", "expected", "marking_notes"];
   const languages = initial.languages;
   const blankTexts = () => Object.fromEntries(languages.map((l) => [l, ""]));
 
@@ -32,6 +33,7 @@
     }
     // Optional fields as empty strings, so that inputs bind to them; the core drops empty optional fields.
     for (const key of ["variant_of", "coverage", "misconception", "code", "code_language"]) fields[key] ??= "";
+    fields.time_seconds ??= null;
     // One figure is stored as `image`, several as `images`; the editor always works with the list.
     fields.images = Array.isArray(data.images) ? [...data.images] : data.image ? [data.image] : [];
     fields.image_columns = Number.isInteger(data.image_columns) ? data.image_columns : 1;
@@ -264,6 +266,10 @@
             <button type="button" class="chip" class:on={fields.exam} aria-pressed={fields.exam} onclick={() => toggleUse("exam")}>{t("use.exam")}</button>
           </div>
         </div>
+        <div class="field">
+          <span>{t("edit.time")}</span>
+          <TimeChoice bind:value={fields.time_seconds} />
+        </div>
         {#if !fields.public}
           <label class="field">
             <span>{t("edit.variantOf")}</span>
@@ -346,8 +352,6 @@
         {/if}
       {:else}
         <div class="form-row">
-          <label class="field"><span>{t("edit.points")}</span>
-            <input class="input" type="number" min="0.5" step="0.5" bind:value={fields.points} style="width: 100px" /></label>
           <label class="field"><span>{t("edit.lines")}</span>
             <input class="input" type="number" min="1" bind:value={fields.lines} style="width: 100px" /></label>
           <label class="check-line"><input type="checkbox" bind:checked={fields.half_points} />{t("edit.halfPoints")}</label>

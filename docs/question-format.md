@@ -37,11 +37,16 @@ id: cs-001                 # prefix of the concept and a running number
 concept: code-systems      # the concept's identifier, equal to the folder name
 type: single               # single | multiple | free_text
 level: understand          # remember | understand | apply
+time_seconds: 60           # how long answering takes, in seconds (5 to 3600); the exam turns it into points
 status: draft              # draft | reviewed | piloted | retired
 public: true               # shown to students for practice
 exam: true                 # may be drawn for an exam; without the field: true exactly when public is false
 variant_of: cs-001         # exam variants only: the practice question they vary (then public: false)
 reviewed_by: []            # who released the question
+created_by: Examiner A     # written by Markwise: who created the question, and when
+created_at: 2026-10-24
+changed_by: Examiner B     # written by Markwise: who changed it last, and when
+changed_at: 2026-10-25
 coverage: "Deck 08, frames 5 to 7"   # optional: where the material is taught
 misconception: code-equals-encryption # optional
 session: 6                 # optional
@@ -79,12 +84,18 @@ A free-text question has no options and instead:
 
 ```yaml
 type: free_text
-points: 4
+time_seconds: 300
 half_points: true
 lines: 10                  # size of the answer area
 expected: {de: "...", en: "..."}
 marking_notes: {de: "...", en: "..."}
 ```
+
+Points are not part of a question. They belong to an exam, which suggests them from the questions' times and fixes them when it is frozen (§ 5 (3) c of the general examination regulations); how difficult a question really is, the item analysis measures after an exam.
+
+Texts may use inline Markdown: `**bold**`, `*italic*` and `` `code` ``.
+
+Markwise notes who created a question and who changed it last, with the name from its settings or else the Windows user name, so that several people can work on one pool in a shared folder. It keeps no further history.
 
 Fields Markwise does not know stay in the file when Markwise saves it, together with comments and the layout of the untouched parts.
 
@@ -93,8 +104,9 @@ Fields Markwise does not know stay in the file when Markwise saves it, together 
 `markwise check <pool>` reports errors (the question cannot be used), warnings (it should be looked at) and notes (worth knowing):
 
 - errors: required fields missing or of the wrong kind, identifier differs from the file name, concept differs from the folder or is unknown, a language missing, too few or too many options, duplicate option ids, the number of correct options does not fit the type, image file missing, `variant_of` pointing to a missing question or another concept, a public exam variant, a question meant neither for practice nor for exams, duplicate identifiers;
+- errors also: a time outside 5 seconds to one hour;
 - warnings: an option much longer than the others (it may give itself away), a feedback text or expected answer missing in a language;
-- notes: a question meant only for practice that has no exam variant, a concept without questions.
+- notes: a question without a time, a question meant only for practice that has no exam variant, a concept without questions.
 
 Retired questions only have to stay readable.
 

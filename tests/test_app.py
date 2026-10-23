@@ -186,7 +186,7 @@ def test_get_question_has_data_findings_and_image(module_with_questions):
     api, _, pool = module_with_questions
     detail = api.get_question(str(pool), "co-001")["data"]
     assert detail["data"]["options"][0]["text"]["en"] == "Blue"
-    assert detail["findings"] == [] and detail["figures"][0]["name"] == "sky"
+    assert [f["code"] for f in detail["findings"]] == ["no_time"] and detail["figures"][0]["name"] == "sky"
     assert detail["figures"][0]["data"].startswith("data:image/svg+xml;base64,") and detail["image_columns"] == 1
 
 

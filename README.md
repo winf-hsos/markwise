@@ -114,7 +114,7 @@ markwise concept edit "D:\Teaching\Statistics\pool" regression --name "Lineare R
 
 The editor shows the form on the left and the question as it reads on paper on the right; the preview follows every keystroke.
 
-- **Type** switches between single and multiple choice (a free-text question stays free text). **Level** is a choice of three. **Use** has two switches, **Practice** and **Exam**, which can both be on; one of them always stays on. A question meant only for exams can name the practice question it is a **variant of**; an exam variant is never a practice question itself, because students would then know it.
+- **Type** switches between single and multiple choice (a free-text question stays free text). **Level** is a choice of three. **Time to answer** offers 15 s, 30 s, 45 s, 1 min, 2 min and 5 min, and **Other …** for any time in minutes and seconds; points are not set here but when an exam is built. **Use** has two switches, **Practice** and **Exam**, which can both be on; one of them always stays on. A question meant only for exams can name the practice question it is a **variant of**; an exam variant is never a practice question itself, because students would then know it.
 - **Deutsch** and **English** switch the language of all texts. A yellow dot on a language means a text is still missing there.
 - The **question text** grows with what you type. Below it, **Add** opens a menu of what a question can carry under its text, each added in a dialog of its own:
   - **Code**: a code block with syntax highlighting. Choose the language (Python, JavaScript, Java, C, C++, C#, SQL, R, Shell, JSON) or let Markwise detect it; **Tab** indents by four spaces.
@@ -128,7 +128,7 @@ The editor shows the form on the left and the question as it reads on paper on t
 
 **Save** (or **Ctrl+S**) writes only what you changed: every other line of the file stays as it was, including comments and fields Markwise does not know. **Discard** returns to the saved state, **Back to the list** asks before it drops unsaved changes. If someone else saved the same file in the meantime, for example a colleague in a shared folder, Markwise says so and lets you either load their version or save yours over it.
 
-A **reviewed** question goes back to **draft** when you change its content, because it then needs a new release.
+A **reviewed** question goes back to **draft** when you change its content, because it then needs a new release. Every question notes who created it and who changed it last, with the date, using your name from the settings or else your Windows user name; the preview shows both.
 
 ### Markwise remembers where you were
 
@@ -138,7 +138,7 @@ Every page keeps its state per module when you leave it: on **Questions** the se
 
 ### Settings
 
-**Settings** switches the interface between German and English, chooses the **colour scheme** (Markwise green, or Hochschule Osnabrück with its blue #009ee3; green for correct, red for errors and yellow for warnings stay the same in every scheme) and stores your name, which Markwise will write into `reviewed_by` when you release a question. **Ctrl+B** collapses and expands the side menu. Your settings and the list of modules live in `%APPDATA%\Markwise\settings.toml`, on your computer only and never in a pool or module folder.
+**Settings** switches the interface between German and English, chooses the **colour scheme** (Markwise green, or Hochschule Osnabrück with its blue #009ee3; green for correct, red for errors and yellow for warnings stay the same in every scheme) and stores your name, which Markwise notes on questions you create, change or release (without a name, it takes your Windows user name). **Ctrl+B** collapses and expands the side menu. Your settings and the list of modules live in `%APPDATA%\Markwise\settings.toml`, on your computer only and never in a pool or module folder.
 
 When the interface is German, new modules file their exams under `01 - Semester\<semester>\Klausur\`, otherwise under `…\Exam\`; `exam_path` in `module.toml` changes that.
 

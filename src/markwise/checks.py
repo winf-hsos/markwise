@@ -71,6 +71,12 @@ def check_question(q: Question, pool: Pool) -> list[Finding]:
     if q.status == "retired":
         return out  # retired questions only need to stay readable
 
+    seconds = q.data.get("time_seconds")
+    if seconds is None:
+        add(NOTE, "no_time", "no time for answering is set")
+    elif not isinstance(seconds, int) or isinstance(seconds, bool) or not 5 <= seconds <= 3600:
+        add(ERROR, "time_invalid", "time_seconds must be a whole number of seconds from 5 to 3600")
+
     missing = _texts(q.data.get("stem"), s.languages)
     if "stem" in q.data and missing:
         add(ERROR, "stem_missing", f"question text missing in {', '.join(missing)}", langs=", ".join(missing))
@@ -85,9 +91,6 @@ def check_question(q: Question, pool: Pool) -> list[Finding]:
     if q.type in ("single", "multiple"):
         _check_options(q, pool, add)
     elif q.type == "free_text":
-        points = q.get("points")
-        if not isinstance(points, (int, float)) or isinstance(points, bool) or points <= 0:
-            add(ERROR, "points_invalid", "free text needs points greater than 0")
         if "half_points" in q.data and not isinstance(q.get("half_points"), bool):
             add(ERROR, "half_points_bool", "half_points must be true or false")
         if missing := _texts(q.get("expected"), s.languages):

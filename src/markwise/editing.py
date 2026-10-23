@@ -16,14 +16,16 @@ from ruamel.yaml.scalarstring import LiteralScalarString
 from .catalog import plain, variant_findings
 from .checks import Finding, check_question
 from .pool import Pool
-from .question import FIELD_ORDER, ConflictError, Question
+from .question import FIELD_ORDER, ConflictError, Question, default_author, today
 
-# Fields the editor owns. id and concept name the file, status and reviewed_by belong to the release.
-EDITABLE = tuple(k for k in FIELD_ORDER if k not in ("id", "concept", "status", "reviewed_by"))
+# Fields the editor owns. id and concept name the file, status and reviewed_by belong to the release, and
+# the authorship fields are written by Markwise itself.
+EDITABLE = tuple(k for k in FIELD_ORDER if k not in ("id", "concept", "status", "reviewed_by", "created_by",
+                                                     "created_at", "changed_by", "changed_at"))
 OPTION_KEYS = ("id", "correct", "text", "feedback")
 # Fields that disappear from the file when the editor leaves them empty; all others always stay.
 OPTIONAL = ("variant_of", "coverage", "misconception", "session", "image", "images", "image_columns", "code",
-            "code_language")
+            "code_language", "time_seconds")
 
 
 def _empty(value) -> bool:
@@ -149,8 +151,9 @@ def check_fields(pool: Pool, qid: str, fields: dict) -> list[dict]:
 
 
 def save(pool: Pool, qid: str, fields: dict, expected_mtime_ns: int | None = None,
-         force: bool = False) -> tuple[Question, bool]:
-    """Save the editor's fields. A reviewed question whose content changes goes back to draft."""
+         force: bool = False, author: str | None = None) -> tuple[Question, bool]:
+    """Save the editor's fields. A reviewed question whose content changes goes back to draft, and every
+    change records who made it and when."""
     question = pool.find(qid)
     if not force and expected_mtime_ns is not None and question.path.stat().st_mtime_ns != expected_mtime_ns:
         raise ConflictError(f"{question.path} changed on disk since it was opened")
@@ -160,6 +163,13 @@ def save(pool: Pool, qid: str, fields: dict, expected_mtime_ns: int | None = Non
             question.data["status"] = "draft"
             if "reviewed_by" in question.data:
                 del question.data["reviewed_by"]
+        author = default_author() if author is None else author
+        if author:
+            for key, value in (("changed_by", author), ("changed_at", today())):
+                if key in question.data:
+                    question.data[key] = value
+                else:
+                    _insert(question.data, key, value)
         question.save(force=True)
     return question, changed
 

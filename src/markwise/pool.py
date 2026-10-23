@@ -10,7 +10,7 @@ from pathlib import Path
 
 import tomli_w
 
-from .question import Question, template
+from .question import Question, default_author, template
 
 POOL_FILE = "pool.toml"
 MIN_OPTIONS_ALLOWED = 4  # § 5 (3) a of the general examination regulations
@@ -247,10 +247,11 @@ class Pool:
                     return path.stem.rsplit("-", 1)[0]
         return "".join(part[0] for part in concept.split("-") if part) or "q"
 
-    def new_question(self, concept: str, qtype: str) -> Question:
+    def new_question(self, concept: str, qtype: str, author: str | None = None) -> Question:
         qid = self.next_id(self.prefix_for(concept))
         path = self.path_for(concept, qid)
-        question = Question(template(qid, concept, qtype, self.settings.languages, self.settings.min_options))
+        author = default_author() if author is None else author
+        question = Question(template(qid, concept, qtype, self.settings.languages, self.settings.min_options, author))
         question.save(path)
         return question
 

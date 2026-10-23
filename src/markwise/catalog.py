@@ -78,6 +78,7 @@ def rows(pool: Pool, lang: str = "de") -> list[dict]:
             "concept_name": names.get(q.concept, q.concept),
             "type": q.type,
             "level": q.level,
+            "time_seconds": q.get("time_seconds"),
             "status": q.status,
             "public": q.public,
             "exam": q.exam,

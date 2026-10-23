@@ -193,7 +193,7 @@ def test_new_question_and_delete(imported):
     q = pool.new_question("colours", "single")
     assert q.id == "co-003" and len(q.options) == 4 and q.path.exists()
     free = pool.new_question("shapes", "free_text")
-    assert free.id == "s-001" and free.get("points") == 2
+    assert free.id == "s-001" and free.get("time_seconds") == 300 and "points" not in free.data
     assert pool.delete("co-003", used_in_exam=False) == "deleted"
     assert pool.delete("co-001", used_in_exam=True) == "retired"
     assert pool.find("co-001").status == "retired"

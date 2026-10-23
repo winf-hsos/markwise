@@ -71,7 +71,11 @@ The examiner sets up a module once: name and short name (shown in lists and on t
 
 **Multiple choice.** At least four options, each with a short justification of why it is right or wrong.
 
-**Free text.** Maximum points, whether half points are allowed (set per question), the size of the answer area, the expected answer, and marking notes for partial credit. There is one point strip per question; a second marking is not supported inside Markwise.
+**Free text.** Whether half points are allowed (set per question), the size of the answer area, the expected answer, and marking notes for partial credit.
+
+**Time, not points.** Every question records how long answering it takes (15 s to 5 min as usual steps, or any other time). Points belong to an exam: building an exam suggests them from the times and the exam's duration, the examiners adjust them, and freezing the exam fixes them. How difficult a question is, the item analysis measures after an exam instead of anyone guessing it beforehand.
+
+**Who wrote it.** A question records who created it and who changed it last, with the date, because several examiners may work on one pool in a shared folder. There is one point strip per question; a second marking is not supported inside Markwise.
 
 **Working with questions.**
 - Browse, search and filter by concept, level, status, type, public or exam, language.

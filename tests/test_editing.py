@@ -40,7 +40,7 @@ def test_a_change_touches_only_its_own_line(pool):
     before = path.read_text(encoding="utf-8").splitlines()
     fields = fields_of(pool, "co-001")
     fields["options"][1]["text"]["de"] = "Dunkelgrün"
-    editing.save(pool, "co-001", fields)
+    editing.save(pool, "co-001", fields, author="")  # without an author, so that only the text line changes
     after = path.read_text(encoding="utf-8").splitlines()
     changed = [(b, a) for b, a in zip(before, after) if b != a]
     assert len(before) == len(after) and len(changed) == 1
@@ -300,3 +300,56 @@ def test_only_empty_concepts_can_be_deleted(pool):
     api.delete_concept(str(pool.root), "shapes")
     assert "shapes" not in Pool.open(pool.root).concepts()
     assert "colours" in Pool.open(pool.root).concepts()
+
+
+
+# --- time and authorship ----------------------------------------------------------------
+
+
+def test_new_questions_record_their_author_and_time(pool):
+    from markwise import settings
+    s = settings.load()
+    s.update({"examiner": "Examiner A"})
+    settings.save(s)
+    q = pool.new_question("colours", "single")
+    assert q.get("created_by") == "Examiner A" and len(q.get("created_at")) == 10 and q.get("time_seconds") == 60
+
+
+def test_saving_records_who_changed_a_question(pool):
+    fields = fields_of(pool, "co-001")
+    fields["time_seconds"] = 45
+    editing.save(pool, "co-001", fields, author="Examiner B")
+    q = pool.find("co-001")
+    assert q.get("time_seconds") == 45 and q.get("changed_by") == "Examiner B" and q.get("changed_at")
+    keys = list(q.data.keys())
+    assert keys.index("time_seconds") == keys.index("level") + 1
+    _, changed = editing.save(pool, "co-001", fields_of(pool, "co-001"), author="Examiner C")
+    assert not changed and pool.find("co-001").get("changed_by") == "Examiner B"  # nothing changed, nobody recorded
+
+
+def test_without_a_name_the_windows_user_is_the_author(pool, monkeypatch):
+    from markwise.question import default_author
+    monkeypatch.setenv("USERNAME", "winuser")
+    assert default_author() == "winuser"
+
+
+@pytest.mark.parametrize("value, code", [(None, "no_time"), (2, "time_invalid"), ("1 min", "time_invalid"), (90, None)])
+def test_time_is_checked(pool, value, code):
+    from markwise.checks import check_pool
+    q = pool.find("co-001")
+    if value is None:
+        q.data.pop("time_seconds", None)
+    else:
+        q.data["time_seconds"] = value
+    q.save()
+    codes = {f.code for f in check_pool(pool) if f.question == "co-001"}
+    assert (code in codes) if code else not ({"no_time", "time_invalid"} & codes)
+
+
+def test_an_unset_time_leaves_the_file_alone(pool):
+    path = pool.find("co-002").path
+    before = path.read_bytes()
+    fields = fields_of(pool, "co-002")
+    fields["time_seconds"] = None  # how the window sends a question without a time
+    _, changed = editing.save(pool, "co-002", fields, author="")
+    assert not changed and path.read_bytes() == before

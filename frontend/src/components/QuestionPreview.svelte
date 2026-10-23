@@ -1,6 +1,8 @@
 <script>
   import Icon from "./Icon.svelte";
   import { highlight } from "../lib/highlight.js";
+  import { formatDate, formatTime } from "../lib/time.js";
+  import { inline } from "../lib/inline.js";
   import { findingText, t, ui } from "../lib/i18n.svelte.js";
 
   // A read-only view of one question: text, options with the correct ones marked, findings and metadata.
@@ -42,7 +44,7 @@
 
   {#if data.variant_of}<p class="variant-note">{t("q.variantOf", { id: data.variant_of })}</p>{/if}
 
-  <div class="stem">{pick(data.stem)}</div>
+  <div class="stem">{@html inline(pick(data.stem))}</div>
   {#if data.code}<pre class="code-block hljs"><code>{@html highlight(data.code, data.code_language)}</code></pre>{/if}
   {#if question.figures?.length}
     <div class="figures" style="--columns: {question.figures.length > 1 ? question.image_columns ?? 1 : 1}">
@@ -53,17 +55,17 @@
   {/if}
 
   {#if data.type === "free_text"}
-    <p class="muted small">{t("q.points", { n: data.points })}{data.half_points ? ` · ${t("q.halfPoints")}` : ""}</p>
-    {#if pick(data.expected)}<h4 class="sub">{t("q.expected")}</h4><p class="prose">{pick(data.expected)}</p>{/if}
-    {#if pick(data.marking_notes)}<h4 class="sub">{t("q.markingNotes")}</h4><p class="prose">{pick(data.marking_notes)}</p>{/if}
+    {#if data.half_points}<p class="muted small">{t("q.halfPoints")}</p>{/if}
+    {#if pick(data.expected)}<h4 class="sub">{t("q.expected")}</h4><p class="prose">{@html inline(pick(data.expected))}</p>{/if}
+    {#if pick(data.marking_notes)}<h4 class="sub">{t("q.markingNotes")}</h4><p class="prose">{@html inline(pick(data.marking_notes))}</p>{/if}
   {:else}
     <ol class="options" class:single={data.type === "single"}>
       {#each data.options ?? [] as option}
         <li class:correct={option.correct}>
           <span class="box" aria-hidden="true">{#if option.correct}<Icon name="check" />{/if}</span>
           <div>
-            <div class="option-text"><b>{option.id}</b> {pick(option.text)}{#if option.correct}<span class="sr">({t("q.correct")})</span>{/if}</div>
-            {#if pick(option.feedback)}<div class="option-feedback">{pick(option.feedback)}</div>{/if}
+            <div class="option-text"><b>{option.id}</b> {@html inline(pick(option.text))}{#if option.correct}<span class="sr">({t("q.correct")})</span>{/if}</div>
+            {#if pick(option.feedback)}<div class="option-feedback">{@html inline(pick(option.feedback))}</div>{/if}
           </div>
         </li>
       {/each}
@@ -88,14 +90,16 @@
     <dl class="meta">
       <dt>{t("q.meta.concept")}</dt><dd>{question.concept_name ?? data.concept}{#if question.concept_description}<span class="muted small concept-desc">{question.concept_description}</span>{/if}</dd>
       <dt>{t("q.meta.level")}</dt><dd>{t(`level.${data.level}`)}</dd>
+      <dt>{t("edit.time")}</dt><dd>{data.time_seconds ? formatTime(data.time_seconds) : t("q.noTime")}</dd>
       {#if data.public && data.type !== "free_text"}
         <dt>{t("q.variants")}</dt><dd>{variants.length ? variants.join(", ") : t("q.noVariant")}</dd>
       {/if}
       {#if data.coverage}<dt>{t("q.meta.coverage")}</dt><dd>{data.coverage}</dd>{/if}
       {#if data.misconception}<dt>{t("q.meta.misconception")}</dt><dd>{data.misconception}</dd>{/if}
       {#if data.reviewed_by?.length}<dt>{t("q.meta.reviewed")}</dt><dd>{data.reviewed_by.join(", ")}</dd>{/if}
+      {#if data.created_by || data.created_at}<dt>{t("q.meta.created")}</dt><dd>{t("q.by", { name: data.created_by || "–", date: formatDate(data.created_at) })}</dd>{/if}
       <dt>{t("q.meta.pool")}</dt><dd>{question.pool_name}</dd>
-      {#if question.modified}<dt>{t("q.meta.modified")}</dt><dd>{new Date(question.modified * 1000).toLocaleString(ui.lang === "de" ? "de-DE" : "en-GB", { dateStyle: "medium", timeStyle: "short" })}</dd>{/if}
+      {#if question.modified}<dt>{t("q.meta.modified")}</dt><dd>{data.changed_by ? `${data.changed_by}, ` : ""}{new Date(question.modified * 1000).toLocaleString(ui.lang === "de" ? "de-DE" : "en-GB", { dateStyle: "medium", timeStyle: "short" })}</dd>{/if}
       <dt>{t("q.meta.file")}</dt><dd class="small">{question.path}</dd>
     </dl>
   </section>
