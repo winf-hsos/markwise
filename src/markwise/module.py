@@ -76,7 +76,7 @@ class Module:
             self.pools.append(ref)
 
     def open_pools(self) -> list[Pool]:
-        return [Pool.open((self.root / ref) if not Path(ref).is_absolute() else Path(ref)) for ref in self.pools]
+        return [Pool.open(((self.root / ref) if not Path(ref).is_absolute() else Path(ref)).resolve()) for ref in self.pools]
 
     def exams(self) -> list[Path]:
         """Every folder below the module folder that holds an exam.toml."""

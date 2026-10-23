@@ -19,6 +19,10 @@ def _print_json(data) -> None:
     print(json.dumps(data, ensure_ascii=False, indent=2))
 
 
+def _count(n: int, word: str) -> str:
+    return f"{n} {word}" + ("" if n == 1 else "s")
+
+
 def cmd_check(args) -> int:
     pool = Pool.open(args.pool)
     findings = check_pool(pool)
@@ -29,8 +33,8 @@ def cmd_check(args) -> int:
         shown = [f for f in findings if args.notes or f.severity != "note"]
         for f in shown:
             print(f"{f.severity:<8} {f.question or '-':<10} {f.message}")
-        print(f"{pool.settings.name}: {counts['error']} errors, {counts['warning']} warnings, {counts['note']} notes"
-              + ("" if args.notes else " (show notes with --notes)"))
+        totals = ", ".join(_count(counts[k], k) for k in ("error", "warning", "note"))
+        print(f"{pool.settings.name}: {totals}" + ("" if args.notes or not counts["note"] else " (show notes with --notes)"))
     return 1 if counts[ERROR] else 0
 
 
