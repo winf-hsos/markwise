@@ -16,7 +16,7 @@
   // The editor is created anew for every question (see {#key} in the page), so it starts from this snapshot.
   const initial = untrack(() => question);
 
-  const EDITABLE = ["type", "level", "public", "exam", "variant_of", "coverage", "misconception", "stem", "image", "code",
+  const EDITABLE = ["type", "level", "public", "exam", "variant_of", "coverage", "misconception", "stem", "images", "image_columns", "code",
     "code_language", "options", "points", "half_points", "lines", "expected", "marking_notes"];
   const languages = initial.languages;
   const blankTexts = () => Object.fromEntries(languages.map((l) => [l, ""]));
@@ -29,7 +29,10 @@
       if (key in fields || (key === "stem")) fields[key] = { ...blankTexts(), ...(fields[key] ?? {}) };
     }
     // Optional fields as empty strings, so that inputs bind to them; the core drops empty optional fields.
-    for (const key of ["variant_of", "coverage", "misconception", "image", "code", "code_language"]) fields[key] ??= "";
+    for (const key of ["variant_of", "coverage", "misconception", "code", "code_language"]) fields[key] ??= "";
+    // One figure is stored as `image`, several as `images`; the editor always works with the list.
+    fields.images = Array.isArray(data.images) ? [...data.images] : data.image ? [data.image] : [];
+    fields.image_columns = Number.isInteger(data.image_columns) ? data.image_columns : 1;
     // Without the field, exam questions are exactly those not shown for practice.
     fields.public = data.public === true;
     fields.exam = typeof data.exam === "boolean" ? data.exam : !fields.public;
@@ -48,7 +51,8 @@
   // Attachments below the question text, each added and changed in a dialog of its own.
   let codeOpen = $state(false);
   let imageOpen = $state(false);
-  let imageData = $state(initial.image_data);
+  // Previews of the figures by name, so that the editor can show figures chosen since the last save.
+  let figureData = $state(Object.fromEntries((initial.figures ?? []).map((f) => [f.name, f.data])));
   let conflict = $state(false);
   let busy = $state(false);
 
@@ -80,7 +84,12 @@
     return () => clearTimeout(timer);
   });
 
-  const preview = $derived({ ...base, data: { ...base.data, ...fields }, findings, image_data: fields.image ? imageData : null });
+  const figures = $derived(fields.images.map((name) => ({ name, data: figureData[name] ?? null })));
+  const preview = $derived({ ...base, data: { ...base.data, ...fields }, findings, figures, image_columns: fields.image_columns });
+  const layoutName = $derived(
+    fields.images.length < 2 ? "" : fields.image_columns === 1 ? t("attach.layoutRows")
+      : fields.image_columns >= fields.images.length ? t("attach.layoutSide") : t("attach.layoutColumns", { n: fields.image_columns }),
+  );
 
   const languageName = (id) => CODE_LANGUAGES.find(([key]) => key === id)?.[1];
   const codeLanguageName = $derived(
@@ -90,7 +99,7 @@
   const codeLines = $derived(fields.code ? fields.code.split("\n").length : 0);
   const addItems = $derived([
     { label: fields.code ? t("attach.codeEdit") : t("attach.code"), icon: "code", onclick: () => (codeOpen = true) },
-    { label: fields.image ? t("attach.imageChange") : t("attach.image"), icon: "image", onclick: () => (imageOpen = true) },
+    { label: fields.images.length ? t("attach.imageChange") : t("attach.image"), icon: "image", onclick: () => (imageOpen = true) },
     { label: t("attach.formula"), icon: "formula", disabled: true, hint: t("attach.soon"), onclick: () => {} },
   ]);
 
@@ -140,9 +149,10 @@
     fields.code_language = language;
   }
 
-  function applyImage(name, data) {
-    fields.image = name;
-    imageData = data;
+  function applyImages(chosen, columns) {
+    for (const f of chosen) if (f.data) figureData[f.name] = f.data;
+    fields.images = chosen.map((f) => f.name);
+    fields.image_columns = columns;
   }
 
   async function save(force = false) {
@@ -278,12 +288,19 @@
             <button type="button" class="link-btn" onclick={removeCode}>{t("attach.remove")}</button>
           </div>
         {/if}
-        {#if fields.image}
+        {#if fields.images.length}
           <div class="attachment-card">
-            <span class="attachment-icon">{#if imageData}<img src={imageData} alt="" />{:else}<Icon name="image" />{/if}</span>
-            <span class="attachment-text"><b>{t("edit.image")}</b><span>{fields.image}</span></span>
+            <span class="attachment-thumbs">
+              {#each figures.slice(0, 3) as f (f.name)}
+                <span class="attachment-icon">{#if f.data}<img src={f.data} alt="" />{:else}<Icon name="image" />{/if}</span>
+              {/each}
+            </span>
+            <span class="attachment-text">
+              <b>{fields.images.length === 1 ? t("edit.image") : t("attach.figures", { n: fields.images.length })}</b>
+              <span>{fields.images.length === 1 ? fields.images[0] : layoutName}</span>
+            </span>
             <button type="button" class="link-btn" onclick={() => (imageOpen = true)}>{t("attach.change")}</button>
-            <button type="button" class="link-btn" onclick={() => (fields.image = "")}>{t("attach.remove")}</button>
+            <button type="button" class="link-btn" onclick={() => { fields.images = []; fields.image_columns = 1; }}>{t("attach.remove")}</button>
           </div>
         {/if}
         <Menu buttonLabel={t("attach.add")} items={addItems} align="left" />
@@ -337,7 +354,7 @@
     </form>
 
     <CodeDialog bind:open={codeOpen} code={fields.code} language={fields.code_language} onapply={applyCode} />
-    <ImageDialog bind:open={imageOpen} pool={base.pool} current={fields.image} onapply={applyImage} />
+    <ImageDialog bind:open={imageOpen} pool={base.pool} current={fields.images} columns={fields.image_columns} onapply={applyImages} />
 
     <div class="editor-preview">
       <QuestionPreview question={preview} compact />

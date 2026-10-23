@@ -239,3 +239,42 @@ def test_a_jpeg_figure_passes_the_check(pool):
     q.data["image"] = "photo"
     q.save()
     assert "image_missing" not in {f.code for f in check_pool(pool) if f.question == "co-001"}
+
+
+def test_several_figures_are_stored_with_their_layout_and_one_stays_short(pool):
+    (pool.images_dir / "sun.svg").write_text("<svg/>", encoding="utf-8")
+    path = pool.find("co-001").path
+    fields = fields_of(pool, "co-001")
+    fields["images"] = ["sky", "sun"]
+    fields["image_columns"] = 2
+    editing.save(pool, "co-001", fields)
+    q = pool.find("co-001")
+    assert q.images == ["sky", "sun"] and q.image_columns == 2 and "image" not in q.data
+    assert list(q.data.keys()).index("images") == list(q.data.keys()).index("stem") + 1
+    fields = fields_of(pool, "co-001")
+    fields["images"] = ["sun"]
+    fields["image_columns"] = 2
+    editing.save(pool, "co-001", fields)
+    q = pool.find("co-001")
+    assert q.data["image"] == "sun" and "images" not in q.data and "image_columns" not in q.data
+    assert "image_columns" not in path.read_text(encoding="utf-8")
+
+
+def test_saving_a_question_with_one_figure_untouched_keeps_the_file(pool):
+    path = pool.find("co-001").path
+    before = path.read_bytes()
+    fields = fields_of(pool, "co-001")
+    fields["images"] = ["sky"]  # how the window sends the one figure back
+    fields["image_columns"] = 1
+    _, changed = editing.save(pool, "co-001", fields)
+    assert not changed and path.read_bytes() == before
+
+
+def test_missing_figures_and_bad_layouts_are_found(pool):
+    from markwise.checks import check_pool
+    q = pool.find("co-001")
+    q.data["images"] = ["sky", "moon"]
+    q.data["image_columns"] = 7
+    q.save()
+    codes = [f.code for f in check_pool(pool) if f.question == "co-001"]
+    assert "image_missing" in codes and "image_columns" in codes

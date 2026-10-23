@@ -51,7 +51,9 @@ stem:
     Fragetext.
   en: |
     Question text.
-image: decision-levels     # optional: a file in images/ (.svg for the screen, .png for print)
+image: decision-levels     # optional: one figure, a file in images/ (.svg, .png or .jpg), named without extension
+# images: [ipo-chain, layer-stack]   # several figures instead, in this order
+# image_columns: 2                   # how several figures are laid out: 1 one below the other (default), n in n columns
 code: |                    # optional: a code block below the stem
   led.set_color(255, 0, 0)
 code_language: python      # optional: the language of the code, for highlighting; without it Markwise guesses

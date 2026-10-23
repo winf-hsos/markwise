@@ -17,7 +17,7 @@ STATUSES = ("draft", "reviewed", "piloted", "retired")
 FIELD_ORDER = (
     "id", "concept", "type", "level", "status", "public", "exam", "variant_of", "reviewed_by",
     "coverage", "misconception", "session",
-    "stem", "image", "code", "code_language",
+    "stem", "image", "images", "image_columns", "code", "code_language",
     "options",
     "points", "half_points", "lines", "expected", "marking_notes",
 )
@@ -82,6 +82,21 @@ class Question:
     def options(self) -> list:
         value = self.data.get("options")
         return value if isinstance(value, list) else []
+
+    @property
+    def images(self) -> list[str]:
+        """The figures below the question text: one in `image`, several in `images`."""
+        many = self.data.get("images")
+        if isinstance(many, list):
+            return [str(name) for name in many if name]
+        one = self.data.get("image")
+        return [str(one)] if one else []
+
+    @property
+    def image_columns(self) -> int:
+        """How several figures are laid out: 1 one below the other, n in n columns."""
+        value = self.data.get("image_columns")
+        return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else 1
 
     @property
     def correct_ids(self) -> list[str]:

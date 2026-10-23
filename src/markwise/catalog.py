@@ -128,10 +128,10 @@ def detail(pool: Pool, qid: str) -> dict:
     """Everything about one question for the preview and the editor, with its findings and file time."""
     question = pool.find(qid)
     findings = [f.to_dict() for f in check_question(question, pool) + variant_findings(question, pool)]
-    image = question.get("image")
-    found = pool.image_file(str(image)) if image else None
-    image_file = str(found) if found else None
-    image_data = data_url(found) if found else None
+    figures = []
+    for name in question.images:
+        found = pool.image_file(name)
+        figures.append({"name": name, "data": data_url(found) if found else None})
     concept = next((c for c in pool.concept_info() if c["id"] == question.concept), None)
     return {
         "id": question.id,
@@ -146,6 +146,6 @@ def detail(pool: Pool, qid: str) -> dict:
         "modified": question.path.stat().st_mtime,
         "data": plain(question.data),
         "findings": findings,
-        "image_file": image_file,
-        "image_data": image_data,
+        "figures": figures,
+        "image_columns": question.image_columns,
     }

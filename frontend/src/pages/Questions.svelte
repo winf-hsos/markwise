@@ -81,6 +81,7 @@
     findings: (a, b) => b.errors - a.errors || b.warnings - a.warnings || SORTS.id(a, b),
   };
   const LEVELS = ["remember", "understand", "apply"];
+  const TYPE_ICONS = { single: "single", multiple: "multiple", free_text: "freetext" };
   const STATUSES = ["draft", "reviewed", "piloted", "retired"];
   let sort = $state(readSort());
   function readSort() {
@@ -258,6 +259,7 @@
         {#each sorted as q (q.pool + q.id)}
           <button id={`q-${q.pool}-${q.id}`} class="q-row" class:on={selectedRow === q} role="option" aria-selected={selectedRow === q} onclick={() => show(q)}>
             <span class="q-row-head">
+              <span class="type-icon" title={t(`type.${q.type}`)} aria-label={t(`type.${q.type}`)}><Icon name={TYPE_ICONS[q.type] ?? "questions"} /></span>
               <span class="qid">{q.id}</span>
               <span class="q-concept">{q.concept_name}</span>
               {#if q.errors}<span class="tag red"><i class="dot"></i>{q.errors} {t("sev.error")}</span>

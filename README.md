@@ -82,6 +82,7 @@ The **Questions** page lists every question in the pools of the current module. 
 
 - **Search** looks for every word you type in the question text, the options, the feedback and the identifier, in all languages of the pool. `led farbe` finds questions that mention both.
 - **Filters** narrow the list by pool (if the module has several), concept, level, status, type, use (practice or exam) and findings of the check (with errors, with warnings, without findings). The line below says how many questions are shown out of how many; **Reset filters** clears them.
+- A small symbol in front of each identifier shows the type: a filled circle for single choice, a ticked box for multiple choice, lines for free text.
 - A question with errors carries a red mark in the list, one with warnings a yellow one; questions meant for exams are marked **Exam**, or **Practice and exam** if they serve both.
 - **Sort by** orders the list by identifier, concept, last change (newest first), level, status, or findings (questions with errors first). Markwise remembers the order on this computer.
 - When a filter or the search drops the question shown on the right, the preview empties; undoing the filter brings it back.
@@ -110,7 +111,7 @@ The editor shows the form on the left and the question as it reads on paper on t
 - **Deutsch** and **English** switch the language of all texts. A yellow dot on a language means a text is still missing there.
 - The **question text** grows with what you type. Below it, **Add** opens a menu of what a question can carry under its text, each added in a dialog of its own:
   - **Code**: a code block with syntax highlighting. Choose the language (Python, JavaScript, Java, C, C++, C#, SQL, R, Shell, JSON) or let Markwise detect it; **Tab** indents by four spaces.
-  - **Figure**: the pool's images as small previews; click one and **Apply**. **Add image from file …** copies a PNG, SVG or JPEG file into the pool's `images` folder, under a name made from the file name, and selects it.
+  - **Figures**: the pool's images as small previews. Click one or several; the numbers on them show the order. With two or more, choose the **layout**: one below the other, side by side, or in 2 or 3 columns. **Add image from file …** copies a PNG, SVG or JPEG file into the pool's `images` folder, under a name made from the file name, and selects it.
   - **Formula** is listed as coming.
 
   What a question carries appears as a small card below the text, with **Edit** or **Change** and **Remove**.

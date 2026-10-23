@@ -75,9 +75,12 @@ def check_question(q: Question, pool: Pool) -> list[Finding]:
     if "stem" in q.data and missing:
         add(ERROR, "stem_missing", f"question text missing in {', '.join(missing)}", langs=", ".join(missing))
 
-    image = q.get("image")
-    if image and pool.image_file(str(image)) is None:
-        add(ERROR, "image_missing", f"image '{image}' not found in images/", image=image)
+    for image in q.images:
+        if pool.image_file(image) is None:
+            add(ERROR, "image_missing", f"image '{image}' not found in images/", image=image)
+    columns = q.data.get("image_columns")
+    if columns is not None and (not isinstance(columns, int) or isinstance(columns, bool) or not 1 <= columns <= 4):
+        add(ERROR, "image_columns", "image_columns must be a number from 1 to 4")
 
     if q.type in ("single", "multiple"):
         _check_options(q, pool, add)

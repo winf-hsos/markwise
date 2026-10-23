@@ -40,8 +40,12 @@
 
   <div class="stem">{pick(data.stem)}</div>
   {#if data.code}<pre class="code-block hljs"><code>{@html highlight(data.code, data.code_language)}</code></pre>{/if}
-  {#if question.image_data}
-    <figure class="figure"><img src={question.image_data} alt={t("q.image")} /></figure>
+  {#if question.figures?.length}
+    <div class="figures" style="--columns: {question.figures.length > 1 ? question.image_columns ?? 1 : 1}">
+      {#each question.figures as f (f.name)}
+        <figure class="figure">{#if f.data}<img src={f.data} alt={t("q.image")} />{:else}<span class="missing-figure">{f.name}</span>{/if}</figure>
+      {/each}
+    </div>
   {/if}
 
   {#if data.type === "free_text"}

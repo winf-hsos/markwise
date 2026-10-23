@@ -22,7 +22,8 @@ from .question import FIELD_ORDER, ConflictError, Question
 EDITABLE = tuple(k for k in FIELD_ORDER if k not in ("id", "concept", "status", "reviewed_by"))
 OPTION_KEYS = ("id", "correct", "text", "feedback")
 # Fields that disappear from the file when the editor leaves them empty; all others always stay.
-OPTIONAL = ("variant_of", "coverage", "misconception", "session", "image", "code", "code_language")
+OPTIONAL = ("variant_of", "coverage", "misconception", "session", "image", "images", "image_columns", "code",
+            "code_language")
 
 
 def _empty(value) -> bool:
@@ -30,6 +31,8 @@ def _empty(value) -> bool:
         return True
     if isinstance(value, dict):
         return all(_empty(v) for v in value.values())
+    if isinstance(value, list):
+        return not value
     return False
 
 
@@ -74,8 +77,23 @@ def _merge_options(old: list | None, new: list[dict]) -> list:
     return result
 
 
+def _figures(fields: dict) -> dict:
+    """Figures in their shortest form: one figure as `image`, several as `images` with `image_columns`."""
+    if "images" not in fields:
+        return fields
+    fields = dict(fields)
+    names = [n for n in fields.pop("images") or [] if n]
+    columns = fields.pop("image_columns", 1) or 1
+    if len(names) <= 1:
+        fields.update(image=names[0] if names else "", images=[], image_columns=None)
+    else:
+        fields.update(image="", images=names, image_columns=columns if columns > 1 else None)
+    return fields
+
+
 def apply(data: CommentedMap, fields: dict) -> bool:
     """Merge the editor's fields into the mapping; returns whether anything changed."""
+    fields = _figures(fields)
     changed = False
     for key in EDITABLE:
         if key not in fields:
