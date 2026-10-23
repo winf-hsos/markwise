@@ -39,6 +39,10 @@ export async function setCurrentModule(path) {
   app.settings = await call("set_current_module", path);
 }
 
+// What one page asks of another when it sends the person there, for example the Concepts page opening the
+// question list filtered to a concept. The receiving page takes it and clears it.
+export const pending = $state({ questionsFilter: null, newQuestion: null });
+
 // A short message at the bottom of the window that answers what the person just did.
 export const toast = $state({ text: "", visible: false });
 let toastTimer = null;

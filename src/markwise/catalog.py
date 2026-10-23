@@ -102,6 +102,35 @@ def rows(pool: Pool, lang: str = "de") -> list[dict]:
     return result
 
 
+def concept_overview(pool: Pool, lang: str = "de") -> list[dict]:
+    """Every concept of the pool with its name, description and what its questions are like."""
+    by_concept: dict[str, list[dict]] = defaultdict(list)
+    for row in rows(pool, lang):
+        by_concept[row["concept"]].append(row)
+    result = []
+    for concept in pool.concept_info():
+        items = [r for r in by_concept.get(concept["id"], []) if r["status"] != "retired"]
+        count = lambda key, value: sum(1 for r in items if r[key] == value)  # noqa: E731
+        result.append({
+            **concept,
+            "pool": str(pool.root),
+            "pool_name": pool.settings.name,
+            "questions": len(items),
+            "retired": len(by_concept.get(concept["id"], [])) - len(items),
+            "levels": {v: count("level", v) for v in ("remember", "understand", "apply")},
+            "types": {v: count("type", v) for v in ("single", "multiple", "free_text")},
+            "statuses": {v: count("status", v) for v in ("draft", "reviewed", "piloted")},
+            "practice": sum(1 for r in items if r["public"]),
+            "exam": sum(1 for r in items if r["exam"]),
+            "both": sum(1 for r in items if r["public"] and r["exam"]),
+            "without_variant": sum(1 for r in items if r["public"] and not r["exam"] and r["type"] != "free_text"
+                                   and not r["variants"]),
+            "with_errors": sum(1 for r in items if r["errors"]),
+            "with_warnings": sum(1 for r in items if r["warnings"] and not r["errors"]),
+        })
+    return result
+
+
 def matches(row: dict, search: str) -> bool:
     """Every word of the search must occur somewhere in the question."""
     return all(word in row["search"] for word in search.lower().split())

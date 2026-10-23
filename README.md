@@ -91,11 +91,18 @@ The **Questions** page lists every question in the pools of the current module. 
 
 ### Creating and editing questions
 
-**New question** on the Questions page asks for the pool (if the module has several), the concept and the type. **New concept …** in the concept list asks for a name and a short description in plain words; Markwise makes the concept's identifier from the name (shown below the field). Markwise creates the question with the next free identifier and opens it in the editor.
+**New question** on the Questions page asks for the pool (if the module has several), the concept and the type; with a concept filter set, that concept is already chosen. **New concept …** in the concept list asks for a name and a short description in plain words; Markwise makes the concept's identifier from the name (shown below the field). Markwise creates the question with the next free identifier and opens it in the editor.
 
 ### Concepts
 
-Questions are grouped by concept. **Concepts** on the Questions page lists the concepts of a pool with their names, short descriptions, number of questions and, in small print, their identifiers. Change a name or description and click **Save**; the identifier and the folder of the questions stay the same. Below the list you can **add a concept** by its name and short description. Everywhere else, in the filter, the list and the preview, Markwise shows the names.
+Questions are grouped by concept, and the **Concepts** page in the side menu is where you look after them. On the left it lists the concepts of the current module's pools with their names, short descriptions and number of questions; a search narrows the list. Click a concept to see it on the right:
+
+- its **name** and **short description**, which you can change and **Save** (the identifier below them, made from the name, names the folder of the questions and stays the same);
+- an overview of its questions: how many there are by level, type and status, how many are meant for practice and for exams, how many practice questions still lack an exam variant, and how many have errors or warnings;
+- **Show questions** opens the question list filtered to the concept, and **New question** starts a question in it;
+- a concept without questions can be **deleted**; one with questions cannot, so that nothing is lost.
+
+**New concept** at the top asks for the pool (if the module has several), the name and the short description. Everywhere else, in the filter, the list and the preview, Markwise shows the names.
 
 An imported question bank takes the concept names from the titles of its website's concept pages and the short descriptions from their subtitles or the first sentence of their summaries. From the command line:
 
@@ -319,6 +326,7 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise concept list <pool>` | list the concepts with name, description and number of questions |
 | `markwise concept add <pool> <name> [--description]` | add a concept; its identifier is made from the name |
 | `markwise concept edit <pool> <id> [--name] [--description]` | rename or describe a concept; identifier and folder stay |
+| `markwise concept delete <pool> <id>` | delete a concept that has no questions |
 | `markwise module init <folder> --name <name> --short-name <short> --pool <pool>` | create a module |
 | `markwise module show <folder>` | show a module's pools and exams |
 | `markwise module add-pool <folder> <pool>` | let a module draw from another pool |

@@ -22,6 +22,7 @@ export const ICONS = {
   eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.8" fill="none" stroke-width="1.7"/>',
   remove: '<path d="M5 12h14" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
   refresh: '<path d="M20 11a8 8 0 0 0-14.6-4.5M4 13a8 8 0 0 0 14.6 4.5" fill="none" stroke-width="1.8" stroke-linecap="round"/><path d="M4.5 3.5v3.8h3.8M19.5 20.5v-3.8h-3.8" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  concepts: '<path d="M12 3.5a6 6 0 0 0-3.6 10.8c.6.5 1.1 1.3 1.1 2.1v.6h5v-.6c0-.8.5-1.6 1.1-2.1A6 6 0 0 0 12 3.5Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.8 20h4.4" fill="none" stroke-width="1.7" stroke-linecap="round"/>',
   single: '<circle cx="12" cy="12" r="8" fill="none" stroke-width="1.7"/><circle cx="12" cy="12" r="3.6" fill="currentColor" stroke="none"/>',
   multiple: '<rect x="4" y="4" width="16" height="16" rx="3.5" fill="none" stroke-width="1.7"/><path d="m8 12.3 2.8 2.8L16.2 9" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>',
   freetext: '<path d="M4 7h16M4 12h16M4 17h9" fill="none" stroke-width="1.8" stroke-linecap="round"/><path d="m16 20 4-4" fill="none" stroke-width="1.8" stroke-linecap="round"/>',

@@ -329,6 +329,26 @@ class Api:
         return next(c for c in pool.concept_info() if c["id"] == cid)
 
     @_answer
+    def concept_overview(self, module_path: str) -> list:
+        """The concepts of all pools of a module, each with a summary of its questions."""
+        module = Module.open(module_path)
+        language = user_settings.load().language
+        result = []
+        for ref in module.pools:
+            root = module.pool_root(ref)
+            if (root / POOL_FILE).exists():
+                result.extend(catalog.concept_overview(Pool.open(root), language))
+        return result
+
+    @_answer
+    def delete_concept(self, pool_path: str, cid: str) -> None:
+        """Remove a concept without questions."""
+        try:
+            Pool.open(pool_path).delete_concept(cid)
+        except ValueError:
+            raise Refusal("concept_not_empty", f"the concept {cid} still has questions", id=cid) from None
+
+    @_answer
     def list_concepts(self, pool_path: str) -> list:
         """The concepts of a pool with their names, descriptions and number of questions."""
         pool = Pool.open(pool_path)

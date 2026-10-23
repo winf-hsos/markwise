@@ -1,6 +1,6 @@
-// Hash routes: #/modules, #/questions, #/exams, #/settings.
+// Hash routes: #/modules, #/concepts, #/questions, #/exams, #/settings.
 
-export const ROUTES = ["/modules", "/questions", "/exams", "/settings"];
+export const ROUTES = ["/modules", "/concepts", "/questions", "/exams", "/settings"];
 
 function current() {
   const path = location.hash.replace(/^#/, "");

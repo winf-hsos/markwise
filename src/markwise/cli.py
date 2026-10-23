@@ -179,6 +179,12 @@ def cmd_concept_edit(args) -> int:
     return 0
 
 
+def cmd_concept_delete(args) -> int:
+    Pool.open(args.pool).delete_concept(args.id)
+    print(json.dumps({"deleted": args.id}) if args.json else f"Concept {args.id} deleted")
+    return 0
+
+
 def cmd_module_init(args) -> int:
     module = Module.create(args.folder, args.name, args.short_name, pools=args.pool or [])
     print(json.dumps({"module": str(module.root)}) if args.json else f"Module created in {module.root}")
@@ -316,6 +322,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--name")
     p.add_argument("--description")
     p.set_defaults(func=cmd_concept_edit)
+    p = concept.add_parser("delete", parents=[common], help="delete a concept that has no questions")
+    p.add_argument("pool")
+    p.add_argument("id")
+    p.set_defaults(func=cmd_concept_delete)
 
     module = sub.add_parser("module", help="create and show modules").add_subparsers(dest="action", required=True)
     p = module.add_parser("init", parents=[common], help="create module.toml in the module folder")

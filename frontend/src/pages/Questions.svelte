@@ -4,10 +4,9 @@
   import QuestionPreview from "../components/QuestionPreview.svelte";
   import QuestionEditor from "../components/QuestionEditor.svelte";
   import NewQuestionDialog from "../components/NewQuestionDialog.svelte";
-  import ConceptsDialog from "../components/ConceptsDialog.svelte";
   import { call } from "../lib/api.js";
   import { errorText, t } from "../lib/i18n.svelte.js";
-  import { app, showToast } from "../lib/state.svelte.js";
+  import { app, pending, showToast } from "../lib/state.svelte.js";
 
   const modulePath = $derived(app.settings?.current_module || "");
   const module = $derived(app.workspace.modules.find((m) => m.path === modulePath) ?? null);
@@ -20,7 +19,7 @@
   let detail = $state(null);
   let editing = $state(null); // the detail of the question in the editor
   let newOpen = $state(false);
-  let conceptsOpen = $state(false);
+  let newPreset = $state({});
 
   const blank = { search: "", pool: "", concept: "", level: "", status: "", type: "", use: "", findings: "" };
   let filter = $state({ ...blank });
@@ -49,8 +48,16 @@
     detail = null;
     editing = null;
     untrack(() => {
-      filter = { ...blank };
-      load();
+      // Another page may have sent the person here for one concept, or to add a question to it.
+      filter = { ...blank, ...(pending.questionsFilter ?? {}) };
+      pending.questionsFilter = null;
+      if (pending.newQuestion) {
+        newPreset = pending.newQuestion;
+        pending.newQuestion = null;
+        load().then(() => (newOpen = true));
+      } else {
+        load();
+      }
     });
   });
 
@@ -172,10 +179,7 @@
       <div class="actions">
         <button class="btn" onclick={load} disabled={loading}><Icon name="refresh" />{t("q.reload")}</button>
         {#if pools.some((p) => p.exists)}
-          <button class="btn" onclick={() => (conceptsOpen = true)}><Icon name="modules" />{t("concepts.button")}</button>
-        {/if}
-        {#if pools.some((p) => p.exists)}
-          <button class="btn primary" onclick={() => (newOpen = true)}><Icon name="plus" />{t("q.new")}</button>
+          <button class="btn primary" onclick={() => { newPreset = { pool: filter.pool, concept: filter.concept }; newOpen = true; }}><Icon name="plus" />{t("q.new")}</button>
         {/if}
       </div>
     {/if}
@@ -281,5 +285,4 @@
   {/if}
 </div>
 
-<ConceptsDialog bind:open={conceptsOpen} {pools} onchanged={() => load()} />
-<NewQuestionDialog bind:open={newOpen} {pools} preset={{ pool: filter.pool, concept: filter.concept }} oncreated={created} />
+<NewQuestionDialog bind:open={newOpen} {pools} preset={newPreset} oncreated={created} />

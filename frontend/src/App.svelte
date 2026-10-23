@@ -3,6 +3,7 @@
   import Topbar from "./components/Topbar.svelte";
   import Modules from "./pages/Modules.svelte";
   import Questions from "./pages/Questions.svelte";
+  import Concepts from "./pages/Concepts.svelte";
   import Placeholder from "./pages/Placeholder.svelte";
   import Settings from "./pages/Settings.svelte";
   import { t } from "./lib/i18n.svelte.js";
@@ -42,6 +43,8 @@
       <div class="page"><p class="muted">{t("loading")}</p></div>
     {:else if route.path === "/modules"}
       <Modules />
+    {:else if route.path === "/concepts"}
+      <Concepts />
     {:else if route.path === "/questions"}
       <Questions />
     {:else if route.path === "/exams"}

@@ -192,6 +192,19 @@ class Pool:
         self.write_settings()
         return cid
 
+    def delete_concept(self, cid: str) -> None:
+        """Remove a concept that has no questions; a concept with questions stays, so that nothing is lost."""
+        folder = self.questions_dir / cid
+        if folder.is_dir() and any(folder.glob("*.yaml")):
+            raise ValueError(f"the concept {cid} still has questions")
+        if cid not in self.concepts():
+            raise KeyError(f"no concept {cid}")
+        if self.settings.concepts is not None:
+            self.settings.concepts.pop(cid, None)
+            self.write_settings()
+        if folder.is_dir() and not any(folder.iterdir()):
+            folder.rmdir()
+
     def update_concept(self, cid: str, name: str | None = None, description: str | None = None) -> None:
         """Rename or describe a concept; its identifier and folder stay."""
         if cid not in self.concepts():

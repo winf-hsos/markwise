@@ -7,6 +7,7 @@
 
   const links = [
     ["/modules", "nav.modules", "modules"],
+    ["/concepts", "nav.concepts", "concepts"],
     ["/questions", "nav.questions", "questions"],
     ["/exams", "nav.exams", "exams"],
   ];

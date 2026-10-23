@@ -278,3 +278,25 @@ def test_missing_figures_and_bad_layouts_are_found(pool):
     q.save()
     codes = [f.code for f in check_pool(pool) if f.question == "co-001"]
     assert "image_missing" in codes and "image_columns" in codes
+
+
+# --- the concepts page ------------------------------------------------------------------
+
+
+def test_concept_overview_summarises_the_questions(pool, tmp_path):
+    from markwise.module import Module
+    module = Module.create(tmp_path / "module", "M", "M", pools=[pool.root])
+    overview = {c["id"]: c for c in Api().concept_overview(str(module.root))["data"]}
+    colours = overview["colours"]
+    assert colours["name"] == "Colours of Things" and colours["questions"] == 2
+    assert colours["levels"]["understand"] == 2 and colours["types"] == {"single": 1, "multiple": 1, "free_text": 0}
+    assert (colours["practice"], colours["exam"], colours["without_variant"]) == (1, 1, 0)
+    assert overview["shapes"]["questions"] == 0
+
+
+def test_only_empty_concepts_can_be_deleted(pool):
+    api = Api()
+    assert api.delete_concept(str(pool.root), "colours")["code"] == "concept_not_empty"
+    api.delete_concept(str(pool.root), "shapes")
+    assert "shapes" not in Pool.open(pool.root).concepts()
+    assert "colours" in Pool.open(pool.root).concepts()
