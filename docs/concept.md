@@ -65,7 +65,7 @@ The examiner sets up a module once: name and short name (shown in lists and on t
 
 **Types.** `single` (one correct answer), `multiple` (one or more correct answers) and `free_text`.
 
-**Fields of every question.** An identifier assigned by the app (for example `aa-015`), the concept it belongs to, the cognitive level, the status, whether it is public (practice) or reserved for exams, the languages (German and English side by side), the question text with optional code, image or formula, and for exam variants the practice question they are a variant of. The format is described in [question-format.md](question-format.md).
+**Fields of every question.** An identifier assigned by the app (for example `aa-015`), the concept it belongs to, the cognitive level, the status, whether it is meant for practice, for exams or for both, the languages (German and English side by side), the question text with optional code, image or formula, and for exam variants the practice question they are a variant of. The format is described in [question-format.md](question-format.md).
 
 **Status.** `draft`, `reviewed`, `piloted` (used in an exam and unremarkable in the item analysis) and `retired`. Identifiers are never reused.
 
