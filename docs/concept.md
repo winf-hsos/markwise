@@ -77,6 +77,8 @@ The examiner sets up a module once: name and short name (shown in lists and on t
 
 **Putting an exam together.** Choose a blueprint (how many questions per concept and level), let Markwise draw the questions or choose them by hand, and check the blueprint and the rules (for example no two variants of the same practice question). Preview the booklet, then **freeze** the exam.
 
+For multiple-choice exams under § 5 (3) of the general examination regulations, freezing also records what the regulations require beforehand: at least two examiners who chose the material, the weight of every question and the correct answers. Markwise warns when fewer than two examiners are entered, and it never gives negative points across a question.
+
 **Frozen exams are self-contained.** Every exam gets its own folder under `exams/` in the module folder. On freezing, Markwise copies the full content of every question into it, together with the settings. Later the folder receives booklets, answer key, scans and results. An exam therefore stays complete and traceable even if its questions are changed or deleted in the pool afterwards. Each examiner keeps the module folder safe, as they keep their exam documents today.
 
 **Participants.** Import the list of registered participants from the export of the examination system (name and student number, as CSV or Excel). On the first import Markwise asks which column is which and remembers it. Names and results live only in the exam's folder, never in the question pool.
@@ -141,6 +143,8 @@ An AI agent maintains questions through the same rules as a person: the command-
 ## Privacy
 
 Markwise runs on the examiner's computer and sends nothing anywhere, unless the optional language model is switched on (see above). Participants' names and results exist only in the exam folder.
+
+The repository holds code, documentation and invented test data only. Real exams, scans, participant lists and grades never go into it, not even as test cases; tests for scan reading use answer sheets filled in for the purpose.
 
 ## Plan
 
