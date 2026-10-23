@@ -76,7 +76,7 @@ def check_question(q: Question, pool: Pool) -> list[Finding]:
         add(ERROR, "stem_missing", f"question text missing in {', '.join(missing)}", langs=", ".join(missing))
 
     image = q.get("image")
-    if image and not any((pool.images_dir / f"{image}{ext}").exists() for ext in ("", ".svg", ".png")):
+    if image and pool.image_file(str(image)) is None:
         add(ERROR, "image_missing", f"image '{image}' not found in images/", image=image)
 
     if q.type in ("single", "multiple"):

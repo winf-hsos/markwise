@@ -35,3 +35,13 @@ export function highlight(code, language = "") {
     return escape(code);
   }
 }
+
+// The language highlight.js guesses for the code, as an id from CODE_LANGUAGES, or "" if it has no guess.
+export function detectLanguage(code) {
+  if (!code) return "";
+  try {
+    return hljs.highlightAuto(code, ids).language ?? "";
+  } catch {
+    return "";
+  }
+}

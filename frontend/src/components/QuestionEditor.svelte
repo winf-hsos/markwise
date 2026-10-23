@@ -1,9 +1,11 @@
 <script>
-  import { onMount, untrack } from "svelte";
+  import { untrack } from "svelte";
   import Icon from "./Icon.svelte";
   import QuestionPreview from "./QuestionPreview.svelte";
-  import CodeField from "./CodeField.svelte";
-  import { CODE_LANGUAGES } from "../lib/highlight.js";
+  import Menu from "./Menu.svelte";
+  import CodeDialog from "./CodeDialog.svelte";
+  import ImageDialog from "./ImageDialog.svelte";
+  import { CODE_LANGUAGES, detectLanguage } from "../lib/highlight.js";
   import { call } from "../lib/api.js";
   import { errorText, t, ui } from "../lib/i18n.svelte.js";
   import { showToast } from "../lib/state.svelte.js";
@@ -43,8 +45,10 @@
   let saved = $state(JSON.stringify(editable(initial.data)));
   let lang = $state(languages.includes(ui.lang) ? ui.lang : languages[0]);
   let findings = $state(initial.findings);
-  let images = $state([]);
-  let showCode = $state(Boolean(initial.data.code));
+  // Attachments below the question text, each added and changed in a dialog of its own.
+  let codeOpen = $state(false);
+  let imageOpen = $state(false);
+  let imageData = $state(initial.image_data);
   let conflict = $state(false);
   let busy = $state(false);
 
@@ -61,10 +65,6 @@
     ),
   );
 
-  onMount(() => {
-    call("list_images", base.pool).then((list) => (images = list)).catch(() => {});
-  });
-
   // Check while typing, a moment after the last keystroke.
   let timer = null;
   $effect(() => {
@@ -80,8 +80,19 @@
     return () => clearTimeout(timer);
   });
 
-  const preview = $derived({ ...base, data: { ...base.data, ...fields }, findings,
-    image_data: fields.image === (base.data.image ?? "") ? base.image_data : null });
+  const preview = $derived({ ...base, data: { ...base.data, ...fields }, findings, image_data: fields.image ? imageData : null });
+
+  const languageName = (id) => CODE_LANGUAGES.find(([key]) => key === id)?.[1];
+  const codeLanguageName = $derived(
+    languageName(fields.code_language) ??
+      (languageName(detectLanguage(fields.code)) ? t("attach.detected", { name: languageName(detectLanguage(fields.code)) }) : t("attach.unknownLanguage")),
+  );
+  const codeLines = $derived(fields.code ? fields.code.split("\n").length : 0);
+  const addItems = $derived([
+    { label: fields.code ? t("attach.codeEdit") : t("attach.code"), icon: "code", onclick: () => (codeOpen = true) },
+    { label: fields.image ? t("attach.imageChange") : t("attach.image"), icon: "image", onclick: () => (imageOpen = true) },
+    { label: t("attach.formula"), icon: "formula", disabled: true, hint: t("attach.soon"), onclick: () => {} },
+  ]);
 
   function setCorrect(option) {
     if (fields.type === "single") for (const o of fields.options) o.correct = o === option;
@@ -122,7 +133,16 @@
   function removeCode() {
     fields.code = "";
     fields.code_language = "";
-    showCode = false;
+  }
+
+  function applyCode(code, language) {
+    fields.code = code;
+    fields.code_language = language;
+  }
+
+  function applyImage(name, data) {
+    fields.image = name;
+    imageData = data;
   }
 
   async function save(force = false) {
@@ -249,30 +269,24 @@
         <textarea class="input grow-text" rows="3" bind:value={fields.stem[lang]}></textarea>
       </label>
 
-      {#if showCode}
-        <div class="field">
-          <div class="field-head">
-            <span>{t("edit.code")}</span>
-            <select class="select select-small" bind:value={fields.code_language} aria-label={t("edit.codeLanguage")}>
-              <option value="">{t("edit.autoLanguage")}</option>
-              {#each CODE_LANGUAGES as [id, name]}<option value={id}>{name}</option>{/each}
-            </select>
-            <button type="button" class="link-btn" onclick={removeCode}>{t("edit.removeCode")}</button>
+      <div class="attachments">
+        {#if fields.code}
+          <div class="attachment-card">
+            <span class="attachment-icon"><Icon name="code" /></span>
+            <span class="attachment-text"><b>{t("attach.code")}</b><span>{codeLanguageName} · {t(codeLines === 1 ? "attach.line" : "attach.lines", { n: codeLines })}</span></span>
+            <button type="button" class="link-btn" onclick={() => (codeOpen = true)}>{t("edit.edit")}</button>
+            <button type="button" class="link-btn" onclick={removeCode}>{t("attach.remove")}</button>
           </div>
-          <CodeField bind:value={fields.code} language={fields.code_language} label={t("edit.code")} />
-        </div>
-      {/if}
-      <div class="form-row">
-        {#if !showCode}
-          <button type="button" class="btn ghost" onclick={() => (showCode = true)}><Icon name="plus" />{t("edit.addCode")}</button>
         {/if}
-        <label class="field grow">
-          <span>{t("edit.image")}</span>
-          <select class="select" bind:value={fields.image}>
-            <option value="">{t("edit.noImage")}</option>
-            {#each images as name}<option value={name}>{name}</option>{/each}
-          </select>
-        </label>
+        {#if fields.image}
+          <div class="attachment-card">
+            <span class="attachment-icon">{#if imageData}<img src={imageData} alt="" />{:else}<Icon name="image" />{/if}</span>
+            <span class="attachment-text"><b>{t("edit.image")}</b><span>{fields.image}</span></span>
+            <button type="button" class="link-btn" onclick={() => (imageOpen = true)}>{t("attach.change")}</button>
+            <button type="button" class="link-btn" onclick={() => (fields.image = "")}>{t("attach.remove")}</button>
+          </div>
+        {/if}
+        <Menu buttonLabel={t("attach.add")} items={addItems} align="left" />
       </div>
 
       {#if isChoice}
@@ -321,6 +335,9 @@
         <label class="field"><span>{t("edit.misconception")}</span><input class="input" bind:value={fields.misconception} /></label>
       </details>
     </form>
+
+    <CodeDialog bind:open={codeOpen} code={fields.code} language={fields.code_language} onapply={applyCode} />
+    <ImageDialog bind:open={imageOpen} pool={base.pool} current={fields.image} onapply={applyImage} />
 
     <div class="editor-preview">
       <QuestionPreview question={preview} compact />

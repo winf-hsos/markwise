@@ -206,3 +206,36 @@ def test_code_language_is_optional(pool):
     fields["code_language"] = ""
     editing.save(pool, "co-001", fields)
     assert "code" not in pool.find("co-001").data and "code_language" not in pool.find("co-001").data
+
+
+# --- figures --------------------------------------------------------------------------
+
+
+def test_images_are_listed_with_previews_and_added_under_a_clean_name(pool, tmp_path):
+    api = Api()
+    listed = api.list_images(str(pool.root))["data"]
+    assert [i["name"] for i in listed] == ["sky"] and listed[0]["data"].startswith("data:image/svg+xml;base64,")
+    source = tmp_path / "Mein Bild Ä.svg"
+    source.write_text("<svg xmlns='http://www.w3.org/2000/svg'/>", encoding="utf-8")
+    added = api.add_image(str(pool.root), str(source))["data"]
+    assert added["name"] == "mein-bild-ae" and (pool.images_dir / "mein-bild-ae.svg").exists()
+    assert api.add_image(str(pool.root), str(source))["data"]["name"] == "mein-bild-ae"  # the same picture again
+    other = tmp_path / "mein bild ä.png"
+    other.write_bytes(b"\x89PNG not really")
+    assert api.add_image(str(pool.root), str(other))["data"]["name"] == "mein-bild-ae-2"
+
+
+def test_add_image_refuses_other_files(pool, tmp_path):
+    text = tmp_path / "notes.txt"
+    text.write_text("no picture", encoding="utf-8")
+    assert Api().add_image(str(pool.root), str(text))["code"] == "image_type"
+    assert Api().add_image(str(pool.root), str(tmp_path / "missing.png"))["code"] == "image_missing"
+
+
+def test_a_jpeg_figure_passes_the_check(pool):
+    from markwise.checks import check_pool
+    (pool.images_dir / "photo.jpg").write_bytes(b"\xff\xd8 not really")
+    q = pool.find("co-001")
+    q.data["image"] = "photo"
+    q.save()
+    assert "image_missing" not in {f.code for f in check_pool(pool) if f.question == "co-001"}

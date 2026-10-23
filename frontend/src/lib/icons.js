@@ -22,6 +22,9 @@ export const ICONS = {
   eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.8" fill="none" stroke-width="1.7"/>',
   remove: '<path d="M5 12h14" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
   refresh: '<path d="M20 11a8 8 0 0 0-14.6-4.5M4 13a8 8 0 0 0 14.6 4.5" fill="none" stroke-width="1.8" stroke-linecap="round"/><path d="M4.5 3.5v3.8h3.8M19.5 20.5v-3.8h-3.8" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  code: '<path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  image: '<rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke-width="1.7"/><circle cx="9" cy="10" r="1.8" fill="none" stroke-width="1.6"/><path d="m5 18 5-5 3.5 3.5L16 14l4 4" fill="none" stroke-width="1.7" stroke-linejoin="round"/>',
+  formula: '<path d="M17 5H7l6 7-6 7h10" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   back: '<path d="m14.5 6-6 6 6 6" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   edit: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><path d="m13.5 6.5 4 4" fill="none" stroke-width="1.7"/>',
 };

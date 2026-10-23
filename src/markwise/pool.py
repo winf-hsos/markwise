@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import shutil
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -13,6 +14,7 @@ from .question import Question, template
 
 POOL_FILE = "pool.toml"
 MIN_OPTIONS_ALLOWED = 4  # § 5 (3) a of the general examination regulations
+IMAGE_TYPES = (".svg", ".png", ".jpg", ".jpeg")  # an image is named without its extension in a question
 UMLAUTS = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss", "Ä": "ae", "Ö": "oe", "Ü": "ue"})
 
 
@@ -132,6 +134,35 @@ class Pool:
         if not self.questions_dir.exists():
             return []
         return sorted(p.name for p in self.questions_dir.iterdir() if p.is_dir())
+
+    def image_file(self, name: str) -> Path | None:
+        """The file behind a question's image name: the SVG for the screen if there is one, else the first match."""
+        for ext in ("",) + IMAGE_TYPES:
+            candidate = self.images_dir / f"{name}{ext}"
+            if candidate.is_file():
+                return candidate
+        return None
+
+    def image_names(self) -> list[str]:
+        if not self.images_dir.is_dir():
+            return []
+        return sorted({p.stem for p in self.images_dir.iterdir() if p.suffix.lower() in IMAGE_TYPES})
+
+    def add_image(self, source: Path | str) -> str:
+        """Copy an image into the pool's images folder; returns the name questions use for it."""
+        source = Path(source)
+        if source.suffix.lower() not in IMAGE_TYPES:
+            raise ValueError(f"{source.name} is not an image Markwise can use ({', '.join(IMAGE_TYPES)})")
+        self.images_dir.mkdir(parents=True, exist_ok=True)
+        base = slugify(source.stem)
+        name, n = base, 2
+        while any((self.images_dir / f"{name}{ext}").exists() for ext in IMAGE_TYPES):
+            existing = self.image_file(name)
+            if existing is not None and existing.read_bytes() == source.read_bytes():
+                return name  # the same picture is there already
+            name, n = f"{base}-{n}", n + 1
+        shutil.copy2(source, self.images_dir / f"{name}{source.suffix.lower()}")
+        return name
 
     def concept_info(self) -> list[dict]:
         """Every concept with its name and short description, sorted by name."""

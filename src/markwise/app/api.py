@@ -148,12 +148,14 @@ class Api:
         return _norm(result[0]) if result else None
 
     @_answer
-    def pick_file(self, start: str = "", pattern: str = "pool.toml") -> str | None:
+    def pick_file(self, start: str = "", kind: str = "pool") -> str | None:
+        """Windows file dialog for a pool.toml or an image; None if cancelled. Only in the app window."""
         if self._window is None:
             raise Refusal("no_dialogs", "file dialogs only work in the app window")
         import webview
+        types = {"pool": ("Markwise (pool.toml)",), "image": ("Images (*.png;*.svg;*.jpg;*.jpeg)",)}.get(kind, ())
         result = self._window.create_file_dialog(webview.FileDialog.OPEN, directory=start or "",
-                                                 file_types=(f"Markwise ({pattern})", "All files (*.*)"))
+                                                 file_types=(*types, "All files (*.*)"))
         return _norm(result[0]) if result else None
 
     @_answer
@@ -352,8 +354,19 @@ class Api:
 
     @_answer
     def list_images(self, pool_path: str) -> list:
-        """Names of the figures in the pool's images folder, without extension."""
-        folder = Pool.open(pool_path).images_dir
-        if not folder.is_dir():
-            return []
-        return sorted({p.stem for p in folder.iterdir() if p.suffix.lower() in (".svg", ".png")})
+        """The figures in the pool's images folder: name (as questions use it) and a preview."""
+        pool = Pool.open(pool_path)
+        return [{"name": name, "data": catalog.data_url(pool.image_file(name))} for name in pool.image_names()]
+
+    @_answer
+    def add_image(self, pool_path: str, source: str) -> dict:
+        """Copy an image file into the pool, so that questions can show it."""
+        source_path = Path((source or "").strip())
+        if not source_path.is_file():
+            raise Refusal("image_missing", "choose an image file", path=source)
+        pool = Pool.open(pool_path)
+        try:
+            name = pool.add_image(source_path)
+        except ValueError:
+            raise Refusal("image_type", f"{source_path.name} is not a PNG, SVG or JPEG image", name=source_path.name) from None
+        return {"name": name, "data": catalog.data_url(pool.image_file(name))}

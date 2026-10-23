@@ -108,7 +108,12 @@ The editor shows the form on the left and the question as it reads on paper on t
 
 - **Type** switches between single and multiple choice (a free-text question stays free text). **Level** is a choice of three. **Use** has two switches, **Practice** and **Exam**, which can both be on; one of them always stays on. A question meant only for exams can name the practice question it is a **variant of**; an exam variant is never a practice question itself, because students would then know it.
 - **Deutsch** and **English** switch the language of all texts. A yellow dot on a language means a text is still missing there.
-- The **question text** grows with what you type. **Add code** adds a code block below it, with syntax highlighting as you type; Markwise detects the language, or you choose it next to the field (Python, JavaScript, Java, C, C++, C#, SQL, R, Shell, JSON). **Tab** indents by four spaces, and **Remove code** takes the block out again. **Figure** chooses an image from the pool's `images` folder.
+- The **question text** grows with what you type. Below it, **Add** opens a menu of what a question can carry under its text, each added in a dialog of its own:
+  - **Code**: a code block with syntax highlighting. Choose the language (Python, JavaScript, Java, C, C++, C#, SQL, R, Shell, JSON) or let Markwise detect it; **Tab** indents by four spaces.
+  - **Figure**: the pool's images as small previews; click one and **Apply**. **Add image from file …** copies a PNG, SVG or JPEG file into the pool's `images` folder, under a name made from the file name, and selects it.
+  - **Formula** is listed as coming.
+
+  What a question carries appears as a small card below the text, with **Edit** or **Change** and **Remove**.
 - Each **option** has a box on the left that marks it correct (for single choice, marking one unmarks the others), its text, and below it the feedback that explains why it is right or wrong. **Add option** adds one, **–** removes one.
 - **More details** holds where the material is taught and the misconception the question targets.
 - The **check** runs while you type; its findings appear under the preview in the language of the interface.

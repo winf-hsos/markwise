@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 from collections import defaultdict
+from pathlib import Path
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 
 from .checks import ERROR, NOTE, WARNING, Finding, check_pool, check_question
@@ -20,6 +21,12 @@ def plain(value):
     if isinstance(value, (str, int, float, bool)) or value is None:
         return str(value) if isinstance(value, str) else value
     return str(value)
+
+
+def data_url(path: Path) -> str:
+    """An image as a data URL, because the window cannot load files from the pool folder directly."""
+    kind = {".svg": "svg+xml", ".jpg": "jpeg", ".jpeg": "jpeg"}.get(path.suffix.lower(), path.suffix.lower().lstrip("."))
+    return f"data:image/{kind};base64," + base64.b64encode(path.read_bytes()).decode()
 
 
 def _text(value, lang: str, fallback: list[str]) -> str:
@@ -122,16 +129,9 @@ def detail(pool: Pool, qid: str) -> dict:
     question = pool.find(qid)
     findings = [f.to_dict() for f in check_question(question, pool) + variant_findings(question, pool)]
     image = question.get("image")
-    image_file, image_data = None, None
-    if image:
-        for ext in (".svg", ".png", ""):
-            candidate = pool.images_dir / f"{image}{ext}"
-            if candidate.is_file():
-                image_file = str(candidate)
-                kind = "svg+xml" if candidate.suffix == ".svg" else candidate.suffix.lstrip(".") or "png"
-                # As a data URL, because the window cannot load files from the pool folder directly.
-                image_data = f"data:image/{kind};base64," + base64.b64encode(candidate.read_bytes()).decode()
-                break
+    found = pool.image_file(str(image)) if image else None
+    image_file = str(found) if found else None
+    image_data = data_url(found) if found else None
     concept = next((c for c in pool.concept_info() if c["id"] == question.concept), None)
     return {
         "id": question.id,
