@@ -12,9 +12,11 @@
 
   // Edits one question: form on the left, the question as it reads on the right, checked while typing.
   // `practice` lists the practice questions of the same pool for the variant choice.
-  let { question, practice = [], onclose, onsaved } = $props();
+  // `draft` brings back unsaved changes from an earlier visit; `ondraft` hears of every change while unsaved.
+  let { question, practice = [], onclose, onsaved, draft = null, ondraft } = $props();
   // The editor is created anew for every question (see {#key} in the page), so it starts from this snapshot.
   const initial = untrack(() => question);
+  const kept = untrack(() => draft);
 
   const EDITABLE = ["type", "level", "public", "exam", "variant_of", "coverage", "misconception", "stem", "images", "image_columns", "code",
     "code_language", "options", "points", "half_points", "lines", "expected", "marking_notes"];
@@ -43,8 +45,10 @@
     return fields;
   }
 
-  let base = $state(initial);
-  let fields = $state(editable(initial.data));
+  // Unsaved changes from an earlier visit keep the file time they were made against, so that a change
+  // elsewhere since then still counts as a conflict on saving.
+  let base = $state(kept ? { ...initial, mtime_ns: kept.mtime_ns } : initial);
+  let fields = $state(kept ? kept.fields : editable(initial.data));
   let saved = $state(JSON.stringify(editable(initial.data)));
   let lang = $state(languages.includes(ui.lang) ? ui.lang : languages[0]);
   let findings = $state(initial.findings);
@@ -68,6 +72,13 @@
       (fields.type === "free_text" && !fields.expected?.[l]?.trim()),
     ),
   );
+
+  // Keep unsaved changes for the next visit; forget them once saved or discarded.
+  $effect(() => {
+    const snapshot = $state.snapshot(fields);
+    const unsaved = JSON.stringify(snapshot) !== saved;
+    untrack(() => ondraft?.(unsaved ? { fields: snapshot, mtime_ns: base.mtime_ns } : null));
+  });
 
   // Check while typing, a moment after the last keystroke.
   let timer = null;
@@ -189,6 +200,7 @@
 
   function close() {
     if (dirty && !confirm(t("edit.confirmLeave", { id: base.data.id }))) return;
+    ondraft?.(null);
     onclose?.();
   }
 

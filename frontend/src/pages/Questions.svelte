@@ -1,5 +1,5 @@
 <script>
-  import { untrack } from "svelte";
+  import { tick, untrack } from "svelte";
   import Icon from "../components/Icon.svelte";
   import QuestionPreview from "../components/QuestionPreview.svelte";
   import QuestionEditor from "../components/QuestionEditor.svelte";
@@ -7,6 +7,7 @@
   import { call } from "../lib/api.js";
   import { errorText, t } from "../lib/i18n.svelte.js";
   import { app, pending, showToast } from "../lib/state.svelte.js";
+  import { drafts, recall, remember } from "../lib/viewstate.svelte.js";
 
   const modulePath = $derived(app.settings?.current_module || "");
   const module = $derived(app.workspace.modules.find((m) => m.path === modulePath) ?? null);
@@ -20,6 +21,8 @@
   let editing = $state(null); // the detail of the question in the editor
   let newOpen = $state(false);
   let newPreset = $state({});
+  let listPane = $state(null);
+  let restoredFor = $state(""); // the module whose remembered state this page shows
 
   const blank = { search: "", pool: "", concept: "", level: "", status: "", type: "", use: "", findings: "" };
   let filter = $state({ ...blank });
@@ -41,25 +44,58 @@
     }
   }
 
-  // Load again whenever another module becomes the current one.
+  // Whenever the page opens or another module becomes the current one: take up where the person left this
+  // module (filters, selection, scroll position, an open editor), then load.
   $effect(() => {
     modulePath;
-    selected = null;
+    untrack(() => restore());
+  });
+
+  async function restore() {
+    const kept = recall("questions", modulePath);
     detail = null;
     editing = null;
-    untrack(() => {
-      // Another page may have sent the person here for one concept, or to add a question to it.
-      filter = { ...blank, ...(pending.questionsFilter ?? {}) };
+    selected = kept.selected ?? null;
+    filter = { ...blank, ...(kept.filter ?? {}) };
+    // Another page may have sent the person here for one concept, or to add a question to it.
+    if (pending.questionsFilter) {
+      filter = { ...blank, ...pending.questionsFilter };
       pending.questionsFilter = null;
-      if (pending.newQuestion) {
-        newPreset = pending.newQuestion;
-        pending.newQuestion = null;
-        load().then(() => (newOpen = true));
-      } else {
-        load();
+    }
+    const wanted = pending.newQuestion;
+    pending.newQuestion = null;
+    restoredFor = ""; // remember nothing until the remembered state is back, or a half-done restore overwrites it
+    await load();
+    await tick();
+    if (listPane && kept.scroll && !wanted) listPane.scrollTop = kept.scroll;
+    if (wanted) {
+      newPreset = wanted;
+      newOpen = true;
+    } else if (kept.editing) {
+      try {
+        editing = await call("get_question", kept.editing.pool, kept.editing.id);
+      } catch {
+        editing = null; // the question is gone; the list shows what is there
       }
-    });
+    }
+    restoredFor = modulePath;
+  }
+
+  // Remember what the page shows, for the next visit.
+  $effect(() => {
+    const state = {
+      filter: $state.snapshot(filter),
+      selected: $state.snapshot(selected),
+      editing: editing ? { pool: editing.pool, id: editing.id } : null,
+    };
+    if (restoredFor === modulePath) untrack(() => remember("questions", modulePath, state));
   });
+
+  function onListScroll() {
+    remember("questions", modulePath, { scroll: listPane.scrollTop });
+  }
+
+  const draftKey = (q) => `${q.pool}\n${q.id}`;
 
   const words = $derived(filter.search.toLowerCase().split(/\s+/).filter(Boolean));
   const shown = $derived(
@@ -196,7 +232,9 @@
     <p class="form-error">{error}</p>
   {:else if editing}
     {#key editing.pool + editing.id}
-      <QuestionEditor question={editing} {practice} onclose={closeEditor} onsaved={() => load()} />
+      <QuestionEditor question={editing} {practice} onclose={closeEditor} onsaved={() => load()}
+        draft={drafts.get(draftKey(editing))}
+        ondraft={(d) => (d ? drafts.set(draftKey(editing), d) : drafts.delete(draftKey(editing)))} />
     {/key}
   {:else if !loading && pools.length === 0}
     <div class="empty"><div class="mark"><Icon name="questions" /></div><p>{t("q.noPool")}</p></div>
@@ -254,7 +292,7 @@
     </div>
 
     <div class="q-split">
-      <div class="q-list-pane" role="listbox" aria-label={t("questions.title")}>
+      <div class="q-list-pane" role="listbox" aria-label={t("questions.title")} bind:this={listPane} onscroll={onListScroll}>
         {#if loading && questions.length === 0}
           <p class="muted pad">{t("q.loading")}</p>
         {:else if shown.length === 0}

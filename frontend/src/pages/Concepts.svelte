@@ -1,11 +1,12 @@
 <script>
-  import { untrack } from "svelte";
+  import { tick, untrack } from "svelte";
   import Icon from "../components/Icon.svelte";
   import Dialog from "../components/Dialog.svelte";
   import { call } from "../lib/api.js";
   import { errorText, t } from "../lib/i18n.svelte.js";
   import { app, pending, showToast } from "../lib/state.svelte.js";
   import { slugify } from "../lib/slug.js";
+  import { recall, remember } from "../lib/viewstate.svelte.js";
 
   const modulePath = $derived(app.settings?.current_module || "");
   const module = $derived(app.workspace.modules.find((m) => m.path === modulePath) ?? null);
@@ -20,6 +21,8 @@
   let newOpen = $state(false);
   let added = $state({ pool: "", name: "", description: "" });
   let addError = $state("");
+  let listPane = $state(null);
+  let restoredFor = $state("");
 
   async function load() {
     if (!modulePath) return;
@@ -34,13 +37,27 @@
     }
   }
 
+  // Take up where the person left this module's concepts: search, pool filter, selection, scroll position.
   $effect(() => {
     modulePath;
-    untrack(() => {
+    untrack(async () => {
+      const kept = recall("concepts", modulePath);
+      search = kept.search ?? "";
+      poolFilter = kept.poolFilter ?? "";
       selected = null;
-      poolFilter = "";
-      load();
+      restoredFor = ""; // remember nothing until the remembered state is back, or a half-done restore overwrites it
+      await load();
+      const again = kept.selected && concepts.find((c) => c.pool === kept.selected.pool && c.id === kept.selected.id);
+      if (again) choose(again);
+      await tick();
+      if (listPane && kept.scroll) listPane.scrollTop = kept.scroll;
+      restoredFor = modulePath;
     });
+  });
+
+  $effect(() => {
+    const state = { search, poolFilter, selected: $state.snapshot(selected) };
+    if (restoredFor === modulePath) untrack(() => remember("concepts", modulePath, state));
   });
 
   const pools = $derived([...new Map(concepts.map((c) => [c.pool, c.pool_name])).entries()]);
@@ -158,7 +175,8 @@
       <span class="q-count">{t("concepts.count", { shown: shown.length, total: concepts.length })}</span>
     </div>
     <div class="q-split">
-      <div class="q-list-pane" role="listbox" aria-label={t("concepts.title")}>
+      <div class="q-list-pane" role="listbox" aria-label={t("concepts.title")} bind:this={listPane}
+        onscroll={() => remember("concepts", modulePath, { scroll: listPane.scrollTop })}>
         {#if loading && !concepts.length}<p class="muted pad">{t("loading")}</p>{/if}
         {#each shown as c (c.pool + c.id)}
           <button class="q-row concept-row" class:on={current === c} role="option" aria-selected={current === c} onclick={() => choose(c)}>

@@ -130,6 +130,10 @@ The editor shows the form on the left and the question as it reads on paper on t
 
 A **reviewed** question goes back to **draft** when you change its content, because it then needs a new release.
 
+### Markwise remembers where you were
+
+Every page keeps its state per module when you leave it: on **Questions** the search, filters, sort order, chosen question, scroll position and an open editor, including changes you have not saved yet; on **Concepts** the search, pool filter, chosen concept and scroll position. After a restart Markwise opens on the page you used last, with its filters and selection. Unsaved changes are kept only while the window is open; when you come back to them and the file was changed elsewhere in the meantime, saving reports the conflict as usual.
+
 ### Settings
 
 ### Settings
