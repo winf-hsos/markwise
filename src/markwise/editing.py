@@ -16,7 +16,7 @@ from ruamel.yaml.scalarstring import LiteralScalarString
 from .catalog import plain, variant_findings
 from .checks import Finding, check_question
 from .pool import Pool
-from .question import FIELD_ORDER, ConflictError, Question, default_author, today
+from .question import FIELD_ORDER, INHERITED, ConflictError, Question, default_author, today
 
 # Fields the editor owns. id and concept name the file, status and reviewed_by belong to the release, and
 # the authorship fields are written by Markwise itself.
@@ -97,10 +97,16 @@ def apply(data: CommentedMap, fields: dict) -> bool:
     """Merge the editor's fields into the mapping; returns whether anything changed."""
     fields = _figures(fields)
     changed = False
+    variant = bool(fields.get("variant_of", data.get("variant_of")))
     for key in EDITABLE:
         if key not in fields:
             continue
         value = fields[key]
+        if variant and key in INHERITED and _empty(value):
+            if key in data:  # the variant takes this setting from its parent again
+                del data[key]
+                changed = True
+            continue
         if key == "exam":
             # Written only where it differs from its default (exam questions are those not public), so that
             # files keep their shape until a question is meant for both.
@@ -145,7 +151,7 @@ def check_fields(pool: Pool, qid: str, fields: dict) -> list[dict]:
     for key in EDITABLE:
         if key in fields:
             data[key] = fields[key]
-    draft = Question(data, original.path)
+    draft = pool.attach_parent(Question(data, original.path))
     findings: list[Finding] = check_question(draft, pool) + variant_findings(draft, pool)
     return [f.to_dict() for f in findings]
 

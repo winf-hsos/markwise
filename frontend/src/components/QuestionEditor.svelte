@@ -26,6 +26,10 @@
     "code_language", "options", "time_seconds", "half_points", "lines", "expected", "marking_notes"];
   const languages = initial.languages;
   const blankTexts = () => Object.fromEntries(languages.map((l) => [l, ""]));
+  // A variant takes these settings from the question it varies, unless it sets its own; empty here means inherited.
+  const INHERITED = ["type", "level", "time_seconds", "coverage", "misconception"];
+  const inherited = initial.inherited ?? {};
+  const parentId = initial.parent?.id ?? initial.data.variant_of ?? "";
 
   function editable(data) {
     const fields = {};
@@ -37,6 +41,10 @@
     // Optional fields as empty strings, so that inputs bind to them; the core drops empty optional fields.
     for (const key of ["variant_of", "coverage", "misconception", "code", "code_language"]) fields[key] ??= "";
     fields.time_seconds ??= null;
+    if (data.variant_of) {
+      fields.type ??= null;
+      fields.level ??= null;
+    }
     // One figure is stored as `image`, several as `images`; the editor always works with the list.
     fields.images = Array.isArray(data.images) ? [...data.images] : data.image ? [data.image] : [];
     fields.image_columns = Number.isInteger(data.image_columns) ? data.image_columns : 1;
@@ -66,7 +74,11 @@
   let busy = $state(false);
 
   const dirty = $derived(JSON.stringify(fields) !== saved);
-  const isChoice = $derived(fields.type === "single" || fields.type === "multiple");
+  const isVariant = $derived(Boolean(fields.variant_of));
+  const fromParent = (key) => isVariant && (fields[key] == null || fields[key] === "") && inherited[key] != null;
+  const effective = (key) => (fromParent(key) ? inherited[key] : fields[key]);
+  const qtype = $derived(effective("type"));
+  const isChoice = $derived(qtype === "single" || qtype === "multiple");
   const variantChoices = $derived(practice.filter((p) => p.concept === base.data.concept && p.id !== base.data.id));
 
   // Languages in which a required text is still empty, for the marks on the language tabs.
@@ -74,7 +86,7 @@
     languages.filter((l) =>
       !fields.stem?.[l]?.trim() ||
       (isChoice && (fields.options ?? []).some((o) => !o.text?.[l]?.trim())) ||
-      (fields.type === "free_text" && !fields.expected?.[l]?.trim()),
+      (qtype === "free_text" && !fields.expected?.[l]?.trim()),
     ),
   );
 
@@ -120,7 +132,7 @@
   ]);
 
   function setCorrect(option) {
-    if (fields.type === "single") for (const o of fields.options) o.correct = o === option;
+    if (qtype === "single") for (const o of fields.options) o.correct = o === option;
     else option.correct = !option.correct;
   }
 
@@ -311,26 +323,36 @@
     </div>
   {/if}
 
+  <!-- Next to a setting of a variant: inherited from the parent, or its own value with a way back. -->
+  {#snippet heritage(key)}
+    {#if isVariant && inherited[key] != null && fromParent(key)}
+      <span class="heritage" title={t("edit.inheritedHint", { id: parentId })}>{t("edit.inherited", { id: parentId })}</span>
+    {:else if isVariant && inherited[key] != null}
+      <button type="button" class="heritage own" title={t("edit.inheritAgainHint", { id: parentId })}
+        onclick={(e) => { e.preventDefault(); fields[key] = key === "coverage" || key === "misconception" ? "" : null; }}>{t("edit.inheritAgain")}</button>
+    {/if}
+  {/snippet}
+
   <div class="editor-split">
     <form class="editor-form" onsubmit={(e) => { e.preventDefault(); save(); }}>
       {#if base.data.status === "reviewed"}<p class="form-info">{t("edit.reviewedNote")}</p>{/if}
 
       <div class="form-grid">
-        {#if fields.type !== "free_text"}
+        {#if qtype !== "free_text"}
           <div class="field">
-            <span>{t("edit.type")}</span>
+            <span class="field-label">{t("edit.type")}{@render heritage("type")}</span>
             <div class="seg" role="group">
               {#each ["single", "multiple"] as v}
-                <button type="button" class:on={fields.type === v} onclick={() => setType(v)}>{t(`type.${v}`)}</button>
+                <button type="button" class:on={qtype === v} class:inherited={fromParent("type")} onclick={() => setType(v)}>{t(`type.${v}`)}</button>
               {/each}
             </div>
           </div>
         {/if}
         <div class="field">
-          <span>{t("edit.level")}</span>
+          <span class="field-label">{t("edit.level")}{@render heritage("level")}</span>
           <div class="seg" role="group">
             {#each ["remember", "understand", "apply"] as v}
-              <button type="button" class:on={fields.level === v} onclick={() => (fields.level = v)}>{t(`level.${v}`)}</button>
+              <button type="button" class:on={effective("level") === v} class:inherited={fromParent("level")} onclick={() => (fields.level = v)}>{t(`level.${v}`)}</button>
             {/each}
           </div>
         </div>
@@ -342,8 +364,8 @@
           </div>
         </div>
         <div class="field">
-          <span>{t("edit.time")}</span>
-          <TimeChoice bind:value={fields.time_seconds} />
+          <span class="field-label">{t("edit.time")}{@render heritage("time_seconds")}</span>
+          <TimeChoice bind:value={fields.time_seconds} inherited={isVariant ? inherited.time_seconds ?? null : null} />
         </div>
         {#if !fields.public}
           <label class="field">
@@ -432,7 +454,7 @@
         <ol class="option-edit">
           {#each fields.options as option (option.id)}
             <li class:correct={option.correct}>
-              <button type="button" class="correct-toggle" class:round={fields.type === "single"} class:on={option.correct} aria-pressed={option.correct}
+              <button type="button" class="correct-toggle" class:round={qtype === "single"} class:on={option.correct} aria-pressed={option.correct}
                 title={t("edit.correct")} onclick={() => setCorrect(option)}>
                 {#if option.correct}<Icon name="check" />{/if}
               </button>
@@ -504,8 +526,10 @@
 
       <details class="more">
         <summary>{t("edit.more")}</summary>
-        <label class="field"><span>{t("edit.coverage")}</span><input class="input" bind:value={fields.coverage} /></label>
-        <label class="field"><span>{t("edit.misconception")}</span><input class="input" bind:value={fields.misconception} /></label>
+        <label class="field"><span class="field-label">{t("edit.coverage")}{@render heritage("coverage")}</span>
+          <input class="input" bind:value={fields.coverage} placeholder={isVariant ? inherited.coverage ?? "" : ""} /></label>
+        <label class="field"><span class="field-label">{t("edit.misconception")}{@render heritage("misconception")}</span>
+          <input class="input" bind:value={fields.misconception} placeholder={isVariant ? inherited.misconception ?? "" : ""} /></label>
       </details>
     </form>
 

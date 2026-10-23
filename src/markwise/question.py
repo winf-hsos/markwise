@@ -18,6 +18,9 @@ STATUSES = ("draft", "reviewed", "piloted", "retired")
 # How long answering a question takes, in seconds, when nobody chose otherwise.
 DEFAULT_SECONDS = {"single": 60, "multiple": 60, "free_text": 300}
 
+# Settings a variant takes from the question it varies, unless it sets them itself. Its texts are its own.
+INHERITED = ("type", "level", "time_seconds", "coverage", "misconception")
+
 # Order of the known top-level fields when Markwise writes a new file.
 FIELD_ORDER = (
     "id", "concept", "type", "level", "time_seconds", "status", "public", "exam", "variant_of", "reviewed_by",
@@ -37,6 +40,7 @@ class Question:
     def __init__(self, data: CommentedMap, path: Path | None = None):
         self.data = data
         self.path = path
+        self.parent: Question | None = None  # for a variant: the question it varies, once the pool has linked it
         self._mtime_ns = path.stat().st_mtime_ns if path and path.exists() else None
 
     @classmethod
@@ -46,7 +50,16 @@ class Question:
     # --- fields ---------------------------------------------------------------------
 
     def get(self, key: str, default: Any = None) -> Any:
+        """A field of the file; for a variant, an inherited setting it does not set itself comes from the parent."""
+        if key not in self.data and key in INHERITED and self.variant_of and self.parent is not None:
+            return self.parent.data.get(key, default)
         return self.data.get(key, default)
+
+    def inherited(self) -> dict:
+        """The settings this variant takes from its parent at the moment, by field."""
+        if not self.variant_of or self.parent is None:
+            return {}
+        return {key: self.parent.data[key] for key in INHERITED if key not in self.data and key in self.parent.data}
 
     @property
     def id(self) -> str:
@@ -58,11 +71,11 @@ class Question:
 
     @property
     def type(self) -> str:
-        return str(self.data.get("type", ""))
+        return str(self.get("type", ""))
 
     @property
     def level(self) -> str:
-        return str(self.data.get("level", ""))
+        return str(self.get("level", ""))
 
     @property
     def status(self) -> str:

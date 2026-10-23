@@ -9,7 +9,7 @@ from ruamel.yaml.comments import CommentedMap, CommentedSeq
 
 from .checks import ERROR, NOTE, WARNING, Finding, check_pool, check_question
 from .pool import Pool
-from .question import Question
+from .question import INHERITED, Question
 
 
 def plain(value):
@@ -175,6 +175,11 @@ def detail(pool: Pool, qid: str) -> dict:
         "mtime_ns": str(question.path.stat().st_mtime_ns),
         "modified": question.path.stat().st_mtime,
         "data": plain(question.data),
+        # For a variant: the parent's settings it can inherit (used where it sets none of its own), and the parent.
+        "inherited": plain({key: question.parent.data[key] for key in INHERITED if key in question.parent.data})
+                     if question.variant_of and question.parent is not None else {},
+        "parent": {"id": question.parent.id, "stem": _text(question.parent.get("stem"), "de", pool.settings.languages)}
+                  if question.variant_of and question.parent is not None else None,
         "findings": findings,
         "figures": figures,
         "image_columns": question.image_columns,

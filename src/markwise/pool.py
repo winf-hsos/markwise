@@ -127,6 +127,10 @@ class Pool:
                 questions.append(Question.load(path))
             except Exception as exc:  # a broken file must not stop the rest of the pool
                 errors.append(LoadError(path, f"cannot be read: {exc}"))
+        by_id = {q.id: q for q in questions}
+        for q in questions:
+            if q.variant_of:
+                q.parent = by_id.get(q.variant_of)
         return questions, errors
 
     def concepts(self) -> list[str]:
@@ -239,7 +243,16 @@ class Pool:
         matches = list(self.questions_dir.glob(f"*/{qid}.yaml"))
         if not matches:
             raise KeyError(f"no question {qid} in {self.root}")
-        return Question.load(matches[0])
+        return self.attach_parent(Question.load(matches[0]))
+
+    def attach_parent(self, question: Question) -> Question:
+        """Link a variant to the question it varies, so that it can inherit that question's settings."""
+        question.parent = None
+        if question.variant_of and question.variant_of != question.id:
+            matches = list(self.questions_dir.glob(f"*/{question.variant_of}.yaml"))
+            if matches:
+                question.parent = Question.load(matches[0])
+        return question
 
     def all_ids(self) -> set[str]:
         return {p.stem for p in self.question_files()}
@@ -250,13 +263,19 @@ class Pool:
         numbers = [int(m.group(1)) for qid in self.all_ids() if (m := pattern.match(qid))]
         return f"{prefix}-{max(numbers, default=0) + 1:03d}"
 
+    def next_variant_id(self, parent_id: str) -> str:
+        """The next variant of a question: its identifier with -v1, -v2 …; numbers are never given twice."""
+        pattern = re.compile(rf"^{re.escape(parent_id)}-v(\d+)$")
+        numbers = [int(m.group(1)) for qid in self.all_ids() if (m := pattern.match(qid))]
+        return f"{parent_id}-v{max(numbers, default=0) + 1}"
+
     def prefix_for(self, concept: str) -> str:
         """The prefix used by existing questions of the concept, else the initials of the concept name."""
         folder = self.questions_dir / concept
         if folder.exists():
             for path in sorted(folder.glob("*.yaml")):
-                if "-" in path.stem:
-                    return path.stem.rsplit("-", 1)[0]
+                if m := re.match(r"^(.+)-\d+$", path.stem):  # a numbered question, not a variant such as x-001-v1
+                    return m.group(1)
         return "".join(part[0] for part in concept.split("-") if part) or "q"
 
     def new_question(self, concept: str, qtype: str, author: str | None = None) -> Question:

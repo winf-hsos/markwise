@@ -11,7 +11,15 @@
   // `me` is the name Markwise notes on a release, to tell whether this examiner released the question already.
   let { question, variants = [], compact = false, onopen, onedit, onaction, me = "" } = $props();
 
-  const data = $derived(question.data);
+  // A variant shows the settings it inherits from its parent where it sets none of its own.
+  const data = $derived.by(() => {
+    const merged = { ...question.data };
+    for (const [key, value] of Object.entries(question.inherited ?? {})) {
+      if (merged[key] == null || merged[key] === "") merged[key] = value;
+    }
+    return merged;
+  });
+  const isInherited = (key) => key in (question.inherited ?? {}) && (question.data[key] == null || question.data[key] === "");
   const languages = $derived(question.languages);
   let lang = $state(null);
   const shown = $derived(lang && languages.includes(lang) ? lang : languages.includes(ui.lang) ? ui.lang : languages[0]);
@@ -116,10 +124,13 @@
   <section class="preview-section">
     <dl class="meta">
       <dt>{t("q.meta.concept")}</dt><dd>{question.concept_name ?? data.concept}{#if question.concept_description}<span class="muted small concept-desc">{question.concept_description}</span>{/if}</dd>
-      <dt>{t("q.meta.level")}</dt><dd>{t(`level.${data.level}`)}</dd>
-      <dt>{t("edit.time")}</dt><dd>{data.time_seconds ? formatTime(data.time_seconds) : t("q.noTime")}</dd>
+      <dt>{t("q.meta.level")}</dt><dd>{t(`level.${data.level}`)}{#if isInherited("level")}<span class="muted small"> · {t("q.inherited")}</span>{/if}</dd>
+      <dt>{t("edit.time")}</dt><dd>{data.time_seconds ? formatTime(data.time_seconds) : t("q.noTime")}{#if isInherited("time_seconds")}<span class="muted small"> · {t("q.inherited")}</span>{/if}</dd>
       {#if data.public && data.type !== "free_text"}
         <dt>{t("q.variants")}</dt><dd>{variants.length ? variants.join(", ") : t("q.noVariant")}</dd>
+      {/if}
+      {#if data.variant_of}
+        <dt>{t("q.parent")}</dt><dd>{data.variant_of}{#if question.parent?.stem}<span class="muted small concept-desc">{question.parent.stem}</span>{/if}</dd>
       {/if}
       {#if data.coverage}<dt>{t("q.meta.coverage")}</dt><dd>{data.coverage}</dd>{/if}
       {#if data.misconception}<dt>{t("q.meta.misconception")}</dt><dd>{data.misconception}</dd>{/if}

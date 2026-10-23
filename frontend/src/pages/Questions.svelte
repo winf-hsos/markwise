@@ -144,6 +144,27 @@
     }
   });
   const sorted = $derived([...shown].sort(SORTS[sort]));
+  // Variants stand right below the question they vary, in the order of their identifiers. A variant whose
+  // parent is filtered out stands on its own, with a note which question it varies.
+  const listed = $derived.by(() => {
+    const key = (pool, id) => `${pool}\n${id}`;
+    const inList = new Set(shown.map((q) => key(q.pool, q.id)));
+    const below = new Map();
+    for (const q of shown) {
+      if (q.variant_of && inList.has(key(q.pool, q.variant_of))) {
+        const parent = key(q.pool, q.variant_of);
+        below.set(parent, [...(below.get(parent) ?? []), q]);
+      }
+    }
+    const rows = [];
+    for (const q of sorted) {
+      if (q.variant_of && inList.has(key(q.pool, q.variant_of))) continue;
+      rows.push({ q, child: false, orphan: Boolean(q.variant_of) });
+      for (const v of (below.get(key(q.pool, q.id)) ?? []).sort(SORTS.id)) rows.push({ q: v, child: true, orphan: false });
+    }
+    return rows;
+  });
+  const order = $derived(listed.map((r) => r.q));
 
   // Concepts for the filter, by name: [id, name], from the questions of the chosen pool.
   const concepts = $derived(
@@ -170,8 +191,8 @@
     if (editing || !["ArrowDown", "ArrowUp"].includes(event.key) || event.target.closest?.("select, .preview")) return;
     if (!shown.length) return;
     event.preventDefault();
-    const index = selectedRow ? sorted.indexOf(selectedRow) : -1;
-    const next = sorted[Math.max(0, Math.min(sorted.length - 1, index + (event.key === "ArrowDown" ? 1 : -1)))];
+    const index = selectedRow ? order.indexOf(selectedRow) : -1;
+    const next = order[Math.max(0, Math.min(order.length - 1, index + (event.key === "ArrowDown" ? 1 : -1)))];
     show(next);
     document.getElementById(`q-${next.pool}-${next.id}`)?.scrollIntoView({ block: "nearest" });
   }
@@ -333,12 +354,16 @@
         {:else if shown.length === 0}
           <p class="muted pad">{t("q.noMatch")}</p>
         {/if}
-        {#each sorted as q (q.pool + q.id)}
-          <button id={`q-${q.pool}-${q.id}`} class="q-row" class:retired={q.status === "retired"} class:on={selectedRow === q} role="option" aria-selected={selectedRow === q} onclick={() => show(q)}>
+        {#each listed as { q, child, orphan } (q.pool + q.id)}
+          <button id={`q-${q.pool}-${q.id}`} class="q-row" class:variant-row={child} class:retired={q.status === "retired"} class:on={selectedRow === q} role="option" aria-selected={selectedRow === q} onclick={() => show(q)}>
             <span class="q-row-head">
+              {#if child}<span class="variant-branch" aria-hidden="true"></span>{/if}
               <span class="type-icon" title={t(`type.${q.type}`)} aria-label={t(`type.${q.type}`)}><Icon name={TYPE_ICONS[q.type] ?? "questions"} /></span>
               <span class="qid">{q.id}</span>
-              <span class="q-concept">{q.concept_name}</span>
+              {#if child}<span class="q-concept">{t("q.variantLabel")}</span>
+              {:else if orphan}<span class="q-concept">{t("q.variantOf", { id: q.variant_of })}</span>
+              {:else}<span class="q-concept">{q.concept_name}</span>{/if}
+              {#if !child && q.variants.length}<span class="tag variant-count">{t(q.variants.length === 1 ? "q.variantCount1" : "q.variantCount", { n: q.variants.length })}</span>{/if}
               {#if q.errors}<span class="tag red"><i class="dot"></i>{q.errors} {t("sev.error")}</span>
               {:else if q.warnings}<span class="tag warn"><i class="dot"></i>{t("sev.warning")}</span>{/if}
               {#if q.status === "reviewed"}<span class="status-mark" title={t("status.reviewed")}><Icon name="check" /></span>{/if}

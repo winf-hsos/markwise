@@ -41,7 +41,7 @@ time_seconds: 60           # how long answering takes, in seconds (5 to 3600); t
 status: draft              # draft | reviewed | piloted | retired
 public: true               # shown to students for practice
 exam: true                 # may be drawn for an exam; without the field: true exactly when public is false
-variant_of: cs-001         # exam variants only: the practice question they vary (then public: false)
+variant_of: cs-001         # exam variants only (id cs-001-v1, cs-001-v2 …): the practice question they vary
 reviewed_by: [Examiner A, Examiner B]   # the examiners who released it; releasing makes a draft reviewed
 created_by: Examiner A     # written by Markwise: who created the question, and when
 created_at: 2026-10-24
@@ -77,6 +77,8 @@ options:                   # single and multiple only
 Identifiers are never reused: a question that is not a draft is retired instead of deleted, and its file stays. Only a deleted draft frees its identifier.
 
 A question can be meant for practice, for exams, or for both. An exam variant is never public, because a variant students have seen no longer tests whether they understood the practice question.
+
+An exam variant inherits `type`, `level`, `time_seconds`, `coverage` and `misconception` from the question named in `variant_of` whenever its own file does not set them. Markwise writes a new variant without these fields, so that a change at the parent reaches it; a variant that sets one of them keeps its own value until the field is removed again. Its identifier is the parent's with `-v` and a running number, which is never given twice.
 
 `single` has exactly one correct option. `multiple` has at least one; one correct option is allowed, so that the number of correct answers cannot be guessed.
 

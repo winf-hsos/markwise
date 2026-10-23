@@ -87,6 +87,7 @@ The **Questions** page lists every question in the pools of the current module. 
 - A small symbol in front of each identifier shows the type: a filled circle for single choice, a ticked box for multiple choice, lines for free text.
 - A question with errors carries a red mark in the list, one with warnings a yellow one; questions meant for exams are marked **Exam**, or **Practice and exam** if they serve both.
 - **Sort by** orders the list by identifier, concept, last change (newest first), level, status, or findings (questions with errors first). Markwise remembers the order on this computer.
+- **Exam variants stand below the question they vary**, indented and in the order of their identifiers, whatever the list is sorted by; the parent shows how many variants it has. A variant whose parent is filtered out stands on its own with a note which question it varies.
 - When a filter or the search drops the question shown on the right, the preview empties; undoing the filter brings it back.
 - **Click** a question, or move through the list with the **arrow keys**, to see it on the right as it reads on paper: the text, any code and figure, the options with the correct ones ticked and the feedback below each, then the check's findings and the metadata (concept, level, exam variants of a practice question, coverage, pool, when the file was last changed, file). **DE** and **EN** switch the language of the preview.
 - **Edit** opens the question in the editor (see below). **Open in editor** opens its file in the program Windows uses for YAML files instead; after saving there, click **Reload**.
@@ -101,7 +102,9 @@ A question is written as a **draft**. When an examiner has read it and agrees, *
 
 The **⋯** menu next to **Edit** holds the other steps:
 
-- **Create exam variant** (for practice questions): a new exam-only question in the same concept, noting the practice question in `variant_of`. It starts as a copy and opens in the editor, so that you can change its surface while keeping the learning goal and level.
+- **Create exam variant** (for practice questions): a new exam-only question in the same concept, named after its parent with `-v1`, `-v2` and so on (`cp-005-v1`), and noting the parent in `variant_of`. Its texts start as a copy and open in the editor, so that you can change its surface while keeping the learning goal.
+
+  A variant **inherits the settings of its parent**: type, level, time to answer, where the material is taught and the misconception. They are not copied but read from the parent, so a change there reaches every variant. In the editor these settings are marked **inherited from cp-005** and shown in a lighter style; choosing another value gives the variant its own, marked with **inherit again** to go back to the parent's. A variant is always meant for exams only, never for practice.
 - **Withdraw my release**: takes your name off; without any release left, the question is a draft again.
 - **Retire**: the question and its file stay, but it will not appear in any new exam, and its identifier is never given again. The list shows it struck through; **Take back** makes it a draft again.
 - **Delete** (drafts only): removes the file after a confirmation. Everything else is retired instead.
@@ -263,7 +266,7 @@ Things worth knowing:
 - **Texts over several lines** are written as a block after `|`, indented by two spaces more than the key, as in `stem` above. Short texts can stay in quotes on one line.
 - **Multiple choice** marks every correct option with `correct: true`. One correct option is allowed, so the number of correct answers cannot be guessed.
 - **Feedback** explains for every option why it is right or wrong. Students see it in practice mode; in exams it is never printed.
-- **Exam variants** are questions with `public: false` and `variant_of: <id of the practice question>`: the same learning goal at the same level, but a different surface. Students who understood the practice question can solve the variant; students who only memorised it cannot.
+- **Exam variants** are questions with `public: false` and `variant_of: <id of the practice question>`: the same learning goal at the same level, but a different surface. Their file holds only their own texts and any setting they set themselves; type, level, time, coverage and misconception otherwise come from the parent. Students who understood the practice question can solve the variant; students who only memorised it cannot.
 - **Optional fields:** `image` (a file name from the pool's `images` folder), `code` (a code block below the question text), `coverage` (where the material is taught), `misconception`, `session`, `reviewed_by`.
 - **Free-text questions** have no options but `points`, `half_points`, `lines` (size of the answer area), `expected` and `marking_notes`.
 - **Fields Markwise does not know are kept.** You may add your own fields and comments; Markwise preserves them, and when it saves a file, the parts it did not change stay exactly as they were.
@@ -354,7 +357,7 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise question show <pool> <id>` | print a question file |
 | `markwise question release <pool> <id> [--by <name>]` | release a question as examiner; a second examiner adds their name |
 | `markwise question withdraw <pool> <id> [--by <name>]` | take back your release |
-| `markwise question variant <pool> <id> [--by <name>]` | create an exam variant of a practice question, as a copy to vary |
+| `markwise question variant <pool> <id> [--by <name>]` | create an exam variant of a practice question (`<id>-v1`, …): its texts as a copy to vary, its settings inherited |
 | `markwise question retire <pool> <id>` / `restore` | take a question out of new exams / back in, as a draft |
 | `markwise question set <pool> <id> <field> <value>` | change one field by a dotted path (`level`, `stem.de`, `options.b.correct`); `true`, `false` and numbers are understood |
 | `markwise question delete <pool> <id> --yes [--used-in-exam]` | delete a draft, retire anything else |

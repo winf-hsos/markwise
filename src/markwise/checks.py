@@ -45,7 +45,7 @@ def check_question(q: Question, pool: Pool) -> list[Finding]:
                            {k: str(v) for k, v in params.items()}))
 
     for key in ("id", "concept", "type", "level", "status", "public", "stem"):
-        if key not in q.data:
+        if q.get(key) is None:
             add(ERROR, "field_missing", f"field '{key}' is missing", field=key)
     if q.path is not None:
         if q.id and q.id != q.path.stem:
@@ -55,9 +55,9 @@ def check_question(q: Question, pool: Pool) -> list[Finding]:
                 concept=q.concept, folder=q.path.parent.name)
     if q.concept and s.concepts is not None and q.concept not in s.concepts:
         add(ERROR, "concept_unlisted", f"concept '{q.concept}' is not listed in pool.toml", concept=q.concept)
-    if "type" in q.data and q.type not in TYPES:
+    if q.get("type") is not None and q.type not in TYPES:
         add(ERROR, "type_invalid", f"type '{q.type}' is not one of {', '.join(TYPES)}", value=q.type)
-    if "level" in q.data and q.level not in LEVELS:
+    if q.get("level") is not None and q.level not in LEVELS:
         add(ERROR, "level_invalid", f"level '{q.level}' is not one of {', '.join(LEVELS)}", value=q.level)
     if "status" in q.data and q.status not in STATUSES:
         add(ERROR, "status_invalid", f"status '{q.status}' is not one of {', '.join(STATUSES)}", value=q.status)
@@ -71,7 +71,7 @@ def check_question(q: Question, pool: Pool) -> list[Finding]:
     if q.status == "retired":
         return out  # retired questions only need to stay readable
 
-    seconds = q.data.get("time_seconds")
+    seconds = q.get("time_seconds")
     if seconds is None:
         add(NOTE, "no_time", "no time for answering is set")
     elif not isinstance(seconds, int) or isinstance(seconds, bool) or not 5 <= seconds <= 3600:

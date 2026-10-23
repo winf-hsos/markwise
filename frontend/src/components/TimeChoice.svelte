@@ -3,7 +3,10 @@
   import { formatTime } from "../lib/time.js";
 
   // How long answering takes: the usual steps as buttons, any other time in minutes and seconds.
-  let { value = $bindable(null) } = $props();
+  // `inherited`: for a variant, the time of its parent, shown while the variant sets none of its own.
+  let { value = $bindable(null), inherited = null } = $props();
+  const fromParent = $derived(value == null && inherited != null);
+  const showing = $derived(value ?? inherited);
 
   const PRESETS = [15, 30, 45, 60, 120, 300];
   let custom = $state(value != null && !PRESETS.includes(value));
@@ -29,11 +32,11 @@
 
 <div class="time-choice" role="group" aria-label={t("edit.time")}>
   {#each PRESETS as preset}
-    <button type="button" class="chip" class:on={!custom && value === preset} aria-pressed={!custom && value === preset} onclick={() => choose(preset)}>
+    <button type="button" class="chip" class:on={!custom && showing === preset} class:inherited={fromParent} aria-pressed={!custom && value === preset} onclick={() => choose(preset)}>
       {formatTime(preset)}
     </button>
   {/each}
-  <button type="button" class="chip" class:on={custom} aria-pressed={custom} onclick={openCustom}>{t("edit.timeOther")}</button>
+  <button type="button" class="chip" class:on={custom || (fromParent && !PRESETS.includes(inherited))} class:inherited={fromParent} aria-pressed={custom} onclick={openCustom}>{t("edit.timeOther")}</button>
   {#if custom}
     <span class="time-custom">
       <input class="input" type="number" min="0" max="60" bind:value={minutes} oninput={setCustom} aria-label={t("edit.minutes")} />

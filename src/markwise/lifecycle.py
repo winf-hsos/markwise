@@ -12,7 +12,7 @@ from ruamel.yaml.comments import CommentedMap, CommentedSeq
 
 from .checks import ERROR, check_question
 from .pool import Pool
-from .question import Question, default_author, ordered, today
+from .question import INHERITED, Question, default_author, ordered, today
 
 
 class LifecycleError(Exception):
@@ -76,16 +76,17 @@ def withdraw(pool: Pool, qid: str, author: str | None = None) -> Question:
 
 
 def create_variant(pool: Pool, qid: str, author: str | None = None) -> Question:
-    """A new exam question in the same concept, starting as a copy of the practice question it varies."""
+    """A new exam question in the same concept: its texts start as a copy of the practice question it varies,
+    its settings (type, level, time and the like) are inherited from that question until it sets its own."""
     original = pool.find(qid)
     if not original.public:
         raise LifecycleError("not_practice", f"{qid} is not a practice question")
     if original.variant_of:
         raise LifecycleError("is_variant", f"{qid} is itself an exam variant")
     name = default_author() if author is None else author
-    new_id = pool.next_id(pool.prefix_for(original.concept))
+    new_id = pool.next_variant_id(original.id)
     skip = {"id", "status", "public", "exam", "variant_of", "reviewed_by", "created_by", "created_at",
-            "changed_by", "changed_at"}
+            "changed_by", "changed_at", *INHERITED}
     fields = {key: copy.deepcopy(value) for key, value in original.data.items() if key not in skip}
     fields.update(id=new_id, status="draft", public=False, variant_of=original.id)
     if name:
