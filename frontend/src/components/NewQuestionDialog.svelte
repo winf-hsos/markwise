@@ -2,27 +2,29 @@
   import Dialog from "./Dialog.svelte";
   import { call } from "../lib/api.js";
   import { errorText, t } from "../lib/i18n.svelte.js";
+  import { slugify } from "../lib/slug.js";
 
   // `pools` as delivered by list_questions; `oncreated` receives the new question's detail.
   let { open = $bindable(false), pools = [], preset = {}, oncreated } = $props();
 
   let pool = $state("");
   let concept = $state("");
-  let newConcept = $state("");
+  let conceptName = $state("");
+  let conceptDescription = $state("");
   let type = $state("single");
   let error = $state("");
   let busy = $state(false);
 
   const usable = $derived(pools.filter((p) => p.exists));
   const chosen = $derived(usable.find((p) => p.path === pool) ?? usable[0]);
-  // A pool without a fixed list of concepts may get new ones; its concepts are its folders.
-  const fixedList = $derived(chosen?.fixed_concepts ?? false);
+  const isNew = $derived(concept === "__new");
 
   $effect(() => {
     if (open) {
       pool = preset.pool || usable[0]?.path || "";
       concept = preset.concept || "";
-      newConcept = "";
+      conceptName = "";
+      conceptDescription = "";
       type = "single";
       error = "";
     }
@@ -33,8 +35,9 @@
     busy = true;
     error = "";
     try {
-      const name = concept === "__new" ? newConcept.trim() : concept;
-      const detail = await call("create_question", chosen.path, name, type);
+      const detail = isNew
+        ? await call("create_question", chosen.path, "", type, { name: conceptName, description: conceptDescription })
+        : await call("create_question", chosen.path, concept, type);
       open = false;
       oncreated?.(detail);
     } catch (err) {
@@ -59,16 +62,22 @@
       <span>{t("newQ.concept")}</span>
       <select class="select" bind:value={concept}>
         <option value="" disabled>–</option>
-        {#each chosen?.concepts ?? [] as c}<option value={c}>{c}</option>{/each}
-        {#if !fixedList}<option value="__new">{t("newQ.newConcept")} …</option>{/if}
+        {#each chosen?.concepts ?? [] as c}<option value={c.id}>{c.name}</option>{/each}
+        <option value="__new">{t("newQ.newConcept")} …</option>
       </select>
     </label>
-    {#if concept === "__new"}
-      <label class="field">
-        <span>{t("newQ.newConcept")}</span>
-        <input class="input" bind:value={newConcept} placeholder="code-systems" />
-        <small class="hint">{t("newQ.conceptHint")}</small>
-      </label>
+    {#if isNew}
+      <div class="new-concept">
+        <label class="field">
+          <span>{t("concepts.name")}</span>
+          <input class="input" bind:value={conceptName} placeholder={t("concepts.namePlaceholder")} />
+        </label>
+        <label class="field">
+          <span>{t("concepts.description")}</span>
+          <input class="input" bind:value={conceptDescription} placeholder={t("concepts.descriptionPlaceholder")} />
+          {#if conceptName.trim()}<small class="hint">{t("concepts.idPreview", { id: slugify(conceptName) })}</small>{/if}
+        </label>
+      </div>
     {/if}
     <div class="field">
       <span>{t("newQ.type")}</span>
@@ -82,6 +91,6 @@
   </form>
   {#snippet footer()}
     <button class="btn ghost" type="button" onclick={() => (open = false)}>{t("dialog.cancel")}</button>
-    <button class="btn primary" type="submit" form="new-question" disabled={busy || !concept || (concept === "__new" && !newConcept.trim())}>{t("newQ.create")}</button>
+    <button class="btn primary" type="submit" form="new-question" disabled={busy || !concept || (isNew && !conceptName.trim())}>{t("newQ.create")}</button>
   {/snippet}
 </Dialog>

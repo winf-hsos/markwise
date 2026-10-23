@@ -16,15 +16,25 @@ languages = ["de", "en"]   # every question needs stem, options and feedback in 
 min_options = 4            # never below 4 (§ 5 (3) a of the general examination regulations)
 max_options = 5
 
-# Optional: the valid concepts. Without this list, the folder names under questions/ are the concepts.
-concepts = ["code-systems", "compression"]
+# The concepts, each with a name and a short description in plain words. The key is the identifier
+# Markwise makes from the name; it names the folder of the concept's questions and never changes.
+# Without any [concepts] table, the folder names under questions/ are the concepts.
+[concepts.code-systems]
+name = "Code Systems"
+description = "A code system is a table that assigns symbols to meanings."
+
+[concepts.zahlensysteme-und-codes]
+name = "Zahlensysteme und Codes"
+description = "Wie Zahlen in verschiedenen Basen geschrieben werden."
 ```
+
+The identifier is the name in lower case, with umlauts written out (`ä` becomes `ae`) and everything that is not a letter or digit turned into a hyphen. Renaming a concept changes only its name. An earlier `concepts = ["code-systems", …]` list of identifiers is still read; such concepts show a name made from the identifier until someone names them.
 
 ## A question
 
 ```yaml
 id: cs-001                 # prefix of the concept and a running number
-concept: code-systems      # equals the folder name
+concept: code-systems      # the concept's identifier, equal to the folder name
 type: single               # single | multiple | free_text
 level: understand          # remember | understand | apply
 status: draft              # draft | reviewed | piloted | retired
@@ -88,4 +98,4 @@ Retired questions only have to stay readable.
 
 ## Importing the earlier YAML format
 
-`markwise import <old pool.toml> <new pool folder>` converts a question bank in the earlier format (German keys: `konzept`, `niveau`, `oeffentlich`, `frage`, `richtig`, `optionen` with `kennung`, `text`, `begruendung`) into this format. It maps the keys and values, derives `type` from `richtig` (a single letter is `single`, a list is `multiple`), copies the images and keeps unknown fields. It never overwrites an existing question: questions that changed in the source since the last import are listed instead.
+`markwise import <old pool.toml> <new pool folder>` converts a question bank in the earlier format (German keys: `konzept`, `niveau`, `oeffentlich`, `frage`, `richtig`, `optionen` with `kennung`, `text`, `begruendung`) into this format. It maps the keys and values, derives `type` from `richtig` (a single letter is `single`, a list is `multiple`), copies the images and keeps unknown fields. Concepts take their names from the concept pages of the website (`title`) and their short descriptions from the `subtitle` or else the first sentence of the summary; a later import fills in names that are still missing and never overwrites one given in Markwise. It never overwrites an existing question: questions that changed in the source since the last import are listed instead.

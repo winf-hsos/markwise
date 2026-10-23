@@ -32,8 +32,8 @@ def _text(value, lang: str, fallback: list[str]) -> str:
     return ""
 
 
-def _search_text(q: Question) -> str:
-    parts = [q.id, q.concept]
+def _search_text(q: Question, *extra: str) -> str:
+    parts = [q.id, q.concept, *extra]
     stem = q.get("stem")
     if isinstance(stem, dict):
         parts.extend(str(v) for v in stem.values())
@@ -60,6 +60,7 @@ def rows(pool: Pool, lang: str = "de") -> list[dict]:
         if q.variant_of:
             variants[q.variant_of].append(q.id)
     languages = pool.settings.languages
+    names = {c["id"]: c["name"] for c in pool.concept_info()}
     result = []
     for q in questions:
         result.append({
@@ -67,6 +68,7 @@ def rows(pool: Pool, lang: str = "de") -> list[dict]:
             "pool": str(pool.root),
             "pool_name": pool.settings.name,
             "concept": q.concept,
+            "concept_name": names.get(q.concept, q.concept),
             "type": q.type,
             "level": q.level,
             "status": q.status,
@@ -80,12 +82,12 @@ def rows(pool: Pool, lang: str = "de") -> list[dict]:
             "errors": counts[q.id][ERROR],
             "warnings": counts[q.id][WARNING],
             "path": str(q.path),
-            "search": _search_text(q),
+            "search": _search_text(q, names.get(q.concept, "")),
         })
     for e in load_errors:
         result.append({
             "id": e.path.stem, "pool": str(pool.root), "pool_name": pool.settings.name,
-            "concept": e.path.parent.name, "type": "", "level": "", "status": "", "public": False, "exam": False,
+            "concept": e.path.parent.name, "concept_name": e.path.parent.name, "type": "", "level": "", "status": "", "public": False, "exam": False,
             "modified": e.path.stat().st_mtime,
             "variant_of": None, "variants": [], "stem": "", "options": 0, "errors": 1, "warnings": 0,
             "path": str(e.path), "search": e.path.stem.lower(), "unreadable": e.message,
@@ -130,8 +132,11 @@ def detail(pool: Pool, qid: str) -> dict:
                 # As a data URL, because the window cannot load files from the pool folder directly.
                 image_data = f"data:image/{kind};base64," + base64.b64encode(candidate.read_bytes()).decode()
                 break
+    concept = next((c for c in pool.concept_info() if c["id"] == question.concept), None)
     return {
         "id": question.id,
+        "concept_name": concept["name"] if concept else question.concept,
+        "concept_description": concept["description"] if concept else "",
         "pool": str(pool.root),
         "pool_name": pool.settings.name,
         "languages": pool.settings.languages,

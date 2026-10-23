@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import functools
 import os
-import re
 import sys
 from pathlib import Path
 
@@ -264,8 +263,7 @@ class Api:
                 continue
             pool = Pool.open(root)
             pools.append({"path": str(root), "name": pool.settings.name, "exists": True,
-                          "languages": pool.settings.languages, "concepts": pool.concepts(),
-                          "fixed_concepts": pool.settings.concepts is not None})
+                          "languages": pool.settings.languages, "concepts": pool.concept_info()})
             rows.extend(catalog.rows(pool, language))
         return {"pools": pools, "questions": rows}
 
@@ -290,18 +288,52 @@ class Api:
             os.startfile(target)  # noqa: S606 (a question file inside an opened pool)
 
     @_answer
-    def create_question(self, pool_path: str, concept: str, qtype: str) -> dict:
-        """A new question from the template of its type, in an existing or a new concept."""
+    def create_question(self, pool_path: str, concept: str, qtype: str, new_concept: dict | None = None) -> dict:
+        """A new question from the template of its type, in an existing concept or in a new one given by
+        name and short description (its identifier is made from the name)."""
         pool = Pool.open(pool_path)
-        concept = (concept or "").strip()
-        if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", concept):
-            raise Refusal("concept_invalid", "a concept name uses lower-case letters, digits and hyphens", concept=concept)
-        if pool.settings.concepts is not None and concept not in pool.settings.concepts:
-            raise Refusal("concept_unknown", f"the pool lists its concepts, and {concept} is not among them", concept=concept)
         if qtype not in TYPES:
             raise Refusal("type_unknown", f"unknown type {qtype!r}")
+        if new_concept:
+            concept = self._add_concept(pool, new_concept.get("name", ""), new_concept.get("description", ""))
+        if concept not in pool.concepts():
+            raise Refusal("concept_unknown", f"the pool has no concept {concept}", concept=concept)
         question = pool.new_question(concept, qtype)
         return catalog.detail(pool, question.id)
+
+    @staticmethod
+    def _add_concept(pool: Pool, name: str, description: str) -> str:
+        if not name.strip():
+            raise Refusal("concept_name_missing", "the concept needs a name")
+        if any(c["name"].lower() == name.strip().lower() for c in pool.concept_info()):
+            raise Refusal("concept_exists", f"a concept named {name} exists already", name=name.strip())
+        return pool.add_concept(name, description)
+
+    @_answer
+    def add_concept(self, pool_path: str, name: str, description: str = "") -> dict:
+        pool = Pool.open(pool_path)
+        cid = self._add_concept(pool, name, description)
+        return next(c for c in pool.concept_info() if c["id"] == cid)
+
+    @_answer
+    def update_concept(self, pool_path: str, cid: str, name: str, description: str) -> dict:
+        """Rename or describe a concept; its identifier, folder and questions stay."""
+        pool = Pool.open(pool_path)
+        if not name.strip():
+            raise Refusal("concept_name_missing", "the concept needs a name")
+        if any(c["name"].lower() == name.strip().lower() and c["id"] != cid for c in pool.concept_info()):
+            raise Refusal("concept_exists", f"a concept named {name} exists already", name=name.strip())
+        pool.update_concept(cid, name, description)
+        return next(c for c in pool.concept_info() if c["id"] == cid)
+
+    @_answer
+    def list_concepts(self, pool_path: str) -> list:
+        """The concepts of a pool with their names, descriptions and number of questions."""
+        pool = Pool.open(pool_path)
+        counts: dict[str, int] = {}
+        for path in pool.question_files():
+            counts[path.parent.name] = counts.get(path.parent.name, 0) + 1
+        return [{**c, "questions": counts.get(c["id"], 0)} for c in pool.concept_info()]
 
     @_answer
     def check_question(self, pool_path: str, qid: str, fields: dict) -> list:

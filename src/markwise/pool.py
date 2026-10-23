@@ -13,6 +13,19 @@ from .question import Question, template
 
 POOL_FILE = "pool.toml"
 MIN_OPTIONS_ALLOWED = 4  # § 5 (3) a of the general examination regulations
+UMLAUTS = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss", "Ä": "ae", "Ö": "oe", "Ü": "ue"})
+
+
+def slugify(name: str) -> str:
+    """The identifier of a concept, made from its name: `Zahlensysteme und Codes` becomes `zahlensysteme-und-codes`."""
+    text = name.translate(UMLAUTS).lower()
+    text = re.sub(r"[^a-z0-9]+", "-", text).strip("-")
+    return text or "concept"
+
+
+def name_from_id(concept_id: str) -> str:
+    """A readable stand-in for a concept that has no name yet."""
+    return concept_id.replace("-", " ").capitalize()
 
 
 @dataclass
@@ -21,7 +34,8 @@ class PoolSettings:
     languages: list[str] = field(default_factory=lambda: ["de", "en"])
     min_options: int = 4
     max_options: int = 5
-    concepts: list[str] | None = None  # None: the folder names under questions/ are the concepts
+    # id -> {"name": ..., "description": ...}; None: the folder names under questions/ are the concepts
+    concepts: dict[str, dict] | None = None
 
     def to_toml(self) -> dict:
         data = {
@@ -31,8 +45,16 @@ class PoolSettings:
             "max_options": self.max_options,
         }
         if self.concepts is not None:
-            data["concepts"] = self.concepts
+            data["concepts"] = {cid: {k: v for k, v in info.items() if v} for cid, info in self.concepts.items()}
         return data
+
+
+def _read_concepts(raw) -> dict[str, dict]:
+    """Concepts as a table of names and descriptions; the earlier plain list of identifiers is read as well."""
+    if isinstance(raw, list):
+        return {str(cid): {} for cid in raw}
+    return {str(cid): {"name": str(info.get("name", "")), "description": str(info.get("description", ""))}
+            for cid, info in raw.items()}
 
 
 @dataclass
@@ -68,7 +90,7 @@ class Pool:
             languages=list(raw.get("languages", ["de", "en"])),
             min_options=int(raw.get("min_options", 4)),
             max_options=int(raw.get("max_options", 5)),
-            concepts=list(raw["concepts"]) if "concepts" in raw else None,
+            concepts=_read_concepts(raw["concepts"]) if "concepts" in raw else None,
         )
         return cls(root, settings)
 
@@ -110,6 +132,49 @@ class Pool:
         if not self.questions_dir.exists():
             return []
         return sorted(p.name for p in self.questions_dir.iterdir() if p.is_dir())
+
+    def concept_info(self) -> list[dict]:
+        """Every concept with its name and short description, sorted by name."""
+        defined = self.settings.concepts or {}
+        result = []
+        for cid in self.concepts():
+            info = defined.get(cid, {})
+            result.append({"id": cid, "name": info.get("name") or name_from_id(cid),
+                           "description": info.get("description", ""), "named": bool(info.get("name"))})
+        return sorted(result, key=lambda c: c["name"].lower())
+
+    def add_concept(self, name: str, description: str = "") -> str:
+        """Define a new concept by its name; returns the identifier made from the name."""
+        name = name.strip()
+        if not name:
+            raise ValueError("a concept needs a name")
+        if self.settings.concepts is None:  # from now on the pool keeps a list, starting with its folders
+            self.settings.concepts = {cid: {} for cid in self.concepts()}  # unnamed until someone names them
+        if any(info.get("name", "").lower() == name.lower() for info in self.settings.concepts.values()):
+            raise ValueError(f"a concept named {name!r} exists already")
+        base = slugify(name)
+        cid, n = base, 2
+        while cid in self.settings.concepts or (self.questions_dir / cid).exists():
+            cid, n = f"{base}-{n}", n + 1
+        self.settings.concepts[cid] = {"name": name, "description": description.strip()}
+        (self.questions_dir / cid).mkdir(parents=True, exist_ok=True)
+        self.write_settings()
+        return cid
+
+    def update_concept(self, cid: str, name: str | None = None, description: str | None = None) -> None:
+        """Rename or describe a concept; its identifier and folder stay."""
+        if cid not in self.concepts():
+            raise KeyError(f"no concept {cid}")
+        if self.settings.concepts is None:
+            self.settings.concepts = {c: {} for c in self.concepts()}
+        info = self.settings.concepts.setdefault(cid, {})
+        if name is not None:
+            if not name.strip():
+                raise ValueError("a concept needs a name")
+            info["name"] = name.strip()
+        if description is not None:
+            info["description"] = description.strip()
+        self.write_settings()
 
     def path_for(self, concept: str, qid: str) -> Path:
         return self.questions_dir / concept / f"{qid}.yaml"

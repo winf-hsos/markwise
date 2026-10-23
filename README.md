@@ -90,7 +90,19 @@ The **Questions** page lists every question in the pools of the current module. 
 
 ### Creating and editing questions
 
-**New question** on the Questions page asks for the pool (if the module has several), the concept and the type. A pool without a fixed list of concepts also accepts a new concept, written in lower-case letters, digits and hyphens (`code-systems`). Markwise creates the question with the next free identifier and opens it in the editor.
+**New question** on the Questions page asks for the pool (if the module has several), the concept and the type. **New concept …** in the concept list asks for a name and a short description in plain words; Markwise makes the concept's identifier from the name (shown below the field). Markwise creates the question with the next free identifier and opens it in the editor.
+
+### Concepts
+
+Questions are grouped by concept. **Concepts** on the Questions page lists the concepts of a pool with their names, short descriptions, number of questions and, in small print, their identifiers. Change a name or description and click **Save**; the identifier and the folder of the questions stay the same. Below the list you can **add a concept** by its name and short description. Everywhere else, in the filter, the list and the preview, Markwise shows the names.
+
+An imported question bank takes the concept names from the titles of its website's concept pages and the short descriptions from their subtitles or the first sentence of their summaries. From the command line:
+
+```
+markwise concept list "D:\Teaching\Statistics\pool"
+markwise concept add "D:\Teaching\Statistics\pool" "Korrelation und Regression" --description "Zusammenhänge zwischen zwei Merkmalen"
+markwise concept edit "D:\Teaching\Statistics\pool" regression --name "Lineare Regression"
+```
 
 The editor shows the form on the left and the question as it reads on paper on the right; the preview follows every keystroke.
 
@@ -262,7 +274,7 @@ Question banks in the earlier YAML format (a `pool.toml` with German keys such a
 markwise import "D:\Teaching\Statistics\pool.toml" "D:\Teaching\Statistics\markwise-pool"
 ```
 
-The import creates the pool if it does not exist yet, converts every question, copies the images and keeps fields it does not know. It reports how many questions it **created**.
+The import creates the pool if it does not exist yet, converts every question, copies the images and keeps fields it does not know. Concepts get their names and short descriptions from the website's concept pages, where the earlier `pool.toml` points to them. The import reports how many questions it **created** and which concepts it **named**.
 
 The import can be run again at any time, for example while the old question bank is still being edited. It never overwrites a question silently, and sorts every question into one of these groups:
 
@@ -298,6 +310,9 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise question delete <pool> <id> --yes [--used-in-exam]` | delete a draft, retire anything else |
 | `markwise check <pool> [--notes]` | check every question of a pool |
 | `markwise import <old pool.toml> <pool> [--update]` | import a question bank in the earlier format |
+| `markwise concept list <pool>` | list the concepts with name, description and number of questions |
+| `markwise concept add <pool> <name> [--description]` | add a concept; its identifier is made from the name |
+| `markwise concept edit <pool> <id> [--name] [--description]` | rename or describe a concept; identifier and folder stay |
 | `markwise module init <folder> --name <name> --short-name <short> --pool <pool>` | create a module |
 | `markwise module show <folder>` | show a module's pools and exams |
 | `markwise module add-pool <folder> <pool>` | let a module draw from another pool |

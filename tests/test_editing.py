@@ -115,12 +115,34 @@ def test_set_field_refuses_fields_that_belong_elsewhere(pool):
         editing.set_field(pool, "co-001", "status", "reviewed")
 
 
-def test_api_creates_questions_only_in_valid_concepts(pool):
+def test_api_creates_questions_in_existing_or_named_new_concepts(pool):
     api = Api()
-    assert api.create_question(str(pool.root), "Not Valid", "single")["code"] == "concept_invalid"
-    assert api.create_question(str(pool.root), "planets", "single")["code"] == "concept_unknown"  # fixed list
+    assert api.create_question(str(pool.root), "planets", "single")["code"] == "concept_unknown"
     created = api.create_question(str(pool.root), "shapes", "multiple")["data"]
-    assert created["id"] == "s-001" and created["data"]["type"] == "multiple"
+    assert created["id"] == "s-001" and created["data"]["type"] == "multiple" and created["concept_name"] == "Shapes"
+    new = api.create_question(str(pool.root), "", "single", {"name": "Größen und Maße", "description": "Wie viel wovon."})["data"]
+    assert new["data"]["concept"] == "groessen-und-masse" and new["concept_name"] == "Größen und Maße"
+    assert api.create_question(str(pool.root), "", "single", {"name": "größen und maße"})["code"] == "concept_exists"
+    assert api.create_question(str(pool.root), "", "single", {"name": " "})["code"] == "concept_name_missing"
+
+
+def test_concepts_are_renamed_without_moving(pool):
+    api = Api()
+    renamed = api.update_concept(str(pool.root), "colours", "Farben", "Was wir sehen.")["data"]
+    assert renamed == {"id": "colours", "name": "Farben", "description": "Was wir sehen.", "named": True}
+    assert (pool.root / "questions" / "colours").is_dir()
+    listed = {c["id"]: c for c in api.list_concepts(str(pool.root))["data"]}
+    assert listed["colours"]["questions"] == 2 and listed["shapes"]["questions"] == 0
+
+
+def test_slugs_and_folder_pools(tmp_path):
+    from markwise.pool import PoolSettings, slugify
+    assert slugify("Zahlensysteme & Codes!") == "zahlensysteme-codes" and slugify("ÄÖÜ ß") == "aeoeue-ss"
+    folder_pool = Pool.create(tmp_path / "p", PoolSettings(name="P"))
+    (folder_pool.questions_dir / "old-topic").mkdir()
+    assert folder_pool.concept_info()[0]["name"] == "Old topic"  # stand-in until it is named
+    cid = folder_pool.add_concept("Old topic")  # same name as the stand-in, but no real name yet
+    assert cid == "old-topic-2" and set(Pool.open(folder_pool.root).concepts()) == {"old-topic", "old-topic-2"}
 
 
 def test_api_save_reports_a_conflict(pool):

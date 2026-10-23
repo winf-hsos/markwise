@@ -149,6 +149,36 @@ def cmd_question_delete(args) -> int:
     return 0
 
 
+def cmd_concept_list(args) -> int:
+    pool = Pool.open(args.pool)
+    counts: dict[str, int] = {}
+    for path in pool.question_files():
+        counts[path.parent.name] = counts.get(path.parent.name, 0) + 1
+    concepts = [{**c, "questions": counts.get(c["id"], 0)} for c in pool.concept_info()]
+    if args.json:
+        _print_json(concepts)
+    else:
+        for c in concepts:
+            name = c["name"] if c["named"] else f"{c['name']} (no name yet)"
+            print(f"{c['id']:<32} {c['questions']:>4}  {name}" + (f" — {c['description']}" if c["description"] else ""))
+    return 0
+
+
+def cmd_concept_add(args) -> int:
+    pool = Pool.open(args.pool)
+    cid = pool.add_concept(args.name, args.description or "")
+    print(json.dumps({"id": cid}) if args.json else f"Concept {args.name!r} added as {cid}")
+    return 0
+
+
+def cmd_concept_edit(args) -> int:
+    pool = Pool.open(args.pool)
+    pool.update_concept(args.id, args.name, args.description)
+    info = next(c for c in pool.concept_info() if c["id"] == args.id)
+    print(json.dumps(info, ensure_ascii=False) if args.json else f"{args.id}: {info['name']}")
+    return 0
+
+
 def cmd_module_init(args) -> int:
     module = Module.create(args.folder, args.name, args.short_name, pools=args.pool or [])
     print(json.dumps({"module": str(module.root)}) if args.json else f"Module created in {module.root}")
@@ -269,6 +299,23 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--yes", action="store_true", help="confirm")
     p.add_argument("--used-in-exam", action="store_true", help="the question was in an exam: retire it")
     p.set_defaults(func=cmd_question_delete)
+
+    concept = sub.add_parser("concept", help="list, add and rename the concepts of a pool").add_subparsers(
+        dest="action", required=True)
+    p = concept.add_parser("list", parents=[common])
+    p.add_argument("pool")
+    p.set_defaults(func=cmd_concept_list)
+    p = concept.add_parser("add", parents=[common], help="add a concept; its identifier is made from the name")
+    p.add_argument("pool")
+    p.add_argument("name", help="the name in plain words, for example 'Zahlensysteme und Codes'")
+    p.add_argument("--description", help="a short description")
+    p.set_defaults(func=cmd_concept_add)
+    p = concept.add_parser("edit", parents=[common], help="rename or describe a concept; identifier and folder stay")
+    p.add_argument("pool")
+    p.add_argument("id")
+    p.add_argument("--name")
+    p.add_argument("--description")
+    p.set_defaults(func=cmd_concept_edit)
 
     module = sub.add_parser("module", help="create and show modules").add_subparsers(dest="action", required=True)
     p = module.add_parser("init", parents=[common], help="create module.toml in the module folder")

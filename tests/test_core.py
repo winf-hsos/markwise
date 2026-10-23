@@ -60,8 +60,13 @@ optionen:
 
 def write_legacy(root: Path) -> Path:
     (root / "concepts").mkdir(parents=True)
-    for name in ("colours", "shapes", "index"):
-        (root / "concepts" / f"{name}.qmd").write_text("", encoding="utf-8")
+    pages = {
+        "colours": '---\ntitle: "Colours of Things"\nlang: en\n---\n\n## Summary\n\nColour is light we see. It has [three](x.html) parts.\n',
+        "shapes": '---\ntitle: "Shapes"\nsubtitle: "Round, square and in between"\n---\n\nText.\n',
+        "index": "",
+    }
+    for name, text in pages.items():
+        (root / "concepts" / f"{name}.qmd").write_text(text, encoding="utf-8")
     (root / "diagrams").mkdir()
     (root / "diagrams" / "sky.svg").write_text("<svg/>", encoding="utf-8")
     folder = root / "questions" / "colours"
@@ -88,7 +93,9 @@ def imported(tmp_path) -> tuple[Path, Pool]:
 def test_import_converts_keys_and_values(imported):
     _, pool = imported
     assert pool.settings.name == "Invented Course"
-    assert pool.settings.concepts == ["colours", "shapes"]
+    assert list(pool.settings.concepts) == ["colours", "shapes"]
+    assert pool.settings.concepts["colours"] == {"name": "Colours of Things", "description": "Colour is light we see."}
+    assert pool.settings.concepts["shapes"]["description"] == "Round, square and in between"
     single = pool.find("co-001")
     assert single.type == "single" and single.level == "understand" and single.status == "draft"
     assert single.public and single.correct_ids == ["a"]

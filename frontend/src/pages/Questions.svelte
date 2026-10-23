@@ -4,6 +4,7 @@
   import QuestionPreview from "../components/QuestionPreview.svelte";
   import QuestionEditor from "../components/QuestionEditor.svelte";
   import NewQuestionDialog from "../components/NewQuestionDialog.svelte";
+  import ConceptsDialog from "../components/ConceptsDialog.svelte";
   import { call } from "../lib/api.js";
   import { errorText, t } from "../lib/i18n.svelte.js";
   import { app, showToast } from "../lib/state.svelte.js";
@@ -19,6 +20,7 @@
   let detail = $state(null);
   let editing = $state(null); // the detail of the question in the editor
   let newOpen = $state(false);
+  let conceptsOpen = $state(false);
 
   const blank = { search: "", pool: "", concept: "", level: "", status: "", type: "", use: "", findings: "" };
   let filter = $state({ ...blank });
@@ -72,7 +74,7 @@
   // Sorting: the order is kept per computer, so that the list opens the way it was left.
   const SORTS = {
     id: (a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }),
-    concept: (a, b) => a.concept.localeCompare(b.concept) || SORTS.id(a, b),
+    concept: (a, b) => a.concept_name.localeCompare(b.concept_name) || SORTS.id(a, b),
     modified: (a, b) => b.modified - a.modified,
     level: (a, b) => LEVELS.indexOf(a.level) - LEVELS.indexOf(b.level) || SORTS.id(a, b),
     status: (a, b) => STATUSES.indexOf(a.status) - STATUSES.indexOf(b.status) || SORTS.id(a, b),
@@ -98,7 +100,11 @@
   });
   const sorted = $derived([...shown].sort(SORTS[sort]));
 
-  const concepts = $derived([...new Set(questions.filter((q) => !filter.pool || q.pool === filter.pool).map((q) => q.concept))].sort());
+  // Concepts for the filter, by name: [id, name], from the questions of the chosen pool.
+  const concepts = $derived(
+    [...new Map(questions.filter((q) => !filter.pool || q.pool === filter.pool).map((q) => [q.concept, q.concept_name])).entries()]
+      .sort((a, b) => a[1].localeCompare(b[1])),
+  );
   const filtered = $derived(Object.entries(filter).some(([, v]) => v));
   // The selection counts only while the question is in the list: a filter or search that drops it empties the
   // preview, and undoing the filter brings it back.
@@ -165,6 +171,9 @@
       <div class="actions">
         <button class="btn" onclick={load} disabled={loading}><Icon name="refresh" />{t("q.reload")}</button>
         {#if pools.some((p) => p.exists)}
+          <button class="btn" onclick={() => (conceptsOpen = true)}><Icon name="modules" />{t("concepts.button")}</button>
+        {/if}
+        {#if pools.some((p) => p.exists)}
           <button class="btn primary" onclick={() => (newOpen = true)}><Icon name="plus" />{t("q.new")}</button>
         {/if}
       </div>
@@ -201,7 +210,7 @@
         {/if}
         <select class="select" bind:value={filter.concept} aria-label={t("q.meta.concept")}>
           <option value="">{t("q.all.concepts")}</option>
-          {#each concepts as c}<option value={c}>{c}</option>{/each}
+          {#each concepts as [id, name]}<option value={id}>{name}</option>{/each}
         </select>
         <select class="select" bind:value={filter.level} aria-label={t("q.meta.level")}>
           <option value="">{t("q.all.levels")}</option>
@@ -250,7 +259,7 @@
           <button id={`q-${q.pool}-${q.id}`} class="q-row" class:on={selectedRow === q} role="option" aria-selected={selectedRow === q} onclick={() => show(q)}>
             <span class="q-row-head">
               <span class="qid">{q.id}</span>
-              <span class="q-concept">{q.concept}</span>
+              <span class="q-concept">{q.concept_name}</span>
               {#if q.errors}<span class="tag red"><i class="dot"></i>{q.errors} {t("sev.error")}</span>
               {:else if q.warnings}<span class="tag warn"><i class="dot"></i>{t("sev.warning")}</span>{/if}
               {#if q.exam}<span class="tag">{q.public ? t("use.both") : t("use.exam")}</span>{/if}
@@ -270,4 +279,5 @@
   {/if}
 </div>
 
+<ConceptsDialog bind:open={conceptsOpen} {pools} onchanged={() => load()} />
 <NewQuestionDialog bind:open={newOpen} {pools} preset={{ pool: filter.pool, concept: filter.concept }} oncreated={created} />

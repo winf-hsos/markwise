@@ -8,12 +8,14 @@ that changed in the source, and questions that were edited in Markwise since the
 from __future__ import annotations
 
 import hashlib
+import re
 import shutil
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import tomli_w
+from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
 from . import yamlio
@@ -40,6 +42,7 @@ class ImportReport:
     changed_in_source: list[str] = field(default_factory=list)   # source changed, Markwise copy untouched
     conflicts: list[str] = field(default_factory=list)           # both changed, or a file of that id already exists
     images: list[str] = field(default_factory=list)
+    concepts_named: list[str] = field(default_factory=list)  # concepts that got their name from a concept page
     problems: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -91,6 +94,56 @@ def convert(old: CommentedMap) -> CommentedMap:
     return new
 
 
+def _first_sentence(text: str) -> str:
+    text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)  # links keep their text
+    text = re.sub(r"[*_`]", "", text).strip()
+    match = re.match(r"(.+?[.!?])(\s|$)", text, re.S)
+    return " ".join((match.group(1) if match else text).split())
+
+
+def concept_pages(folder: Path) -> dict[str, dict]:
+    """Name and short description of each concept page (Quarto .qmd): the title, and the subtitle or else the
+    first sentence of the summary."""
+    if not folder.is_dir():
+        return {}
+    result = {}
+    for page in sorted(folder.glob("*.qmd")):
+        if page.stem == "index":
+            continue
+        text = page.read_text(encoding="utf-8")
+        meta, body = {}, text
+        if text.startswith("---"):
+            head, _, body = text[3:].partition("\n---")
+            try:
+                meta = YAML(typ="safe").load(head) or {}
+            except Exception:
+                meta = {}
+        description = str(meta.get("subtitle") or "")
+        if not description:
+            summary = re.search(r"^##\s+(Summary|Zusammenfassung)\s*\n+(.+?)(\n\n|$)", body, re.M | re.S)
+            if summary:
+                description = _first_sentence(summary.group(2))
+        result[page.stem] = {"name": str(meta.get("title") or ""), "description": description}
+    return result
+
+
+def _name_concepts(pool: Pool, pages: dict[str, dict]) -> list[str]:
+    """Give concepts without a name the title of their page; names someone gave in Markwise stay."""
+    named = []
+    defined = pool.settings.concepts
+    for cid in pool.concepts():
+        page = pages.get(cid)
+        if not page or not page.get("name"):
+            continue
+        info = (defined or {}).get(cid, {})
+        if info.get("name"):
+            continue
+        pool.update_concept(cid, page["name"], info.get("description") or page.get("description", ""))
+        defined = pool.settings.concepts
+        named.append(cid)
+    return named
+
+
 def read_legacy_settings(legacy_toml: Path) -> dict:
     with open(legacy_toml, "rb") as f:
         return tomllib.load(f)
@@ -104,12 +157,11 @@ def import_pool(legacy_toml: Path | str, target: Path | str, update: bool = Fals
     questions_dir = base / legacy.get("fragen", "questions")
     images_dir = base / legacy.get("bilder", "diagrams")
 
+    pages = concept_pages(base / legacy["konzepte"]) if legacy.get("konzepte") else {}
     if (target / POOL_FILE).exists():
         pool = Pool.open(target)
     else:
-        concepts = None
-        if legacy.get("konzepte") and (base / legacy["konzepte"]).is_dir():
-            concepts = sorted(p.stem for p in (base / legacy["konzepte"]).glob("*.qmd") if p.stem != "index")
+        concepts = pages or None
         pool = Pool.create(target, PoolSettings(
             name=legacy.get("name", base.name),
             languages=list(legacy.get("sprachen", ["de", "en"])),
@@ -118,10 +170,13 @@ def import_pool(legacy_toml: Path | str, target: Path | str, update: bool = Fals
             concepts=concepts,
         ))
 
+    report_named = _name_concepts(pool, pages)
+
     state_path = pool.root / STATE_FILE
     state = tomllib.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
     known = state.setdefault("questions", {})
     report = ImportReport()
+    report.concepts_named = report_named
     images: set[str] = set()
 
     for source in sorted(questions_dir.glob("*/*.yaml")):

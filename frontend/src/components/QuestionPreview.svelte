@@ -78,7 +78,7 @@
   {#if !compact}
   <section class="preview-section">
     <dl class="meta">
-      <dt>{t("q.meta.concept")}</dt><dd>{data.concept}</dd>
+      <dt>{t("q.meta.concept")}</dt><dd>{question.concept_name ?? data.concept}{#if question.concept_description}<span class="muted small concept-desc">{question.concept_description}</span>{/if}</dd>
       <dt>{t("q.meta.level")}</dt><dd>{t(`level.${data.level}`)}</dd>
       {#if data.public && data.type !== "free_text"}
         <dt>{t("q.variants")}</dt><dd>{variants.length ? variants.join(", ") : t("q.noVariant")}</dd>
