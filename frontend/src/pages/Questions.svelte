@@ -223,11 +223,31 @@
   async function act(name) {
     const { pool, id } = detail;
     if (name === "retire" && !(await ask({ title: t("life.retireTitle", { id }), message: t("life.confirmRetire", { id }), action: t("life.retire") }))) return;
-    if (name === "delete" && !(await ask({ title: t("life.deleteTitle", { id }), message: t("life.confirmDelete", { id }), action: t("life.delete"), danger: true }))) return;
+    // Deleting a question that has variants asks what becomes of them: deleted too, or questions of their own.
+    const variants = selectedRow?.variants ?? [];
+    let withVariants = null;
+    if (name === "delete" && variants.length && detail.data.status === "draft") {
+      const n = variants.length;
+      withVariants = await ask({
+        title: t("life.deleteTitle", { id }),
+        message: t(n === 1 ? "life.deleteWithVariant" : "life.deleteWithVariants", { id, n, ids: variants.join(", ") }),
+        choices: [
+          { value: "detach", label: t("life.keepVariants") },
+          { value: "delete", label: t(n === 1 ? "life.deleteVariant" : "life.deleteVariants"), danger: true },
+        ],
+      });
+      if (!withVariants) return;
+    } else if (name === "delete" && !(await ask({ title: t("life.deleteTitle", { id }), message: t("life.confirmDelete", { id }), action: t("life.delete"), danger: true }))) return;
     try {
       if (name === "delete") {
-        const result = await call("delete_question", pool, id);
-        showToast(t(result.outcome === "deleted" ? "life.deleted" : "life.retiredToast", { id }));
+        const result = await call("delete_question", pool, id, withVariants);
+        const done = t(result.outcome === "deleted" ? "life.deleted" : "life.retiredToast", { id });
+        const detached = result.variants.filter((v) => v.new_id).map((v) => v.new_id);
+        showToast(detached.length ? t("life.variantsDetached", { done, ids: detached.join(", ") })
+          : result.variants.length ? t("life.variantsDeleted", { done, n: result.variants.length }) : done);
+        // Out of the list at once; reading the pools again takes a moment.
+        const gone = new Set([id, ...result.variants.map((v) => v.id)]);
+        questions = questions.filter((q) => q.pool !== pool || !gone.has(q.id));
         selected = null;
         detail = null;
         await load();

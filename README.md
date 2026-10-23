@@ -107,7 +107,7 @@ The **⋯** menu next to **Edit** holds the other steps:
   A variant **inherits the settings of its parent**: type, level, time to answer, where the material is taught and the misconception. They are not copied but read from the parent, so a change there reaches every variant. In the editor these settings are marked **inherited from cp-005** and shown in a lighter style; choosing another value gives the variant its own, marked with **inherit again** to go back to the parent's. A variant is always meant for exams only, never for practice.
 - **Withdraw my release**: takes your name off; without any release left, the question is a draft again.
 - **Retire**: the question and its file stay, but it will not appear in any new exam, and its identifier is never given again. The list shows it struck through; **Take back** makes it a draft again.
-- **Delete** (drafts only): removes the file after a confirmation. Everything else is retired instead.
+- **Delete** (drafts only): removes the file after a confirmation. Everything else is retired instead. If the question has exam variants, Markwise asks what becomes of them: **Delete with its variants** deletes them as well (a released variant is retired instead), **Keep the variants** makes them exam questions of their own. They then get an ordinary identifier (the next free number of the concept, so `cp-005-v1` becomes, say, `cp-018`), and the settings they inherited so far are written into their own file.
 
 A tick in the list marks reviewed questions.
 
@@ -317,6 +317,8 @@ markwise question delete "D:\Teaching\Statistics\pool" r-002 --yes
 
 Without `--yes` nothing happens. A **draft** that was never in an exam is deleted, and its identifier becomes free again. **Every other question is retired instead**: its status becomes `retired` and its file stays, so that past exams and their statistics remain traceable and the identifier is never given to another question. Add `--used-in-exam` to retire a draft that was used in an exam.
 
+A draft with exam variants is only deleted together with a decision about them: `--variants delete` deletes or retires them as well, `--variants detach` makes them questions of their own with new identifiers and with the settings they inherited written into their files. Without `--variants` the command lists the variants and changes nothing.
+
 ## Importing an existing question bank
 
 Question banks in the earlier YAML format (a `pool.toml` with German keys such as `fragen`, `sprachen`, and questions with `konzept`, `niveau`, `frage`, `richtig`, `optionen`) are converted with:
@@ -363,7 +365,7 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise question variant <pool> <id> [--by <name>]` | create an exam variant of a practice question (`<id>-v1`, …): its texts as a copy to vary, its settings inherited |
 | `markwise question retire <pool> <id>` / `restore` | take a question out of new exams / back in, as a draft |
 | `markwise question set <pool> <id> <field> <value>` | change one field by a dotted path (`level`, `stem.de`, `options.b.correct`); `true`, `false` and numbers are understood |
-| `markwise question delete <pool> <id> --yes [--used-in-exam]` | delete a draft, retire anything else |
+| `markwise question delete <pool> <id> --yes [--used-in-exam] [--variants delete\|detach]` | delete a draft, retire anything else; for a question with variants, delete them too or detach them |
 | `markwise check <pool> [--notes]` | check every question of a pool |
 | `markwise import <old pool.toml> <pool> [--update]` | import a question bank in the earlier format |
 | `markwise concept list <pool>` | list the concepts with name, description and number of questions |

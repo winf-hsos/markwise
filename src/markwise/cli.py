@@ -184,8 +184,13 @@ def cmd_question_delete(args) -> int:
         print("Deleting needs --yes. A question that is not a draft, or was in an exam, is retired instead.",
               file=sys.stderr)
         return 2
-    outcome = Pool.open(args.pool).delete(args.id, used_in_exam=args.used_in_exam)
-    print(json.dumps({"id": args.id, "outcome": outcome}) if args.json else f"{args.id} {outcome}")
+    result = lifecycle.delete(Pool.open(args.pool), args.id, args.variants, args.used_in_exam)
+    if args.json:
+        print(json.dumps(result))
+    else:
+        print(f"{args.id} {result['outcome']}")
+        for v in result["variants"]:
+            print(f"{v['id']} {v['outcome']}" + (f", now {v['new_id']}" if v.get("new_id") else ""))
     return 0
 
 
@@ -449,6 +454,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("id")
     p.add_argument("--yes", action="store_true", help="confirm")
     p.add_argument("--used-in-exam", action="store_true", help="the question was in an exam: retire it")
+    p.add_argument("--variants", choices=lifecycle.VARIANT_CHOICES,
+                   help="for a question with variants: delete them too, or detach them as questions of their own")
     p.set_defaults(func=cmd_question_delete)
 
     concept = sub.add_parser("concept", help="list, add and rename the concepts of a pool").add_subparsers(

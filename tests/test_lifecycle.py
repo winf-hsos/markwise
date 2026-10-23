@@ -131,3 +131,45 @@ def test_an_orphaned_variant_reports_what_it_lacks(pool):
     pool.find("co-001").path.unlink()
     codes = {f.code for f in check_pool(pool)}
     assert "variant_missing" in codes and "field_missing" in codes
+
+
+
+def _draft_parent_with_variants(pool):
+    """A draft practice question with two variants; the first sets its own level, the second inherits everything."""
+    variants = [lifecycle.create_variant(pool, "co-001", "Examiner B") for _ in range(2)]
+    editing.save(pool, variants[0].id, {"level": "remember"}, author="")
+    return variants
+
+
+def test_deleting_a_parent_needs_to_know_what_becomes_of_its_variants(pool):
+    _draft_parent_with_variants(pool)
+    with pytest.raises(lifecycle.LifecycleError) as caught:
+        lifecycle.delete(pool, "co-001")
+    assert caught.value.code == "has_variants"
+    assert pool.find("co-001")  # nothing happened
+    answer = Api().delete_question(str(pool.root), "co-001")
+    assert answer["code"] == "has_variants" and answer["params"]["ids"] == "co-001-v1, co-001-v2, co-002"  # co-002: an imported variant
+
+
+def test_deleting_a_parent_with_its_variants(pool):
+    _draft_parent_with_variants(pool)
+    result = lifecycle.delete(pool, "co-001", "delete")
+    assert result["outcome"] == "deleted"
+    assert [(v["id"], v["outcome"]) for v in result["variants"]] == [
+        ("co-001-v1", "deleted"), ("co-001-v2", "deleted"), ("co-002", "deleted")]
+    assert not pool.all_ids()
+
+
+def test_detached_variants_become_questions_of_their_own(pool):
+    parent_level = pool.find("co-001").level
+    _draft_parent_with_variants(pool)
+    result = lifecycle.delete(pool, "co-001", "detach")
+    assert [(v["id"], v["new_id"]) for v in result["variants"]] == [
+        ("co-001-v1", "co-003"), ("co-001-v2", "co-004"), ("co-002", "co-005")]
+    assert pool.all_ids() == {"co-003", "co-004", "co-005"}
+    own, inherited = pool.find("co-003"), pool.find("co-004")
+    assert own.data["level"] == "remember"  # its own value stays
+    assert inherited.data["level"] == parent_level and "type" in inherited.data  # inherited settings are written in
+    assert not own.variant_of and not inherited.variant_of and not inherited.public and inherited.exam
+    assert pool.next_id(pool.prefix_for("colours")) == "co-006"
+    assert not [f for f in check_pool(pool) if f.question in ("co-003", "co-004") and f.severity == "error"]

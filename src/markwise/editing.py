@@ -16,7 +16,7 @@ from ruamel.yaml.scalarstring import LiteralScalarString
 from .catalog import plain, variant_findings
 from .checks import Finding, check_question
 from .pool import Pool
-from .question import FIELD_ORDER, INHERITED, ConflictError, Question, default_author, today
+from .question import FIELD_ORDER, INHERITED, ConflictError, Question, default_author, insert_field, today
 
 # Fields the editor owns. id and concept name the file, status and reviewed_by belong to the release, and
 # the authorship fields are written by Markwise itself.
@@ -129,19 +129,8 @@ def apply(data: CommentedMap, fields: dict) -> bool:
         elif key in data:
             data[key] = _merge(data[key], value)
         else:
-            _insert(data, key, _merge(None, value))
+            insert_field(data, key, _merge(None, value))
     return changed
-
-
-def _insert(data: CommentedMap, key: str, value) -> None:
-    """Put a new field where it belongs in the usual order."""
-    rank = FIELD_ORDER.index(key)
-    position = len(data)
-    for i, existing in enumerate(data):
-        if existing in FIELD_ORDER and FIELD_ORDER.index(existing) > rank:
-            position = i
-            break
-    data.insert(position, key, value)
 
 
 def check_fields(pool: Pool, qid: str, fields: dict) -> list[dict]:
@@ -175,7 +164,7 @@ def save(pool: Pool, qid: str, fields: dict, expected_mtime_ns: int | None = Non
                 if key in question.data:
                     question.data[key] = value
                 else:
-                    _insert(question.data, key, value)
+                    insert_field(question.data, key, value)
         question.save(force=True)
     return question, changed
 

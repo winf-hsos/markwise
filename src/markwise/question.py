@@ -179,6 +179,17 @@ def ordered(fields: dict) -> CommentedMap:
     return result
 
 
+def insert_field(data: CommentedMap, key: str, value) -> None:
+    """Put a new field where it belongs in the usual order."""
+    rank = FIELD_ORDER.index(key)
+    position = len(data)
+    for i, existing in enumerate(data):
+        if existing in FIELD_ORDER and FIELD_ORDER.index(existing) > rank:
+            position = i
+            break
+    data.insert(position, key, value)
+
+
 def template(qid: str, concept: str, qtype: str, languages: list[str], n_options: int = 4,
              author: str = "") -> CommentedMap:
     """An empty question of the given type, ready to be filled in."""

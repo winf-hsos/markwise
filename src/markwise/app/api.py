@@ -436,9 +436,15 @@ class Api:
         return self._step(lifecycle.restore, pool_path, qid)
 
     @_answer
-    def delete_question(self, pool_path: str, qid: str) -> dict:
-        """Delete a draft; anything else is retired, so that its identifier is never given again."""
-        return {"outcome": Pool.open(pool_path).delete(qid, used_in_exam=False)}
+    def delete_question(self, pool_path: str, qid: str, variants: str | None = None) -> dict:
+        """Delete a draft; anything else is retired, so that its identifier is never given again. A draft with
+        variants is refused until `variants` says whether they are deleted too or become questions of their own."""
+        pool = Pool.open(pool_path)
+        try:
+            return lifecycle.delete(pool, qid, variants)
+        except lifecycle.LifecycleError as exc:
+            ids = [q.id for q in pool.load()[0] if q.variant_of == qid]
+            raise Refusal(exc.code, str(exc), id=qid, count=len(ids), ids=", ".join(sorted(ids))) from None
 
     @_answer
     def whoami(self) -> str:

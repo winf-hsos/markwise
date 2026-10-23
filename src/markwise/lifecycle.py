@@ -12,7 +12,7 @@ from ruamel.yaml.comments import CommentedMap, CommentedSeq
 
 from .checks import ERROR, check_question
 from .pool import Pool
-from .question import INHERITED, Question, default_author, ordered, today
+from .question import INHERITED, Question, default_author, insert_field, ordered, today
 
 
 class LifecycleError(Exception):
@@ -35,8 +35,7 @@ def _set(question: Question, key: str, value) -> None:
     if key in question.data:
         question.data[key] = value
         return
-    from .editing import _insert
-    _insert(question.data, key, value)
+    insert_field(question.data, key, value)
 
 
 def release(pool: Pool, qid: str, author: str | None = None) -> Question:
@@ -95,6 +94,52 @@ def create_variant(pool: Pool, qid: str, author: str | None = None) -> Question:
     variant = Question(data)
     variant.save(pool.path_for(original.concept, new_id))
     return variant
+
+
+VARIANT_CHOICES = ("delete", "detach")
+
+
+def _settle(variant: Question) -> None:
+    """Write the settings a variant inherits into its own file, for when its parent goes away."""
+    for key, value in variant.inherited().items():
+        insert_field(variant.data, key, copy.deepcopy(value))
+
+
+def _detach(pool: Pool, variant: Question, new_id: str) -> None:
+    """Make a variant a question of its own: its inherited settings become its own, it gets an ordinary
+    identifier, and it stays meant for exams only."""
+    _settle(variant)
+    del variant.data["variant_of"]
+    variant.data["id"] = new_id
+    old_path = variant.path
+    variant.save(pool.path_for(variant.concept, new_id))
+    old_path.unlink()
+
+
+def delete(pool: Pool, qid: str, variants: str | None = None, used_in_exam: bool = False) -> dict:
+    """Delete a draft that never was in an exam; retire anything else. If a deleted question has variants, `variants`
+    says what becomes of them: "delete" deletes each one the same way (retiring those that are not drafts),
+    "detach" makes them questions of their own with new identifiers."""
+    question = pool.find(qid)
+    removes = not used_in_exam and question.status == "draft"
+    children = sorted((q for q in pool.load()[0] if q.variant_of == qid), key=lambda q: q.id) if removes else []
+    if children and variants not in VARIANT_CHOICES:
+        raise LifecycleError("has_variants", f"{qid} has {len(children)} variants: delete them too or detach them "
+                                             f"(--variants delete|detach)")
+    result = {"id": qid, "variants": []}
+    if variants == "detach":
+        prefix = pool.prefix_for(question.concept)
+        for child in children:
+            old_id, new_id = child.id, pool.next_id(prefix)  # numbered before the parent goes, so it is never reused
+            _detach(pool, child, new_id)
+            result["variants"].append({"id": old_id, "outcome": "detached", "new_id": new_id})
+    result["outcome"] = pool.delete(qid, used_in_exam)
+    if variants == "delete":
+        for child in children:
+            _settle(child)  # a variant that is retired rather than deleted keeps readable settings
+            child.save()
+            result["variants"].append({"id": child.id, "outcome": pool.delete(child.id, used_in_exam)})
+    return result
 
 
 def retire(pool: Pool, qid: str) -> Question:
