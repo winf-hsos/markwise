@@ -2,6 +2,7 @@
   import Nav from "./components/Nav.svelte";
   import Topbar from "./components/Topbar.svelte";
   import Modules from "./pages/Modules.svelte";
+  import Questions from "./pages/Questions.svelte";
   import Placeholder from "./pages/Placeholder.svelte";
   import Settings from "./pages/Settings.svelte";
   import { t } from "./lib/i18n.svelte.js";
@@ -42,7 +43,7 @@
     {:else if route.path === "/modules"}
       <Modules />
     {:else if route.path === "/questions"}
-      <Placeholder title="questions.title" lead="questions.lead" text="questions.empty" icon="questions" />
+      <Questions />
     {:else if route.path === "/exams"}
       <Placeholder title="exams.title" lead="exams.lead" text="exams.empty" icon="exams" />
     {:else if route.path === "/settings"}

@@ -7,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__
+from . import __version__, catalog
 from .checks import ERROR, check_pool, summarize
 from .importer import import_pool
 from .module import Module
@@ -60,27 +60,46 @@ def cmd_pool_init(args) -> int:
     return 0
 
 
-def _filtered(pool: Pool, args):
-    questions, errors = pool.load()
-    for e in errors:
-        print(f"cannot read {e.path}: {e.message}", file=sys.stderr)
+FINDINGS = ("errors", "warnings", "none")
+
+
+def _rows_for(path: str, lang: str) -> list[dict]:
+    """Rows of a pool, or of every pool of a module when the folder holds a module.toml."""
+    folder = Path(path)
+    if (folder / "module.toml").exists() or folder.name == "module.toml":
+        module = Module.open(folder)
+        return [row for pool in module.open_pools() for row in catalog.rows(pool, lang)]
+    return catalog.rows(Pool.open(folder), lang)
+
+
+def _keep(row: dict, args) -> bool:
     for key in ("concept", "status", "type", "level"):
         value = getattr(args, key, None)
-        if value:
-            questions = [q for q in questions if getattr(q, key) == value]
-    if args.public is not None:
-        questions = [q for q in questions if q.public == (args.public == "yes")]
-    return questions
+        if value and row[key] != value:
+            return False
+    if args.public is not None and row["public"] != (args.public == "yes"):
+        return False
+    if args.findings == "errors" and not row["errors"]:
+        return False
+    if args.findings == "warnings" and not row["warnings"]:
+        return False
+    if args.findings == "none" and (row["errors"] or row["warnings"]):
+        return False
+    return not args.search or catalog.matches(row, args.search)
 
 
 def cmd_question_list(args) -> int:
-    questions = _filtered(Pool.open(args.pool), args)
+    rows = [row for row in _rows_for(args.pool, args.lang) if _keep(row, args)]
     if args.json:
-        _print_json([q.summary() for q in questions])
+        _print_json([{k: v for k, v in row.items() if k != "search"} for row in rows])
     else:
-        for q in questions:
-            print(f"{q.id:<10} {q.type:<9} {q.level:<10} {q.status:<9} {'public' if q.public else 'exam':<6} {q.concept}")
-        print(f"{len(questions)} questions")
+        for row in rows:
+            marks = ("E" if row["errors"] else "W" if row["warnings"] else " ")
+            stem = " ".join(row["stem"].split())
+            stem = stem[:70] + ("…" if len(stem) > 70 else "")
+            print(f"{marks} {row['id']:<10} {row['type']:<9} {row['level']:<10} {row['status']:<9} "
+                  f"{'public' if row['public'] else 'exam':<6} {row['concept']:<28} {stem}")
+        print(_count(len(rows), "question") + ("  (E = errors, W = warnings; see markwise check)" if any(r["errors"] or r["warnings"] for r in rows) else ""))
     return 0
 
 
@@ -196,8 +215,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     question = sub.add_parser("question", help="list, show, create, delete questions").add_subparsers(
         dest="action", required=True)
-    p = question.add_parser("list", parents=[common])
-    p.add_argument("pool")
+    p = question.add_parser("list", parents=[common], help="list questions of a pool or of all pools of a module")
+    p.add_argument("pool", help="pool folder, or a module folder for all its pools")
+    p.add_argument("--search", help="words that must all occur in text, options, feedback or identifier")
+    p.add_argument("--findings", choices=FINDINGS, help="only questions with errors, with warnings, or without findings")
+    p.add_argument("--lang", default="de", help="language of the question text shown (default de)")
     p.add_argument("--concept")
     p.add_argument("--status")
     p.add_argument("--type", choices=TYPES)

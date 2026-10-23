@@ -4,7 +4,7 @@ A desktop app for paper exams: keep a bank of questions, build exams from it, re
 
 Markwise runs natively on Windows, needs neither Linux nor LaTeX, and is meant to be used by examiners without any technical background. Agents (for example an AI assistant that drafts questions) work with the same data through a command-line interface, and later through a local HTTP interface.
 
-> **Status (October 2026): phase 1 of the [plan](docs/concept.md#plan).** What works today is managing question pools from the command line (creating, listing, checking, importing and deleting questions, setting up modules) and the app window for setting up modules: creating a module with its question pool, opening module folders, adding pools and switching between modules. Working with questions in the window, building exams, printing, scanning and grading follow; [what is not there yet](#not-there-yet) lists them with their dates. This guide grows with every step, so it always describes what Markwise can do at the time.
+> **Status (October 2026): phase 1 of the [plan](docs/concept.md#plan).** What works today is managing question pools from the command line (creating, listing, checking, importing and deleting questions, setting up modules) and the app window for setting up modules (creating a module with its question pool, opening module folders, adding pools, switching between modules) and for browsing questions (search, filters, preview with the check's findings). Editing questions in the window, building exams, printing, scanning and grading follow; [what is not there yet](#not-there-yet) lists them with their dates. This guide grows with every step, so it always describes what Markwise can do at the time.
 
 ## Contents
 
@@ -76,13 +76,23 @@ The new module becomes the **current module**, shown in the top bar. Every modul
 
 To switch modules, choose one in the menu of the top bar or click **Make this the current module** in the list.
 
+### Browsing questions
+
+The **Questions** page lists every question in the pools of the current module. The line under the title names the pools.
+
+- **Search** looks for every word you type in the question text, the options, the feedback and the identifier, in all languages of the pool. `led farbe` finds questions that mention both.
+- **Filters** narrow the list by pool (if the module has several), concept, level, status, type, use (practice or exam) and findings of the check (with errors, with warnings, without findings). The line below says how many questions are shown out of how many; **Reset filters** clears them.
+- A question with errors carries a red mark in the list, one with warnings a yellow one, and exam variants are marked **Exam**.
+- **Click** a question, or move through the list with the **arrow keys**, to see it on the right as it reads on paper: the text, any code and figure, the options with the correct ones ticked and the feedback below each, then the check's findings and the metadata (concept, level, exam variants of a practice question, coverage, pool, file). **DE** and **EN** switch the language of the preview.
+- **Open in editor** opens the question's file in the program Windows uses for YAML files. Editing in the window comes in the next step; until then, edit the file there, save it, and click **Reload**.
+
 ### Settings
 
 **Settings** switches the interface between German and English and stores your name, which Markwise will write into `reviewed_by` when you release a question. **Ctrl+B** collapses and expands the side menu. Your settings and the list of modules live in `%APPDATA%\Markwise\settings.toml`, on your computer only and never in a pool or module folder.
 
 When the interface is German, new modules file their exams under `01 - Semester\<semester>\Klausur\`, otherwise under `…\Exam\`; `exam_path` in `module.toml` changes that.
 
-**Questions** and **Exams** show what will be there and when.
+**Exams** shows what will be there and when.
 
 ## The four things Markwise works with
 
@@ -188,6 +198,8 @@ To find questions, use `question list` with filters, and `question show` to prin
 ```
 markwise question list "D:\Teaching\Statistics\pool" --concept regression --status draft
 markwise question list "D:\Teaching\Statistics\pool" --public no          # exam variants only
+markwise question list "D:\Modules\Statistics 1" --search "slope line"   # all pools of a module, searched
+markwise question list "D:\Teaching\Statistics\pool" --findings errors     # questions the check rejects
 markwise question show "D:\Teaching\Statistics\pool" r-001
 ```
 
@@ -249,7 +261,7 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 |---|---|
 | `markwise pool init <folder> --name <name> [--languages de,en]` | create an empty pool |
 | `markwise question new <pool> --concept <concept> [--type single\|multiple\|free_text]` | create a question from the template of its type |
-| `markwise question list <pool> [--concept] [--status] [--type] [--level] [--public yes\|no]` | list questions, filtered |
+| `markwise question list <pool or module> [--search] [--concept] [--status] [--type] [--level] [--public yes\|no] [--findings errors\|warnings\|none]` | list questions, searched and filtered; a module folder lists all its pools |
 | `markwise question show <pool> <id>` | print a question file |
 | `markwise question delete <pool> <id> --yes [--used-in-exam]` | delete a draft, retire anything else |
 | `markwise check <pool> [--notes]` | check every question of a pool |
@@ -284,7 +296,7 @@ prints for each sheet whether the QR code, the orientation, the student number a
 
 | What | Planned for |
 |---|---|
-| Question views in the app window (browse, search, edit with a live preview) | 13 Nov 2026 |
+| Editing questions in the app window, with a live preview | 13 Nov 2026 |
 | Installer for a second computer | 27 Nov 2026 |
 | Building exams: blueprint, variants, exam and answer booklets as PDF | 27 Nov 2026 |
 | Reading scans, deciding doubtful cases, grading multiple-choice exams | early December 2026 |

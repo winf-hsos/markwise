@@ -21,4 +21,5 @@ export const ICONS = {
   more: '<g fill="currentColor" stroke="none"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></g>',
   eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.8" fill="none" stroke-width="1.7"/>',
   remove: '<path d="M5 12h14" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
+  refresh: '<path d="M20 11a8 8 0 0 0-14.6-4.5M4 13a8 8 0 0 0 14.6 4.5" fill="none" stroke-width="1.8" stroke-linecap="round"/><path d="M4.5 3.5v3.8h3.8M19.5 20.5v-3.8h-3.8" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
 };

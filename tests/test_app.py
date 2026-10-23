@@ -153,3 +153,52 @@ def test_add_and_remove_pools_and_forget_modules(tmp_path):
 
 def test_dialogs_are_refused_without_a_window():
     assert Api().pick_folder()["code"] == "no_dialogs"
+
+
+# --- step 3: the question list ----------------------------------------------------------
+
+
+@pytest.fixture
+def module_with_questions(tmp_path):
+    from test_core import write_legacy
+    from markwise.importer import import_pool
+    import_pool(write_legacy(tmp_path / "legacy"), tmp_path / "pool")
+    module = Module.create(tmp_path / "module", "M", "M", pools=[tmp_path / "pool"])
+    api = Api()
+    path = api.open_module(str(module.root))["data"]["path"]
+    return api, path, tmp_path / "pool"
+
+
+def test_list_questions_gives_rows_with_findings(module_with_questions):
+    api, path, pool = module_with_questions
+    q = Pool.open(pool).find("co-001")
+    q.data["options"][1]["correct"] = True  # a single choice question with two correct options
+    q.save()
+    data = api.list_questions(path)["data"]
+    rows = {r["id"]: r for r in data["questions"]}
+    assert data["pools"][0]["name"] == "Invented Course"
+    assert rows["co-001"]["errors"] == 1 and rows["co-001"]["variants"] == ["co-002"]
+    assert rows["co-002"]["variant_of"] == "co-001" and rows["co-002"]["public"] is False
+    assert "blue" in rows["co-001"]["search"]  # English text is searchable as well
+
+
+def test_get_question_has_data_findings_and_image(module_with_questions):
+    api, _, pool = module_with_questions
+    detail = api.get_question(str(pool), "co-001")["data"]
+    assert detail["data"]["options"][0]["text"]["en"] == "Blue"
+    assert detail["findings"] == [] and detail["image_data"].startswith("data:image/svg+xml;base64,")
+
+
+def test_open_file_only_inside_opened_pools(module_with_questions, tmp_path):
+    api, _, _ = module_with_questions
+    outside = tmp_path / "elsewhere.yaml"
+    outside.write_text("id: x", encoding="utf-8")
+    assert api.open_file(str(outside))["code"] == "file_outside"
+    assert api.open_file(str(tmp_path / "missing.yaml"))["code"] == "file_missing"
+
+
+def test_cli_list_searches_a_whole_module(module_with_questions, capsys):
+    from markwise.cli import main
+    _, path, _ = module_with_questions
+    assert main(["question", "list", path, "--search", "sky", "--public", "no", "--json"]) == 0
+    assert [r["id"] for r in json.loads(capsys.readouterr().out)] == ["co-002"]

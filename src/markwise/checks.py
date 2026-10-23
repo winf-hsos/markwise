@@ -121,8 +121,9 @@ def _check_options(q: Question, pool: Pool, add) -> None:
             add(WARNING, f"option {oid} is much longer than the others and may give itself away")
 
 
-def check_pool(pool: Pool) -> list[Finding]:
-    questions, load_errors = pool.load()
+def check_pool(pool: Pool, loaded: tuple | None = None) -> list[Finding]:
+    """Check every question; `loaded` is the result of pool.load() when the caller has it already."""
+    questions, load_errors = loaded if loaded is not None else pool.load()
     findings = [Finding(ERROR, e.path.stem, e.message, str(e.path)) for e in load_errors]
     for q in questions:
         findings.extend(check_question(q, pool))

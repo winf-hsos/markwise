@@ -11,7 +11,7 @@ import os
 import sys
 from pathlib import Path
 
-from .. import __version__, settings as user_settings
+from .. import __version__, catalog, settings as user_settings
 from ..importer import import_pool
 from ..module import EXAM_PATHS, MODULE_FILE, Module
 from ..pool import POOL_FILE, Pool, PoolSettings
@@ -246,3 +246,42 @@ class Api:
         module.remove_pool(pool_path)
         module.save()
         return _module_entry(module_path)
+
+    # --- questions ---------------------------------------------------------------------
+
+    @_answer
+    def list_questions(self, module_path: str) -> dict:
+        """All questions in the pools of a module, as rows for the list."""
+        module = Module.open(module_path)
+        language = user_settings.load().language
+        pools, rows = [], []
+        for ref in module.pools:
+            root = module.pool_root(ref)
+            if not (root / POOL_FILE).exists():
+                pools.append({"path": str(root), "name": root.name, "exists": False})
+                continue
+            pool = Pool.open(root)
+            pools.append({"path": str(root), "name": pool.settings.name, "exists": True,
+                          "languages": pool.settings.languages, "concepts": pool.concepts()})
+            rows.extend(catalog.rows(pool, language))
+        return {"pools": pools, "questions": rows}
+
+    @_answer
+    def get_question(self, pool_path: str, qid: str) -> dict:
+        return catalog.detail(Pool.open(pool_path), qid)
+
+    @_answer
+    def open_file(self, path: str) -> None:
+        """Open a question file in the program Windows uses for YAML files. Only files inside an opened pool."""
+        target = Path(path).resolve()
+        if target.suffix not in (".yaml", ".toml") or not target.is_file():
+            raise Refusal("file_missing", f"{path} is not a question file", path=path)
+        allowed = []
+        for module_path in user_settings.load().modules:
+            if (Path(module_path) / MODULE_FILE).exists():
+                module = Module.open(module_path)
+                allowed.extend(module.pool_root(ref) for ref in module.pools)
+        if not any(root == target or root in target.parents for root in allowed):
+            raise Refusal("file_outside", f"{path} is not in a pool of an opened module", path=path)
+        if sys.platform == "win32":
+            os.startfile(target)  # noqa: S606 (a question file inside an opened pool)

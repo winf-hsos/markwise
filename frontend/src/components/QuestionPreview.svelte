@@ -1,0 +1,91 @@
+<script>
+  import Icon from "./Icon.svelte";
+  import { t, ui } from "../lib/i18n.svelte.js";
+
+  // A read-only view of one question: text, options with the correct ones marked, findings and metadata.
+  let { question, variants = [], onopen } = $props();
+
+  const data = $derived(question.data);
+  const languages = $derived(question.languages);
+  let lang = $state(null);
+  const shown = $derived(lang && languages.includes(lang) ? lang : languages.includes(ui.lang) ? ui.lang : languages[0]);
+
+  const pick = (value) => (value && typeof value === "object" ? value[shown] ?? "" : value ?? "");
+  const severityClass = { error: "red", warning: "warn", note: "" };
+</script>
+
+<article class="preview">
+  <header class="preview-head">
+    <div class="preview-title">
+      <span class="qid">{data.id}</span>
+      <span class="tag">{t(`type.${data.type}`)}</span>
+      <span class="tag" class:ok={data.status === "reviewed" || data.status === "piloted"}>{t(`status.${data.status}`)}</span>
+      <span class="tag">{data.public ? t("use.practice") : t("use.exam")}</span>
+    </div>
+    {#if languages.length > 1}
+      <div class="seg seg-small" role="group">
+        {#each languages as code}
+          <button class:on={shown === code} onclick={() => (lang = code)}>{code.toUpperCase()}</button>
+        {/each}
+      </div>
+    {/if}
+  </header>
+
+  {#if data.variant_of}<p class="variant-note">{t("q.variantOf", { id: data.variant_of })}</p>{/if}
+
+  <div class="stem">{pick(data.stem)}</div>
+  {#if data.code}<pre class="code-block">{data.code}</pre>{/if}
+  {#if question.image_data}
+    <figure class="figure"><img src={question.image_data} alt={t("q.image")} /></figure>
+  {/if}
+
+  {#if data.type === "free_text"}
+    <p class="muted small">{t("q.points", { n: data.points })}{data.half_points ? ` · ${t("q.halfPoints")}` : ""}</p>
+    {#if pick(data.expected)}<h4 class="sub">{t("q.expected")}</h4><p class="prose">{pick(data.expected)}</p>{/if}
+    {#if pick(data.marking_notes)}<h4 class="sub">{t("q.markingNotes")}</h4><p class="prose">{pick(data.marking_notes)}</p>{/if}
+  {:else}
+    <ol class="options">
+      {#each data.options ?? [] as option}
+        <li class:correct={option.correct}>
+          <span class="box" aria-hidden="true">{#if option.correct}<Icon name="check" />{/if}</span>
+          <div>
+            <div class="option-text"><b>{option.id}</b> {pick(option.text)}{#if option.correct}<span class="sr">({t("q.correct")})</span>{/if}</div>
+            {#if pick(option.feedback)}<div class="option-feedback">{pick(option.feedback)}</div>{/if}
+          </div>
+        </li>
+      {/each}
+    </ol>
+  {/if}
+
+  <section class="preview-section">
+    <h4 class="sub">{t("q.findings")}</h4>
+    {#if question.findings.length === 0}
+      <p class="check-ok"><Icon name="check" />{t("q.noFindings")}</p>
+    {:else}
+      <ul class="findings">
+        {#each question.findings as f}
+          <li><span class="tag {severityClass[f.severity]}">{t(`sev.${f.severity}`)}</span>{f.message}</li>
+        {/each}
+      </ul>
+    {/if}
+  </section>
+
+  <section class="preview-section">
+    <dl class="meta">
+      <dt>{t("q.meta.concept")}</dt><dd>{data.concept}</dd>
+      <dt>{t("q.meta.level")}</dt><dd>{t(`level.${data.level}`)}</dd>
+      {#if data.public && data.type !== "free_text"}
+        <dt>{t("q.variants")}</dt><dd>{variants.length ? variants.join(", ") : t("q.noVariant")}</dd>
+      {/if}
+      {#if data.coverage}<dt>{t("q.meta.coverage")}</dt><dd>{data.coverage}</dd>{/if}
+      {#if data.misconception}<dt>{t("q.meta.misconception")}</dt><dd>{data.misconception}</dd>{/if}
+      {#if data.reviewed_by?.length}<dt>{t("q.meta.reviewed")}</dt><dd>{data.reviewed_by.join(", ")}</dd>{/if}
+      <dt>{t("q.meta.pool")}</dt><dd>{question.pool_name}</dd>
+      <dt>{t("q.meta.file")}</dt><dd class="small">{question.path}</dd>
+    </dl>
+    <div class="preview-actions">
+      <button class="btn" onclick={() => onopen(question.path)}><Icon name="upload" />{t("q.openFile")}</button>
+    </div>
+    <p class="hint">{t("q.editHint")}</p>
+  </section>
+</article>
