@@ -14,6 +14,7 @@ from .question import Question, default_author, template
 
 POOL_FILE = "pool.toml"
 MIN_OPTIONS_ALLOWED = 4  # § 5 (3) a of the general examination regulations
+LANGUAGES = ("de", "en")  # the languages a pool can be written in
 IMAGE_TYPES = (".svg", ".png", ".jpg", ".jpeg")  # an image is named without its extension in a question
 UMLAUTS = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss", "Ä": "ae", "Ö": "oe", "Ü": "ue"})
 
@@ -204,6 +205,17 @@ class Pool:
             self.write_settings()
         if folder.is_dir() and not any(folder.iterdir()):
             folder.rmdir()
+
+    def set_languages(self, languages: list[str]) -> None:
+        """Change the languages every question of the pool is written in. Texts in a language that is dropped stay
+        in the files; for a language that is added, the check reports the missing texts until they are written."""
+        chosen = [lang for lang in LANGUAGES if lang in languages]
+        if unknown := [lang for lang in languages if lang not in LANGUAGES]:
+            raise ValueError(f"unknown language {', '.join(unknown)}; possible are {', '.join(LANGUAGES)}")
+        if not chosen:
+            raise ValueError("a pool needs at least one language")
+        self.settings.languages = chosen
+        self.write_settings()
 
     def update_concept(self, cid: str, name: str | None = None, description: str | None = None) -> None:
         """Rename or describe a concept; its identifier and folder stay."""

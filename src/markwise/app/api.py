@@ -14,7 +14,7 @@ from pathlib import Path
 from .. import __version__, assist, catalog, editing, lifecycle, settings as user_settings
 from ..importer import import_pool
 from ..module import EXAM_PATHS, MODULE_FILE, Module
-from ..pool import POOL_FILE, Pool, PoolSettings
+from ..pool import LANGUAGES, POOL_FILE, Pool, PoolSettings
 from ..question import TYPES, ConflictError
 
 
@@ -83,7 +83,7 @@ def _check_pool_spec(spec: dict) -> Path:
             raise Refusal("pool_exists", f"{folder} already holds a question pool", path=folder)
         if not (spec.get("name") or "").strip():
             raise Refusal("pool_name_missing", "the question pool needs a name")
-        if not [lang for lang in spec.get("languages") or [] if lang in ("de", "en")]:
+        if not [lang for lang in spec.get("languages") or [] if lang in LANGUAGES]:
             raise Refusal("pool_languages_missing", "choose at least one language")
     elif mode == "existing" and not (folder / POOL_FILE).exists():
         raise Refusal("pool_not_found", f"{folder} holds no question pool (pool.toml is missing)", path=folder)
@@ -96,7 +96,7 @@ def _prepare_pool(spec: dict) -> tuple[Path, dict]:
     """Create, open or import the pool a module draws from. Returns its folder and what was done."""
     folder = _check_pool_spec(spec)
     if spec["mode"] == "new":
-        languages = [lang for lang in spec["languages"] if lang in ("de", "en")]
+        languages = [lang for lang in spec["languages"] if lang in LANGUAGES]
         pool = Pool.create(folder, PoolSettings(name=spec["name"].strip(), languages=languages))
         return pool.root, {"pool": "created"}
     if spec["mode"] == "existing":
@@ -241,6 +241,19 @@ class Api:
         module.add_pool(pool_root)
         module.save()
         return {"module": _module_entry(module_path), **outcome}
+
+    @_answer
+    def set_pool_languages(self, pool_path: str, languages: list) -> dict:
+        """Change the languages of a pool; reports how many questions then lack a text in an added language."""
+        pool = Pool.open(pool_path)
+        if not [lang for lang in languages if lang in LANGUAGES]:
+            raise Refusal("pool_languages_missing", "choose at least one language")
+        added = [lang for lang in LANGUAGES if lang in languages and lang not in pool.settings.languages]
+        pool.set_languages(languages)
+        questions, _ = pool.load()
+        untranslated = sum(1 for q in questions if any(not str((q.data.get("stem") or {}).get(lang) or "").strip()
+                                                       for lang in added))
+        return {**_pool_entry(str(pool.root)), "added": added, "untranslated": untranslated}
 
     @_answer
     def remove_pool(self, module_path: str, pool_path: str) -> dict:
@@ -480,6 +493,11 @@ class Api:
     @_answer
     def llm_models(self) -> list:
         return self._assist(assist.list_models)
+
+    @_answer
+    def assist_review_question(self, fields: dict, lang: str) -> dict:
+        answer_lang = user_settings.load().language
+        return self._assist(assist.review_question, fields, lang, answer_lang)
 
     @_answer
     def assist_check_stem(self, fields: dict, lang: str) -> dict:

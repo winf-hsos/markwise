@@ -177,6 +177,47 @@
     review = null;
   }
 
+  // The question as a whole: do text and answers fit together, are the options clear and distinct.
+  let whole = $state(null); // { lang, findings, changes }
+  let checkingWhole = $state(false);
+
+  async function reviewWhole() {
+    checkingWhole = true;
+    try {
+      const answer = await call("assist_review_question", $state.snapshot(fields), lang);
+      whole = { lang, ...answer };
+    } catch (err) {
+      showToast(errorText(err));
+    } finally {
+      checkingWhole = false;
+    }
+  }
+
+  function fieldLabel(name) {
+    if (name === "question") return t("assist.aboutQuestion");
+    if (name === "stem") return t("edit.stem");
+    if (name === "expected") return t("q.expected");
+    if (name === "marking_notes") return t("q.markingNotes");
+    const [, id, part] = name.split(".");
+    return t(part === "text" ? "assist.aboutOption" : "assist.aboutFeedback", { id });
+  }
+
+  function applyChange(change) {
+    const l = whole.lang;
+    if (change.field.startsWith("option.")) {
+      const [, id, part] = change.field.split(".");
+      const option = fields.options.find((o) => o.id === id);
+      if (option) option[part][l] = change.text;
+    } else {
+      fields[change.field] = { ...(fields[change.field] ?? blankTexts()), [l]: change.text };
+    }
+    whole.changes = whole.changes.filter((c) => c.field !== change.field);
+  }
+
+  function applyAll() {
+    for (const change of [...whole.changes]) applyChange(change);
+  }
+
   function addDistractors(chosen) {
     for (const d of chosen) {
       const used = new Set(fields.options.map((o) => o.id));
@@ -315,7 +356,7 @@
         {/if}
       </div>
 
-      {#if languages.length > 1}
+      <div class="lang-row">
         <div class="lang-tabs" role="tablist" aria-label={t("edit.language")}>
           {#each languages as l}
             <button type="button" role="tab" aria-selected={lang === l} class:on={lang === l} onclick={() => (lang = l)}
@@ -324,7 +365,8 @@
             </button>
           {/each}
         </div>
-      {/if}
+        <a class="lang-hint" href="#/modules" title={t("edit.languagesHint")}>{t(languages.length > 1 ? "edit.languagesPool" : "edit.languagePool")}</a>
+      </div>
 
       <div class="field">
         <div class="field-head">
@@ -426,6 +468,38 @@
           <textarea class="input grow-text" rows="3" bind:value={fields.expected[lang]}></textarea></label>
         <label class="field"><span>{t("q.markingNotes")}</span>
           <textarea class="input grow-text" rows="2" bind:value={fields.marking_notes[lang]}></textarea></label>
+      {/if}
+
+      {#if llmReady()}
+        <div class="assist-whole">
+          <button type="button" class="btn ghost" onclick={reviewWhole} disabled={checkingWhole || !fields.stem[lang]?.trim()}
+            title={t(isChoice ? "assist.wholeHint" : "assist.wholeHintFree")}>
+            <Icon name="wand" />{checkingWhole ? t("assist.working") : t(isChoice ? "assist.whole" : "assist.wholeFree")}
+          </button>
+          {#if whole && whole.lang === lang}
+            <div class="assist-review">
+              {#if whole.findings.length}
+                <ul>{#each whole.findings as f}<li><b>{fieldLabel(f.about)}:</b> {f.text}</li>{/each}</ul>
+              {:else}
+                <p class="check-ok"><Icon name="check" />{t("assist.nothing")}</p>
+              {/if}
+              {#each whole.changes as change (change.field)}
+                <div class="assist-suggestion">
+                  <div class="assist-change-head">
+                    <span class="hint">{fieldLabel(change.field)}</span>
+                    <button type="button" class="btn primary btn-small" onclick={() => applyChange(change)}>{t("attach.apply")}</button>
+                  </div>
+                  {#if change.before}<div class="assist-before">{@html inline(change.before)}</div>{/if}
+                  <div class="assist-after">{@html inline(change.text)}</div>
+                </div>
+              {/each}
+              <div class="assist-actions">
+                {#if whole.changes.length > 1}<button type="button" class="btn primary btn-small" onclick={applyAll}>{t("assist.applyAll")}</button>{/if}
+                <button type="button" class="btn ghost btn-small" onclick={() => (whole = null)}>{whole.changes.length ? t("assist.dismiss") : t("dialog.close")}</button>
+              </div>
+            </div>
+          {/if}
+        </div>
       {/if}
 
       <details class="more">

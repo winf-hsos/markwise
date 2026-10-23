@@ -210,3 +210,21 @@ def test_colour_scheme_setting():
     assert api.get_settings()["data"]["theme"] == "markwise"
     assert api.update_settings({"theme": "hsos"})["data"]["theme"] == "hsos"
     assert "error" in api.update_settings({"theme": "purple"})
+
+
+def test_pool_languages_can_be_changed_and_texts_are_kept(tmp_path):
+    pool = Pool.create(tmp_path / "pool", PoolSettings(name="P", languages=["en"]))
+    question = pool.new_question("binary", "single")
+    question.data["stem"]["en"] = "How many digits does the binary system have?"
+    question.save()
+    api = Api()
+    answer = api.set_pool_languages(str(pool.root), ["en", "de"])["data"]
+    assert answer["languages"] == ["de", "en"] and answer["added"] == ["de"] and answer["untranslated"] == 1
+    assert Pool.open(pool.root).settings.languages == ["de", "en"]
+    assert api.set_pool_languages(str(pool.root), [])["code"] == "pool_languages_missing"
+    api.set_pool_languages(str(pool.root), ["de"])
+    reopened = Pool.open(pool.root)
+    assert reopened.settings.languages == ["de"]
+    assert reopened.find(question.id).data["stem"]["en"].startswith("How many")  # dropping a language deletes nothing
+    with pytest.raises(ValueError):
+        reopened.set_languages(["fr"])

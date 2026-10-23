@@ -60,6 +60,14 @@ def cmd_pool_init(args) -> int:
     return 0
 
 
+def cmd_pool_languages(args) -> int:
+    pool = Pool.open(args.pool)
+    if args.languages:
+        pool.set_languages([lang.strip() for lang in args.languages.split(",") if lang.strip()])
+    print(json.dumps({"languages": pool.settings.languages}) if args.json else ", ".join(pool.settings.languages))
+    return 0
+
+
 FINDINGS = ("errors", "warnings", "none")
 
 
@@ -259,6 +267,21 @@ def cmd_assist_check(args) -> int:
     return 0
 
 
+def cmd_assist_review(args) -> int:
+    from .catalog import plain
+    pool = Pool.open(args.pool)
+    lang = args.lang or pool.settings.languages[0]
+    answer = assist.review_question(plain(pool.find(args.id).data), lang, "de")
+    if args.json:
+        _print_json(answer)
+    else:
+        for finding in answer["findings"] or [{"about": "question", "text": "(nothing to change)"}]:
+            print(f"- [{finding['about']}] {finding['text']}")
+        for change in answer["changes"]:
+            print(f"\n{change['field']} ({lang}):\n  before: {change['before']}\n  after:  {change['text']}")
+    return 0
+
+
 def cmd_assist_distractors(args) -> int:
     from .catalog import plain
     pool = Pool.open(args.pool)
@@ -351,12 +374,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--update", action="store_true", help="take over questions that changed in the source")
     p.set_defaults(func=cmd_import)
 
-    pool = sub.add_parser("pool", help="create pools").add_subparsers(dest="action", required=True)
+    pool = sub.add_parser("pool", help="create pools and set their languages").add_subparsers(dest="action", required=True)
     p = pool.add_parser("init", parents=[common], help="create an empty pool")
     p.add_argument("folder")
     p.add_argument("--name", required=True)
     p.add_argument("--languages", default="de,en")
     p.set_defaults(func=cmd_pool_init)
+    p = pool.add_parser("languages", parents=[common], help="show or change the languages of a pool")
+    p.add_argument("pool")
+    p.add_argument("languages", nargs="?", help="comma-separated, for example de,en; without it the languages are shown")
+    p.set_defaults(func=cmd_pool_languages)
 
     question = sub.add_parser("question", help="list, show, create, delete questions").add_subparsers(
         dest="action", required=True)
@@ -447,6 +474,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("id")
     p.add_argument("--lang", help="language of the question text to check (default: the pool's first)")
     p.set_defaults(func=cmd_assist_check)
+    p = helper.add_parser("review", parents=[common], help="check the question with its answers and propose changes per field")
+    p.add_argument("pool")
+    p.add_argument("id")
+    p.add_argument("--lang", help="language to check (default: the pool's first)")
+    p.set_defaults(func=cmd_assist_review)
     p = helper.add_parser("distractors", parents=[common], help="propose wrong options with feedback")
     p.add_argument("pool")
     p.add_argument("id")

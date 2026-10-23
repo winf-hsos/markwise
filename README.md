@@ -70,7 +70,9 @@ On the **Modules** page, **New module** asks for:
 
 **Browse …** next to each path opens the Windows folder dialog; you can also paste a path. Below the field Markwise says what the folder holds, for example that it will be created or already holds a pool. If something is missing or does not fit, the dialog says what to change, and nothing is created until everything fits.
 
-The new module becomes the **current module**, shown in the top bar. Every module in the list shows its folder and its pools with the number of questions; pointing at a pool shows **Show in Explorer** and **Detach pool** (detaching leaves the pool's questions untouched). The **⋯** menu of a module offers **Add pool** (the same three ways as above), **Show in Explorer** and **Remove from list**, which only removes the entry from the list and leaves the folder as it is.
+The new module becomes the **current module**, shown in the top bar. Every module in the list shows its folder and its pools with their languages (DE, EN) and number of questions; pointing at a pool shows **Languages**, **Show in Explorer** and **Detach pool** (detaching leaves the pool's questions untouched).
+
+**Languages of a pool.** All questions of a pool are written in the same languages, so the language is set at the pool, not at the single question. **Languages** at the pool changes them. A language you add needs texts in every question afterwards; until they are written, the check reports them as missing, and Markwise tells you how many questions are affected. A language you drop is no longer shown or checked, but its texts stay in the files, so that nothing is lost if you add it again. The **⋯** menu of a module offers **Add pool** (the same three ways as above), **Show in Explorer** and **Remove from list**, which only removes the entry from the list and leaves the folder as it is.
 
 **Open folder** adds a module folder that already has a `module.toml`, for example after copying it from another computer. If the folder turns out to be a question pool, Markwise offers to create a new module with that pool instead.
 
@@ -128,7 +130,7 @@ markwise concept edit "D:\Teaching\Statistics\pool" regression --name "Lineare R
 The editor shows the form on the left and the question as it reads on paper on the right; the preview follows every keystroke.
 
 - **Type** switches between single and multiple choice (a free-text question stays free text). **Level** is a choice of three. **Time to answer** offers 15 s, 30 s, 45 s, 1 min, 2 min and 5 min, and **Other …** for any time in minutes and seconds; points are not set here but when an exam is built. **Use** has two switches, **Practice** and **Exam**, which can both be on; one of them always stays on. A question meant only for exams can name the practice question it is a **variant of**; an exam variant is never a practice question itself, because students would then know it.
-- **Deutsch** and **English** switch the language of all texts. A yellow dot on a language means a text is still missing there.
+- The tabs above the question text show the pool's languages (**Deutsch**, **English** or just one of them) and switch the language of all texts. A yellow dot on a language means a text is still missing there. **Change the pool's languages** on the right leads to the Modules page, where they are set.
 - The **question text** grows with what you type. Below it, **Add** opens a menu of what a question can carry under its text, each added in a dialog of its own:
   - **Code**: a code block with syntax highlighting. Choose the language (Python, JavaScript, Java, C, C++, C#, SQL, R, Shell, JSON) or let Markwise detect it; **Tab** indents by four spaces.
   - **Figures**: the pool's images as small previews. Click one or several; the numbers on them show the order. With two or more, choose the **layout**: one below the other, side by side, or in 2 or 3 columns. **Add image from file …** copies a PNG, SVG or JPEG file into the pool's `images` folder, under a name made from the file name, and selects it.
@@ -138,6 +140,7 @@ The editor shows the form on the left and the question as it reads on paper on t
 - Each **option** has a box on the left that marks it correct (for single choice, marking one unmarks the others), its text, and below it the feedback that explains why it is right or wrong. **Add option** adds one, **–** removes one.
 - With the language model switched on (see [Help from a language model](#help-from-a-language-model)), **Check** next to the label of the question text sends the text to the model. Its findings appear below the field, with a corrected wording if it has one; **Apply** puts the wording into the field, **Dismiss** leaves the text as it is. Nothing is saved until you save.
 - Likewise, **Propose wrong answers** below the options (once at least one option is marked correct) asks the model for plausible but wrong options, each with feedback in every language of the pool and the misconception it plays on. Choose how many, tick the ones you want and **Add selected**; they are added as wrong options, which you can then edit like any other. **New proposals** asks again.
+- **Check question and answers** below the options looks at the question as a whole: does every option answer what the text asks, are the options clear and mutually exclusive, are exactly the marked options correct, does one stand out by length, detail or wording, are the wrong ones plausible, and does each feedback fit. The findings name the part they concern; below them, each proposed new text shows the old one struck through, with **Apply** for that part alone or **Apply all**. The model never changes which options are correct; if a mark looks wrong, it says so. For a free-text question the button reads **Check question and expected answer** and looks at the question text, the expected answer and the marking notes.
 - **More details** holds where the material is taught and the misconception the question targets.
 - The **check** runs while you type; its findings appear under the preview in the language of the interface.
 
@@ -200,7 +203,7 @@ Modules\Statistics 1\                     module folder, examiners only
 markwise pool init "D:\Teaching\Statistics\pool" --name "Statistics"
 ```
 
-To use only one language, pass `--languages de` (or `en`). Every question then needs its texts in exactly those languages.
+To use only one language, pass `--languages de` (or `en`). Every question then needs its texts in exactly those languages; `markwise pool languages` changes them later.
 
 **2. Create a question.** Give the concept it belongs to and the type: `single` (one correct option), `multiple` (one or more correct options) or `free_text`.
 
@@ -345,6 +348,7 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | Command | What it does |
 |---|---|
 | `markwise pool init <folder> --name <name> [--languages de,en]` | create an empty pool |
+| `markwise pool languages <pool> [de,en]` | show the languages of a pool, or change them |
 | `markwise question new <pool> --concept <concept> [--type single\|multiple\|free_text]` | create a question from the template of its type |
 | `markwise question list <pool or module> [--search] [--concept] [--status] [--type] [--level] [--use practice\|exam] [--public yes\|no] [--findings errors\|warnings\|none]` | list questions, searched and filtered; a module folder lists all its pools |
 | `markwise question show <pool> <id>` | print a question file |
@@ -368,6 +372,7 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise llm models` | list the models the stored key may use |
 | `markwise llm use [--model <model>] [--off]` | switch the language model on (and choose the model) or off |
 | `markwise assist check <pool> <id> [--lang de]` | let the model check a question text; prints findings and a suggestion, changes nothing |
+| `markwise assist review <pool> <id> [--lang de]` | let the model check the question with its answers; prints findings and proposed texts per field, changes nothing |
 | `markwise assist distractors <pool> <id> [--count 3]` | let the model propose wrong options with feedback; changes nothing |
 | `markwise app` | open the app window |
 | `markwise shortcut [--folder <folder>]` | create the Start menu entry (or put it into another folder) |

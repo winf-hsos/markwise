@@ -3,6 +3,7 @@
   import NewModuleDialog from "../components/NewModuleDialog.svelte";
   import OpenFolderDialog from "../components/OpenFolderDialog.svelte";
   import AddPoolDialog from "../components/AddPoolDialog.svelte";
+  import PoolLanguagesDialog from "../components/PoolLanguagesDialog.svelte";
   import Menu from "../components/Menu.svelte";
   import { call } from "../lib/api.js";
   import { errorText, t } from "../lib/i18n.svelte.js";
@@ -15,6 +16,8 @@
   let openOpen = $state(false);
   let addPoolOpen = $state(false);
   let addPoolModule = $state(null);
+  let languagesOpen = $state(false);
+  let languagesPool = $state(null);
 
   function newModule(preset = null) {
     newPreset = preset;
@@ -96,12 +99,16 @@
                     <Icon name="questions" />
                     <span class="pool-name">{p.name}</span>
                     {#if p.exists}
+                      <span class="pool-langs" title={t("poolLang.tagHint")}>{#each p.languages ?? [] as l}<span class="lang-tag">{l.toUpperCase()}</span>{/each}</span>
                       <span class="muted">{t(p.questions === 1 ? "modules.question" : "modules.questions", { count: p.questions })}</span>
                     {:else}
                       <span class="tag red">{t("modules.poolMissing")}</span>
                     {/if}
                     <span class="pool-actions">
-                      {#if p.exists}<button class="link-btn" onclick={() => reveal(p.path)}>{t("modules.reveal")}</button>{/if}
+                      {#if p.exists}
+                        <button class="link-btn" onclick={() => { languagesPool = p; languagesOpen = true; }}>{t("poolLang.change")}</button>
+                        <button class="link-btn" onclick={() => reveal(p.path)}>{t("modules.reveal")}</button>
+                      {/if}
                       <button class="link-btn" onclick={() => removePool(m, p)}>{t("modules.removePool")}</button>
                     </span>
                   </li>
@@ -132,3 +139,4 @@
 <NewModuleDialog bind:open={newOpen} preset={newPreset} />
 <OpenFolderDialog bind:open={openOpen} onpool={(path) => newModule({ mode: "existing", path })} />
 <AddPoolDialog bind:open={addPoolOpen} module={addPoolModule} />
+<PoolLanguagesDialog bind:open={languagesOpen} pool={languagesPool} />

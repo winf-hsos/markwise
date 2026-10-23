@@ -103,6 +103,38 @@ def test_a_free_text_question_can_be_checked_with_its_expected_answer(provider):
     assert "Expected answer:\\nTwo" in sent_text  # newline as encoded in JSON and "Examiner A" not in sent_text
 
 
+def test_review_of_the_whole_question_proposes_only_real_changes_to_known_fields(provider):
+    provider["store"]["key"] = "sk-good"
+    switch_on()
+    provider["answers"]["question_review"] = {
+        "findings": [{"about": "option.a.text", "text": "Die richtige Option ist deutlich kürzer."},
+                     {"about": "question", "text": "Text und Optionen passen zusammen."}],
+        "changes": [{"field": "option.a.text", "text": "Blau, weil kurzwelliges Licht stärker gestreut wird"},
+                    {"field": "option.b.text", "text": "Grün"},  # unchanged: dropped
+                    {"field": "stem", "text": "Welche Farbe hat der Himmel?"},  # unchanged: dropped
+                    {"field": "option.a.text", "text": "noch einmal"}],  # a field twice: only the first counts
+    }
+    answer = assist.review_question(QUESTION, "de", "de")
+    assert [f["about"] for f in answer["findings"]] == ["option.a.text", "question"]
+    assert answer["changes"] == [{"field": "option.a.text", "text": "Blau, weil kurzwelliges Licht stärker gestreut wird",
+                                  "before": "Blau"}]
+    schema = provider["sent"][-1]["body"]["response_format"]["json_schema"]["schema"]
+    fields = schema["properties"]["changes"]["items"]["properties"]["field"]["enum"]
+    assert fields == ["stem", "option.a.text", "option.a.feedback", "option.b.text", "option.b.feedback"]
+    sent_text = json.dumps(provider["sent"][-1]["body"]["messages"], ensure_ascii=False)
+    assert "Never change which options are correct" in sent_text and "Examiner A" not in sent_text
+
+
+def test_review_of_a_free_text_question_covers_the_expected_answer(provider):
+    provider["store"]["key"] = "sk-good"
+    switch_on()
+    provider["answers"]["question_review"] = {"findings": [], "changes": [{"field": "expected", "text": "Zwei: 0 und 1"}]}
+    question = {"type": "free_text", "stem": {"de": "Wie viele Ziffern hat das Binärsystem?"}, "expected": {"de": "Zwei"}}
+    assert assist.review_question(question, "de", "de")["changes"] == [{"field": "expected", "text": "Zwei: 0 und 1", "before": "Zwei"}]
+    schema = provider["sent"][-1]["body"]["response_format"]["json_schema"]["schema"]
+    assert schema["properties"]["changes"]["items"]["properties"]["field"]["enum"] == ["stem", "expected", "marking_notes"]
+
+
 def test_distractors_come_in_every_language_and_no_more_than_asked(provider):
     provider["store"]["key"] = "sk-good"
     switch_on()

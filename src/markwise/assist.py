@@ -1,4 +1,5 @@
-"""Optional help from a language model while writing questions: checking a question text and proposing distractors.
+"""Optional help from a language model while writing questions: checking a question text or the whole question
+and proposing distractors.
 
 Off unless the examiner switches it on in the settings and enters an API key, which lives in the Windows
 credential store, never in a file. Only the question's own texts are sent: question text, options and their
@@ -162,7 +163,7 @@ def _question_text(fields: dict, lang: str) -> str:
     return "\n".join(lines)
 
 
-# --- the two kinds of help --------------------------------------------------------------
+# --- the kinds of help -----------------------------------------------------------------
 
 
 def check_stem(fields: dict, lang: str, answer_lang: str) -> dict:
@@ -183,6 +184,77 @@ def check_stem(fields: dict, lang: str, answer_lang: str) -> dict:
         f"code); if nothing needs changing, return the text unchanged."
     )
     return _ask(system, _question_text(fields, lang), "stem_review", schema)
+
+
+def _changeable(fields: dict) -> list[str]:
+    """The fields a review of the whole question may propose new text for."""
+    if fields.get("type") == "free_text":
+        return ["stem", "expected", "marking_notes"]
+    names = ["stem"]
+    for option in fields.get("options") or []:
+        names += [f"option.{option.get('id')}.text", f"option.{option.get('id')}.feedback"]
+    return names
+
+
+def _current(fields: dict, name: str, lang: str) -> str:
+    if name.startswith("option."):
+        _, oid, part = name.split(".")
+        option = next((o for o in fields.get("options") or [] if o.get("id") == oid), {})
+        value = option.get(part)
+    else:
+        value = fields.get(name)
+    return value.get(lang, "") if isinstance(value, dict) else str(value or "")
+
+
+def review_question(fields: dict, lang: str, answer_lang: str) -> dict:
+    """Check the question as a whole, text and answers together; returns findings and proposed new texts per field."""
+    names = _changeable(fields)
+    schema = {
+        "type": "object", "additionalProperties": False, "required": ["findings", "changes"],
+        "properties": {
+            "findings": {"type": "array", "items": {
+                "type": "object", "additionalProperties": False, "required": ["about", "text"],
+                "properties": {"about": {"type": "string", "enum": ["question"] + names}, "text": {"type": "string"}},
+            }},
+            "changes": {"type": "array", "items": {
+                "type": "object", "additionalProperties": False, "required": ["field", "text"],
+                "properties": {"field": {"type": "string", "enum": names}, "text": {"type": "string"}},
+            }},
+        },
+    }
+    if fields.get("type") == "free_text":
+        task = (
+            "Review the question as a whole: does the question text ask exactly what the expected answer answers, is "
+            "it clear what and how much is expected, is the expected answer correct and complete, and do the marking "
+            "notes let a second examiner award points the same way?"
+        )
+    else:
+        task = (
+            "Review the question as a whole: does every option answer the question that the text asks; is every "
+            "option clear and unambiguous; are the options mutually exclusive (for single choice exactly one can be "
+            "right); are exactly the options marked correct actually correct; does any option stand out by length, "
+            "detail, wording, grammar or caution, so that it can be guessed without knowing the matter; are the "
+            "distractors plausible; and does each feedback fit its option and whether it is right or wrong? Never "
+            "change which options are correct; if a mark seems wrong, say so as a finding."
+        )
+    system = (
+        "You review questions for university exams and help the examiner improve them.\n\n" + WRITING_RULES +
+        f"\n\n{task}\n\nList what you find, each as one short sentence in {LANGUAGE_NAMES.get(answer_lang, 'English')}, "
+        f"naming in `about` the field it concerns (`question` for the question as a whole); an empty list if "
+        f"nothing needs changing. Then propose new texts in {LANGUAGE_NAMES.get(lang, lang)} only for the fields "
+        f"that should change, each with its complete new text, keeping the meaning, the learning goal and the "
+        f"Markdown (backticks for code). Fields are named `stem`, `option.<id>.text`, `option.<id>.feedback`, "
+        f"`expected` and `marking_notes`."
+    )
+    answer = _ask(system, _question_text(fields, lang), "question_review", schema)
+    findings = [f for f in answer.get("findings", []) if f.get("about") in ["question"] + names and f.get("text", "").strip()]
+    changes, seen = [], set()
+    for change in answer.get("changes", []):
+        name, text = change.get("field"), change.get("text", "").strip()
+        if name in names and name not in seen and text and text != _current(fields, name, lang).strip():
+            changes.append({"field": name, "text": text, "before": _current(fields, name, lang)})
+            seen.add(name)
+    return {"findings": findings, "changes": changes}
 
 
 def distractors(fields: dict, languages: list[str], count: int, answer_lang: str) -> list[dict]:
