@@ -621,6 +621,8 @@ kbd.k { font: 11.5px var(--code); border: 1px solid var(--line); border-bottom-w
 .correct-toggle.round svg { display: none; }
 
 /* --- concepts page ------------------------------------------------------------------ */
+.concept-tools { grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; }
+.concept-tools .select { width: 260px; height: 38px; }
 .concept-row .q-row-head { gap: 10px; }
 .concept-name { font-weight: 600; font-size: 14px; color: var(--ink); margin-right: auto; }
 .concept-name.unnamed { color: var(--muted); font-style: italic; font-weight: 500; }

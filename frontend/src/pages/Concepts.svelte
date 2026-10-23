@@ -14,6 +14,7 @@
   let loading = $state(false);
   let error = $state("");
   let search = $state("");
+  let poolFilter = $state("");
   let selected = $state(null); // { pool, id }
   let draft = $state({ name: "", description: "" });
   let newOpen = $state(false);
@@ -37,6 +38,7 @@
     modulePath;
     untrack(() => {
       selected = null;
+      poolFilter = "";
       load();
     });
   });
@@ -44,12 +46,14 @@
   const pools = $derived([...new Map(concepts.map((c) => [c.pool, c.pool_name])).entries()]);
   const shown = $derived(
     concepts.filter((c) => {
+      if (poolFilter && c.pool !== poolFilter) return false;
       const words = search.toLowerCase().split(/\s+/).filter(Boolean);
       const text = `${c.name} ${c.description} ${c.id}`.toLowerCase();
       return words.every((w) => text.includes(w));
     }),
   );
-  const current = $derived(selected ? (concepts.find((c) => c.pool === selected.pool && c.id === selected.id) ?? null) : null);
+  // The selection counts only while the concept is in the list, as on the Questions page.
+  const current = $derived(selected ? (shown.find((c) => c.pool === selected.pool && c.id === selected.id) ?? null) : null);
   const changed = $derived(current && (draft.name.trim() !== (current.named ? current.name : "") || draft.description.trim() !== current.description));
 
   function choose(c) {
@@ -91,7 +95,7 @@
   }
 
   function openNew() {
-    added = { pool: current?.pool ?? pools[0]?.[0] ?? "", name: "", description: "" };
+    added = { pool: poolFilter || current?.pool || pools[0]?.[0] || "", name: "", description: "" };
     addError = "";
     newOpen = true;
   }
@@ -140,11 +144,18 @@
   {:else if error}
     <p class="form-error">{error}</p>
   {:else}
-    <div class="q-tools">
+    <div class="q-tools concept-tools">
       <div class="search">
         <Icon name="search" />
         <input class="input" type="search" bind:value={search} placeholder={t("concepts.search")} aria-label={t("concepts.search")} />
       </div>
+      {#if pools.length > 1}
+        <select class="select" bind:value={poolFilter} aria-label={t("q.meta.pool")}>
+          <option value="">{t("q.all.pools")}</option>
+          {#each pools as [path, name]}<option value={path}>{name}</option>{/each}
+        </select>
+      {/if}
+      <span class="q-count">{t("concepts.count", { shown: shown.length, total: concepts.length })}</span>
     </div>
     <div class="q-split">
       <div class="q-list-pane" role="listbox" aria-label={t("concepts.title")}>
@@ -157,7 +168,7 @@
               <span class="count">{c.questions}</span>
             </span>
             {#if c.description}<span class="q-stem">{c.description}</span>{/if}
-            {#if pools.length > 1}<span class="q-concept">{c.pool_name}</span>{/if}
+            {#if pools.length > 1 && !poolFilter}<span class="q-concept">{c.pool_name}</span>{/if}
           </button>
         {/each}
       </div>
