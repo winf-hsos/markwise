@@ -78,7 +78,7 @@ Identifiers are never reused: a question that is not a draft is retired instead 
 
 A question can be meant for practice, for exams, or for both. An exam variant is never public, because a variant students have seen no longer tests whether they understood the practice question.
 
-An exam variant inherits `type`, `level`, `time_seconds`, `coverage` and `misconception` from the question named in `variant_of` whenever its own file does not set them. Markwise writes a new variant without these fields, so that a change at the parent reaches it; a variant that sets one of them keeps its own value until the field is removed again. Its identifier is the parent's with `-v` and a running number, which is never given twice.
+An exam variant inherits `type`, `level`, `time_seconds`, `coverage`, `misconception` and, for free text, `lines` and `half_points` from the question named in `variant_of` whenever its own file does not set them. Markwise writes a new variant without these fields, so that a change at the parent reaches it; a variant that sets one of them keeps its own value until the field is removed again. Its identifier is the parent's with `-v` and a running number, which is never given twice.
 
 `single` has exactly one correct option. `multiple` has at least one; one correct option is allowed, so that the number of correct answers cannot be guessed.
 

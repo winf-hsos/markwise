@@ -28,7 +28,6 @@
   const languages = initial.languages;
   const blankTexts = () => Object.fromEntries(languages.map((l) => [l, ""]));
   // A variant takes these settings from the question it varies, unless it sets its own; empty here means inherited.
-  const INHERITED = ["type", "level", "time_seconds", "coverage", "misconception"];
   const inherited = initial.inherited ?? {};
   const parentId = initial.parent?.id ?? initial.data.variant_of ?? "";
 
@@ -45,6 +44,10 @@
     if (data.variant_of) {
       fields.type ??= null;
       fields.level ??= null;
+      if ((data.type ?? inherited.type) === "free_text") {
+        fields.lines ??= null;
+        fields.half_points ??= null;
+      }
     }
     // One figure is stored as `image`, several as `images`; the editor always works with the list.
     fields.images = Array.isArray(data.images) ? [...data.images] : data.image ? [data.image] : [];
@@ -80,7 +83,9 @@
   const effective = (key) => (fromParent(key) ? inherited[key] : fields[key]);
   const qtype = $derived(effective("type"));
   const isChoice = $derived(qtype === "single" || qtype === "multiple");
-  const variantChoices = $derived(practice.filter((p) => p.concept === base.data.concept && p.id !== base.data.id));
+  // A variant varies a question of the same kind: free text a free-text question, choice a choice question.
+  const variantChoices = $derived(practice.filter((p) => p.concept === base.data.concept && p.id !== base.data.id
+    && (p.type === "free_text") === (qtype === "free_text")));
 
   // Languages in which a required text is still empty, for the marks on the language tabs.
   const missing = $derived(
@@ -478,9 +483,11 @@
         </div>
       {:else}
         <div class="form-row">
-          <label class="field"><span>{t("edit.lines")}</span>
-            <input class="input" type="number" min="1" bind:value={fields.lines} style="width: 100px" /></label>
-          <label class="check-line"><input type="checkbox" bind:checked={fields.half_points} />{t("edit.halfPoints")}</label>
+          <label class="field"><span class="field-label">{t("edit.lines")}{@render heritage("lines")}</span>
+            <input class="input" type="number" min="1" bind:value={fields.lines} style="width: 100px"
+              placeholder={isVariant && inherited.lines != null ? String(inherited.lines) : ""} /></label>
+          <label class="check-line"><input type="checkbox" checked={effective("half_points") === true}
+            onchange={(e) => (fields.half_points = e.currentTarget.checked)} />{t("edit.halfPoints")}{@render heritage("half_points")}</label>
         </div>
         <label class="field"><span>{t("q.expected")}</span>
           <textarea class="input grow-text" rows="3" bind:value={fields.expected[lang]}></textarea></label>

@@ -31,7 +31,7 @@
   const retired = $derived(data.status === "retired");
   const hasErrors = $derived(question.findings.some((f) => f.severity === "error"));
   const actions = $derived([
-    ...(data.public && !data.variant_of && data.type !== "free_text"
+    ...(data.public && !data.variant_of
       ? [{ label: t("life.variant"), icon: "copy", onclick: () => onaction?.("variant") }] : []),
     ...(releasedByMe ? [{ label: t("life.withdraw"), icon: "undo", onclick: () => onaction?.("withdraw") }] : []),
     { label: t("q.openFile"), icon: "upload", onclick: () => onopen?.(question.path) },
@@ -126,7 +126,7 @@
       <dt>{t("q.meta.concept")}</dt><dd>{question.concept_name ?? data.concept}{#if question.concept_description}<span class="muted small concept-desc">{question.concept_description}</span>{/if}</dd>
       <dt>{t("q.meta.level")}</dt><dd>{t(`level.${data.level}`)}{#if isInherited("level")}<span class="muted small"> · {t("q.inherited")}</span>{/if}</dd>
       <dt>{t("edit.time")}</dt><dd>{data.time_seconds ? formatTime(data.time_seconds) : t("q.noTime")}{#if isInherited("time_seconds")}<span class="muted small"> · {t("q.inherited")}</span>{/if}</dd>
-      {#if data.public && data.type !== "free_text"}
+      {#if data.public}
         <dt>{t("q.variants")}</dt><dd>{variants.length ? variants.join(", ") : t("q.noVariant")}</dd>
       {/if}
       {#if data.variant_of}

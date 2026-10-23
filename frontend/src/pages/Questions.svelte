@@ -198,7 +198,7 @@
   }
 
   // The practice questions of the pool being edited, for the choice "exam variant of".
-  const practice = $derived(editing ? questions.filter((q) => q.pool === editing.pool && q.public && q.type !== "free_text") : []);
+  const practice = $derived(editing ? questions.filter((q) => q.pool === editing.pool && q.public && !q.variant_of) : []);
 
   async function edit() {
     editing = await call("get_question", detail.pool, detail.id);

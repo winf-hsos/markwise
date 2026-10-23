@@ -173,3 +173,20 @@ def test_detached_variants_become_questions_of_their_own(pool):
     assert not own.variant_of and not inherited.variant_of and not inherited.public and inherited.exam
     assert pool.next_id(pool.prefix_for("colours")) == "co-006"
     assert not [f for f in check_pool(pool) if f.question in ("co-003", "co-004") and f.severity == "error"]
+
+
+def test_a_free_text_question_can_have_variants_that_inherit_lines_and_half_points(pool):
+    task = pool.new_question("colours", "free_text", author="")
+    task.data["stem"]["en"] = "A file of 3 MB is sent over a line of 8 Mbit/s. How long does it take?"
+    task.data["half_points"] = True
+    task.data["lines"] = 6
+    task.save()
+    variant = lifecycle.create_variant(pool, task.id, "Examiner B")
+    assert variant.id == f"{task.id}-v1" and "lines" not in variant.data and "half_points" not in variant.data
+    assert variant.data["stem"]["en"].startswith("A file of 3 MB")  # the text to vary, for example with other numbers
+    loaded = pool.find(variant.id)
+    assert loaded.type == "free_text" and loaded.get("lines") == 6 and loaded.get("half_points") is True
+    editing.save(pool, variant.id, {"lines": 8}, author="")
+    assert pool.find(variant.id).get("lines") == 8
+    row = next(r for r in catalog.rows(pool) if r["id"] == task.id)
+    assert row["variants"] == [variant.id]

@@ -19,7 +19,8 @@ STATUSES = ("draft", "reviewed", "piloted", "retired")
 DEFAULT_SECONDS = {"single": 60, "multiple": 60, "free_text": 300}
 
 # Settings a variant takes from the question it varies, unless it sets them itself. Its texts are its own.
-INHERITED = ("type", "level", "time_seconds", "coverage", "misconception")
+# lines and half_points exist only for free-text questions.
+INHERITED = ("type", "level", "time_seconds", "coverage", "misconception", "half_points", "lines")
 
 # Order of the known top-level fields when Markwise writes a new file.
 FIELD_ORDER = (
