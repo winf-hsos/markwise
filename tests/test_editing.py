@@ -312,7 +312,8 @@ def test_new_questions_record_their_author_and_time(pool):
     s.update({"examiner": "Examiner A"})
     settings.save(s)
     q = pool.new_question("colours", "single")
-    assert q.get("created_by") == "Examiner A" and len(q.get("created_at")) == 10 and q.get("time_seconds") == 60
+    assert q.get("created_by") == "Examiner A" and len(str(q.get("created_at"))) == 10 and q.get("time_seconds") == 60
+    assert "created_at: 20" in q.path.read_text(encoding="utf-8")  # a plain date, not a quoted string
 
 
 def test_saving_records_who_changed_a_question(pool):

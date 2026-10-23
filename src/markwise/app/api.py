@@ -11,7 +11,7 @@ import os
 import sys
 from pathlib import Path
 
-from .. import __version__, catalog, editing, settings as user_settings
+from .. import __version__, catalog, editing, lifecycle, settings as user_settings
 from ..importer import import_pool
 from ..module import EXAM_PATHS, MODULE_FILE, Module
 from ..pool import POOL_FILE, Pool, PoolSettings
@@ -390,3 +390,45 @@ class Api:
         except ValueError:
             raise Refusal("image_type", f"{source_path.name} is not a PNG, SVG or JPEG image", name=source_path.name) from None
         return {"name": name, "data": catalog.data_url(pool.image_file(name))}
+
+    # --- release, variants, retiring ---------------------------------------------------
+
+    @staticmethod
+    def _step(step, pool_path: str, qid: str, *args) -> dict:
+        pool = Pool.open(pool_path)
+        try:
+            question = step(pool, qid, *args)
+        except lifecycle.LifecycleError as exc:
+            raise Refusal(exc.code, str(exc), id=qid) from None
+        return catalog.detail(pool, question.id)
+
+    @_answer
+    def release_question(self, pool_path: str, qid: str) -> dict:
+        return self._step(lifecycle.release, pool_path, qid)
+
+    @_answer
+    def withdraw_release(self, pool_path: str, qid: str) -> dict:
+        return self._step(lifecycle.withdraw, pool_path, qid)
+
+    @_answer
+    def create_variant(self, pool_path: str, qid: str) -> dict:
+        return self._step(lifecycle.create_variant, pool_path, qid)
+
+    @_answer
+    def retire_question(self, pool_path: str, qid: str) -> dict:
+        return self._step(lifecycle.retire, pool_path, qid)
+
+    @_answer
+    def restore_question(self, pool_path: str, qid: str) -> dict:
+        return self._step(lifecycle.restore, pool_path, qid)
+
+    @_answer
+    def delete_question(self, pool_path: str, qid: str) -> dict:
+        """Delete a draft; anything else is retired, so that its identifier is never given again."""
+        return {"outcome": Pool.open(pool_path).delete(qid, used_in_exam=False)}
+
+    @_answer
+    def whoami(self) -> str:
+        """The name Markwise notes on releases and changes."""
+        from ..question import default_author
+        return default_author()

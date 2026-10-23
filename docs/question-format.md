@@ -42,7 +42,7 @@ status: draft              # draft | reviewed | piloted | retired
 public: true               # shown to students for practice
 exam: true                 # may be drawn for an exam; without the field: true exactly when public is false
 variant_of: cs-001         # exam variants only: the practice question they vary (then public: false)
-reviewed_by: []            # who released the question
+reviewed_by: [Examiner A, Examiner B]   # the examiners who released it; releasing makes a draft reviewed
 created_by: Examiner A     # written by Markwise: who created the question, and when
 created_at: 2026-10-24
 changed_by: Examiner B     # written by Markwise: who changed it last, and when

@@ -1,12 +1,15 @@
 <script>
   import Icon from "./Icon.svelte";
+  import Menu from "./Menu.svelte";
   import { highlight } from "../lib/highlight.js";
   import { formatDate, formatTime } from "../lib/time.js";
   import { inline } from "../lib/inline.js";
   import { findingText, t, ui } from "../lib/i18n.svelte.js";
 
   // A read-only view of one question: text, options with the correct ones marked, findings and metadata.
-  let { question, variants = [], compact = false, onopen, onedit } = $props();
+  // `onaction(name)` runs a step of the question's life: release, withdraw, variant, retire, restore, delete.
+  // `me` is the name Markwise notes on a release, to tell whether this examiner released the question already.
+  let { question, variants = [], compact = false, onopen, onedit, onaction, me = "" } = $props();
 
   const data = $derived(question.data);
   const languages = $derived(question.languages);
@@ -15,6 +18,20 @@
 
   const pick = (value) => (value && typeof value === "object" ? value[shown] ?? "" : value ?? "");
   const severityClass = { error: "red", warning: "warn", note: "" };
+  const reviewers = $derived((data.reviewed_by ?? []).map(String));
+  const releasedByMe = $derived(Boolean(me) && reviewers.includes(me));
+  const retired = $derived(data.status === "retired");
+  const hasErrors = $derived(question.findings.some((f) => f.severity === "error"));
+  const actions = $derived([
+    ...(data.public && !data.variant_of && data.type !== "free_text"
+      ? [{ label: t("life.variant"), icon: "copy", onclick: () => onaction?.("variant") }] : []),
+    ...(releasedByMe ? [{ label: t("life.withdraw"), icon: "undo", onclick: () => onaction?.("withdraw") }] : []),
+    { label: t("q.openFile"), icon: "upload", onclick: () => onopen?.(question.path) },
+    retired
+      ? { label: t("life.restore"), icon: "undo", onclick: () => onaction?.("restore") }
+      : { label: t("life.retire"), icon: "archive", onclick: () => onaction?.("retire") },
+    ...(data.status === "draft" ? [{ label: t("life.delete"), icon: "trash", onclick: () => onaction?.("delete") }] : []),
+  ]);
   const useKey = (d) => {
     const exam = typeof d.exam === "boolean" ? d.exam : !d.public;
     return d.public && exam ? "use.both" : d.public ? "use.practice" : "use.exam";
@@ -37,10 +54,20 @@
       </div>
     {/if}
     {#if !compact}
-      <button class="icon-btn" title={t("q.openFile")} aria-label={t("q.openFile")} onclick={() => onopen?.(question.path)}><Icon name="upload" /></button>
-      <button class="btn primary" onclick={() => onedit?.()}><Icon name="edit" />{t("edit.edit")}</button>
+      {#if !retired}
+        {#if releasedByMe}
+          <span class="released" title={t("life.releasedBy", { names: reviewers.join(", ") })}><Icon name="check" />{t("life.released")}</span>
+        {:else}
+          <button class="btn" disabled={hasErrors} title={hasErrors ? t("err.has_errors") : t("life.releaseHint")}
+            onclick={() => onaction?.("release")}><Icon name="check" />{reviewers.length ? t("life.releaseAlso") : t("life.release")}</button>
+        {/if}
+        <button class="btn primary" onclick={() => onedit?.()}><Icon name="edit" />{t("edit.edit")}</button>
+      {/if}
+      <Menu label={t("life.more")} items={actions} />
     {/if}
   </header>
+
+  {#if retired}<p class="form-info retired-note">{t("life.retiredBanner")}</p>{/if}
 
   {#if data.variant_of}<p class="variant-note">{t("q.variantOf", { id: data.variant_of })}</p>{/if}
 
@@ -96,7 +123,7 @@
       {/if}
       {#if data.coverage}<dt>{t("q.meta.coverage")}</dt><dd>{data.coverage}</dd>{/if}
       {#if data.misconception}<dt>{t("q.meta.misconception")}</dt><dd>{data.misconception}</dd>{/if}
-      {#if data.reviewed_by?.length}<dt>{t("q.meta.reviewed")}</dt><dd>{data.reviewed_by.join(", ")}</dd>{/if}
+      {#if reviewers.length}<dt>{t("q.meta.reviewed")}</dt><dd>{reviewers.join(", ")}</dd>{/if}
       {#if data.created_by || data.created_at}<dt>{t("q.meta.created")}</dt><dd>{t("q.by", { name: data.created_by || "–", date: formatDate(data.created_at) })}</dd>{/if}
       <dt>{t("q.meta.pool")}</dt><dd>{question.pool_name}</dd>
       {#if question.modified}<dt>{t("q.meta.modified")}</dt><dd>{data.changed_by ? `${data.changed_by}, ` : ""}{new Date(question.modified * 1000).toLocaleString(ui.lang === "de" ? "de-DE" : "en-GB", { dateStyle: "medium", timeStyle: "short" })}</dd>{/if}

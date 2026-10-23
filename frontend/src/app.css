@@ -481,8 +481,8 @@ kbd.k { font: 11.5px var(--code); border: 1px solid var(--line); border-bottom-w
 
 /* the preview reads like the question on paper, with the metadata kept quiet below */
 .preview { padding: 22px 28px 32px; max-width: 760px; }
-.preview-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-.preview-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; }
+.preview-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-bottom: 14px; }
+.preview-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1 1 260px; }
 .preview-title .qid { font-size: 14px; margin-right: 4px; }
 .seg-small button { height: 24px; padding: 0 10px; font-size: 12px; }
 .variant-note { margin: 0 0 10px; color: var(--muted); font-size: 12.5px; }
@@ -665,6 +665,16 @@ kbd.k { font: 11.5px var(--code); border: 1px solid var(--line); border-bottom-w
 .time-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .time-custom { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; font-size: 13px; color: var(--muted); }
 .time-custom .input { width: 64px; height: 30px; padding: 0 8px; }
+
+/* --- release and retire ------------------------------------------------------------- */
+.released { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border-radius: var(--radius-m);
+  color: var(--green-strong); background: var(--green-soft); font-weight: 600; font-size: 13px; }
+.released svg { width: 15px; height: 15px; stroke: currentColor; }
+.q-row.retired .q-stem, .q-row.retired .qid { color: var(--faint); }
+.q-row.retired .q-stem { text-decoration: line-through; text-decoration-color: rgba(0, 0, 0, 0.18); }
+.status-mark { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--green-soft); }
+.status-mark svg { width: 12px; height: 12px; stroke: var(--green-strong); }
+.retired-note { margin: -4px 0 14px; }
 
 /* --- settings --------------------------------------------------------------- */
 .theme-choice { display: flex; gap: 8px; flex-wrap: wrap; }

@@ -144,8 +144,9 @@ class Question:
         self._mtime_ns = target.stat().st_mtime_ns
 
 
-def today() -> str:
-    return datetime.date.today().isoformat()
+def today() -> datetime.date:
+    """As a date, so that YAML writes it without quotes."""
+    return datetime.date.today()
 
 
 def default_author() -> str:

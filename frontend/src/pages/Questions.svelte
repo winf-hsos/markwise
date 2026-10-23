@@ -194,6 +194,40 @@
     await load();
   }
 
+  // A step of a question's life, from the preview: release, withdraw, variant, retire, restore, delete.
+  let me = $state("");
+  call("whoami").then((name) => (me = name)).catch(() => {});
+
+  async function act(name) {
+    const { pool, id } = detail;
+    if (name === "retire" && !confirm(t("life.confirmRetire", { id }))) return;
+    if (name === "delete" && !confirm(t("life.confirmDelete", { id }))) return;
+    try {
+      if (name === "delete") {
+        const result = await call("delete_question", pool, id);
+        showToast(t(result.outcome === "deleted" ? "life.deleted" : "life.retiredToast", { id }));
+        selected = null;
+        detail = null;
+        await load();
+        return;
+      }
+      const method = { release: "release_question", withdraw: "withdraw_release", variant: "create_variant",
+        retire: "retire_question", restore: "restore_question" }[name];
+      const result = await call(method, pool, id);
+      await load();
+      if (name === "variant") {
+        selected = { pool: result.pool, id: result.id };
+        editing = result;
+        showToast(t("life.variantCreated", { id: result.id }));
+      } else {
+        detail = result;
+        showToast(t(`life.${name}Toast`, { id }));
+      }
+    } catch (err) {
+      showToast(errorText(err));
+    }
+  }
+
   async function openFile(path) {
     try {
       await call("open_file", path);
@@ -299,13 +333,15 @@
           <p class="muted pad">{t("q.noMatch")}</p>
         {/if}
         {#each sorted as q (q.pool + q.id)}
-          <button id={`q-${q.pool}-${q.id}`} class="q-row" class:on={selectedRow === q} role="option" aria-selected={selectedRow === q} onclick={() => show(q)}>
+          <button id={`q-${q.pool}-${q.id}`} class="q-row" class:retired={q.status === "retired"} class:on={selectedRow === q} role="option" aria-selected={selectedRow === q} onclick={() => show(q)}>
             <span class="q-row-head">
               <span class="type-icon" title={t(`type.${q.type}`)} aria-label={t(`type.${q.type}`)}><Icon name={TYPE_ICONS[q.type] ?? "questions"} /></span>
               <span class="qid">{q.id}</span>
               <span class="q-concept">{q.concept_name}</span>
               {#if q.errors}<span class="tag red"><i class="dot"></i>{q.errors} {t("sev.error")}</span>
               {:else if q.warnings}<span class="tag warn"><i class="dot"></i>{t("sev.warning")}</span>{/if}
+              {#if q.status === "reviewed"}<span class="status-mark" title={t("status.reviewed")}><Icon name="check" /></span>{/if}
+              {#if q.status === "retired"}<span class="tag">{t("status.retired")}</span>{/if}
               {#if q.exam}<span class="tag">{q.public ? t("use.both") : t("use.exam")}</span>{/if}
             </span>
             <span class="q-stem">{q.unreadable ? t("q.unreadable") : q.stem}</span>
@@ -314,7 +350,7 @@
       </div>
       <div class="q-preview-pane">
         {#if detail && selectedRow}
-          <QuestionPreview question={detail} variants={selectedRow.variants} onopen={openFile} onedit={edit} />
+          <QuestionPreview question={detail} variants={selectedRow.variants} onopen={openFile} onedit={edit} onaction={act} {me} />
         {:else}
           <div class="empty quiet"><p>{t("q.select")}</p></div>
         {/if}

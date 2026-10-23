@@ -30,6 +30,9 @@ export const ICONS = {
   image: '<rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke-width="1.7"/><circle cx="9" cy="10" r="1.8" fill="none" stroke-width="1.6"/><path d="m5 18 5-5 3.5 3.5L16 14l4 4" fill="none" stroke-width="1.7" stroke-linejoin="round"/>',
   formula: '<path d="M17 5H7l6 7-6 7h10" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   trash: '<path d="M4.5 7h15M10 4h4M6.5 7l1 12.5a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-12.5M10 11v6M14 11v6" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>',
+  copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2" fill="none" stroke-width="1.7"/><path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5" fill="none" stroke-width="1.7"/>',
+  undo: '<path d="M9 7 5 11l4 4" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 11h9a5 5 0 0 1 0 10h-2" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
+  archive: '<rect x="3.5" y="4.5" width="17" height="4.5" rx="1.2" fill="none" stroke-width="1.7"/><path d="M5 9v9.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V9M10 13h4" fill="none" stroke-width="1.7" stroke-linecap="round"/>',
   back: '<path d="m14.5 6-6 6 6 6" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   edit: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><path d="m13.5 6.5 4 4" fill="none" stroke-width="1.7"/>',
 };

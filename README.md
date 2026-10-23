@@ -93,6 +93,19 @@ The **Questions** page lists every question in the pools of the current module. 
 
 **New question** on the Questions page asks for the pool (if the module has several), the concept and the type; with a concept filter set, that concept is already chosen. **New concept …** in the concept list asks for a name and a short description in plain words; Markwise makes the concept's identifier from the name (shown below the field). Markwise creates the question with the next free identifier and opens it in the editor.
 
+### Releasing, exam variants, retiring
+
+A question is written as a **draft**. When an examiner has read it and agrees, **Release** in the head of the preview notes their name in `reviewed_by` and makes the question **reviewed**; a second examiner can **Release as well**, so that both names stand there, as § 5 (3) c of the general examination regulations asks for two examiners. A question with errors cannot be released. Changing the content of a reviewed question makes it a draft again.
+
+The **⋯** menu next to **Edit** holds the other steps:
+
+- **Create exam variant** (for practice questions): a new exam-only question in the same concept, noting the practice question in `variant_of`. It starts as a copy and opens in the editor, so that you can change its surface while keeping the learning goal and level.
+- **Withdraw my release**: takes your name off; without any release left, the question is a draft again.
+- **Retire**: the question and its file stay, but it will not appear in any new exam, and its identifier is never given again. The list shows it struck through; **Take back** makes it a draft again.
+- **Delete** (drafts only): removes the file after a confirmation. Everything else is retired instead.
+
+A tick in the list marks reviewed questions.
+
 ### Concepts
 
 Questions are grouped by concept, and the **Concepts** page in the side menu is where you look after them. On the left it lists the concepts of the current module's pools with their names, short descriptions and number of questions; a search narrows the list, and if the module has several pools, a filter shows the concepts of one pool (**New concept** then adds to that pool). Click a concept to see it on the right:
@@ -323,6 +336,10 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise question new <pool> --concept <concept> [--type single\|multiple\|free_text]` | create a question from the template of its type |
 | `markwise question list <pool or module> [--search] [--concept] [--status] [--type] [--level] [--use practice\|exam] [--public yes\|no] [--findings errors\|warnings\|none]` | list questions, searched and filtered; a module folder lists all its pools |
 | `markwise question show <pool> <id>` | print a question file |
+| `markwise question release <pool> <id> [--by <name>]` | release a question as examiner; a second examiner adds their name |
+| `markwise question withdraw <pool> <id> [--by <name>]` | take back your release |
+| `markwise question variant <pool> <id> [--by <name>]` | create an exam variant of a practice question, as a copy to vary |
+| `markwise question retire <pool> <id>` / `restore` | take a question out of new exams / back in, as a draft |
 | `markwise question set <pool> <id> <field> <value>` | change one field by a dotted path (`level`, `stem.de`, `options.b.correct`); `true`, `false` and numbers are understood |
 | `markwise question delete <pool> <id> --yes [--used-in-exam]` | delete a draft, retire anything else |
 | `markwise check <pool> [--notes]` | check every question of a pool |
@@ -361,7 +378,6 @@ prints for each sheet whether the QR code, the orientation, the student number a
 
 | What | Planned for |
 |---|---|
-| Releasing questions (`reviewed_by`), creating exam variants from a practice question, retiring and deleting in the app window | 13 Nov 2026 |
 | Installer for a second computer | 27 Nov 2026 |
 | Building exams: blueprint, variants, exam and answer booklets as PDF | 27 Nov 2026 |
 | Reading scans, deciding doubtful cases, grading multiple-choice exams | early December 2026 |

@@ -7,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__, catalog, editing
+from . import __version__, catalog, editing, lifecycle
 from .checks import ERROR, check_pool, summarize
 from .importer import import_pool
 from .module import Module
@@ -137,6 +137,38 @@ def cmd_question_set(args) -> int:
         for f in findings:
             print(f"  {f['severity']:<8} {f['message']}")
     return 1 if any(f["severity"] == "error" for f in findings) else 0
+
+
+def _lifecycle(args, step, *extra) -> int:
+    pool = Pool.open(args.pool)
+    question = step(pool, args.id, *extra)
+    reviewers = ", ".join(str(r) for r in question.data.get("reviewed_by") or [])
+    if args.json:
+        _print_json({"id": question.id, "status": question.status, "reviewed_by": reviewers.split(", ") if reviewers else [],
+                     "path": str(question.path)})
+    else:
+        print(f"{question.id}: {question.status}" + (f", released by {reviewers}" if reviewers else ""))
+    return 0
+
+
+def cmd_question_release(args) -> int:
+    return _lifecycle(args, lifecycle.release, args.by)
+
+
+def cmd_question_withdraw(args) -> int:
+    return _lifecycle(args, lifecycle.withdraw, args.by)
+
+
+def cmd_question_variant(args) -> int:
+    return _lifecycle(args, lifecycle.create_variant, args.by)
+
+
+def cmd_question_retire(args) -> int:
+    return _lifecycle(args, lifecycle.retire)
+
+
+def cmd_question_restore(args) -> int:
+    return _lifecycle(args, lifecycle.restore)
 
 
 def cmd_question_delete(args) -> int:
@@ -299,6 +331,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("field", help="dotted path: level, public, exam, variant_of, stem.de, code_language, options.b.text.en, options.b.correct …")
     p.add_argument("value", help="the new value; true, false and numbers are understood, everything else is text")
     p.set_defaults(func=cmd_question_set)
+    for name, func, text, by in (
+        ("release", cmd_question_release, "release a question as examiner (adds you to reviewed_by)", True),
+        ("withdraw", cmd_question_withdraw, "take back your release; without any left the question is a draft", True),
+        ("variant", cmd_question_variant, "create an exam variant of a practice question, as a copy to vary", True),
+        ("retire", cmd_question_retire, "keep a question but take it out of every new exam", False),
+        ("restore", cmd_question_restore, "take a retired question back, as a draft", False),
+    ):
+        p = question.add_parser(name, parents=[common], help=text)
+        p.add_argument("pool")
+        p.add_argument("id")
+        if by:
+            p.add_argument("--by", help="the examiner's name (default: from the settings, else the Windows user)")
+        p.set_defaults(func=func)
     p = question.add_parser("delete", parents=[common], help="delete a draft, retire anything else")
     p.add_argument("pool")
     p.add_argument("id")
@@ -367,7 +412,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
-    except (FileNotFoundError, FileExistsError, KeyError, ValueError, ConflictError) as exc:
+    except (FileNotFoundError, FileExistsError, KeyError, ValueError, ConflictError, lifecycle.LifecycleError) as exc:
         message = exc.args[0] if exc.args else str(exc)
         if getattr(args, "json", False):
             _print_json({"error": str(message)})
