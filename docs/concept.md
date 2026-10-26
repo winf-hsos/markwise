@@ -108,6 +108,7 @@ For multiple-choice exams under § 5 (3) of the general examination regulations,
 - Where the answers go is chosen per exam (decision 12). With a separate answer sheet: an exam booklet with the questions (not scanned) and an answer booklet that is scanned: first the tick boxes for all multiple-choice questions, then one answer area per free-text question with a grey point strip "for examiners only" next to it (boxes 0, 1, 2 … up to the maximum, a box for ½ if half points are allowed, two rows for tens and units when the maximum is large).
 - With the answers below the questions there is one booklet: the tick boxes stand right below each question and the answer area below each free-text question, and the whole booklet is scanned. Where the boxes land depends on the length of the questions, so Markwise reads their positions from the typeset booklet instead of using a fixed grid.
 - Every scanned page carries four corner marks and a QR code with exam, variant, page and booklet number.
+- Markwise typesets the booklets with Typst and asks the typeset document where each box landed; these positions go into `layout.json` in the exam's print folder, next to the PDFs, and the reader takes them from there. Each copy has an even number of pages so that double-sided printing starts it on a new sheet.
 - One print-ready PDF for the copier, the answer key, an examiner's copy, and a marking guide per free-text question (expected answer and notes for partial credit).
 
 ## After the exam

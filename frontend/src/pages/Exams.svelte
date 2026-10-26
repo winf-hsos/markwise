@@ -3,6 +3,7 @@
   import Icon from "../components/Icon.svelte";
   import MultiSelect from "../components/MultiSelect.svelte";
   import NewExamDialog from "../components/NewExamDialog.svelte";
+  import PrintExamDialog from "../components/PrintExamDialog.svelte";
   import { call } from "../lib/api.js";
   import { errorText, findingText, t } from "../lib/i18n.svelte.js";
   import { formatDate, formatTime, formatTotal } from "../lib/time.js";
@@ -18,6 +19,7 @@
   let pools = $state([]);
   let questions = $state([]); // every question of the module's pools, as rows of the question list
   let newOpen = $state(false);
+  let printOpen = $state(false);
 
   $effect(() => {
     modulePath;
@@ -162,7 +164,9 @@
         <span class="tag">{current.semester}</span>
         <span class="spacer"></span>
         <button class="btn ghost" onclick={() => call("reveal", current.path).catch((err) => showToast(errorText(err)))}><Icon name="folder" />{t("modules.reveal")}</button>
+        <button class="btn primary" onclick={() => (printOpen = true)}><Icon name="print" />{t("exams.print")}</button>
       </header>
+      <PrintExamDialog bind:open={printOpen} exam={current} onprinted={(exam) => (current = exam)} />
 
       <div class="exam-settings">
         <label class="field"><span>{t("exams.examTitle")}</span>

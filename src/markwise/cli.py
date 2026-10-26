@@ -373,6 +373,23 @@ def cmd_exam_remove(args) -> int:
     return 0
 
 
+def cmd_exam_print(args) -> int:
+    from .booklet import BookletError, print_exam
+    from .exam import Exam
+    try:
+        printed = print_exam(Exam.open(args.exam), booklets=args.booklets)
+    except BookletError as exc:
+        raise ValueError(str(exc)) from None
+    if args.json:
+        _print_json({"folder": str(printed.folder), "files": [str(p) for p in printed.files],
+                     "pages_per_booklet": printed.pages_per_booklet, "booklets": printed.booklets})
+    else:
+        print(f"{printed.booklets} numbered copies, {printed.pages_per_booklet} pages each to scan, in {printed.folder}")
+        for path in printed.files:
+            print(f"  {path.name}")
+    return 0
+
+
 def cmd_module_show(args) -> int:
     module = Module.open(args.folder)
     data = {
@@ -581,6 +598,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("exam")
     p.add_argument("id")
     p.set_defaults(func=cmd_exam_remove)
+    p = exam.add_parser("print", parents=[common],
+                        help="typeset the booklets, the answer sheet and the answer key as PDF into the exam folder")
+    p.add_argument("exam")
+    p.add_argument("--booklets", type=int, default=1, help="how many booklets, each with its own number (default: 1)")
+    p.set_defaults(func=cmd_exam_print)
 
     module = sub.add_parser("module", help="create and show modules").add_subparsers(dest="action", required=True)
     p = module.add_parser("init", parents=[common], help="create module.toml in the module folder")

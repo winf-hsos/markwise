@@ -11,7 +11,7 @@ import os
 import sys
 from pathlib import Path
 
-from .. import __version__, assist, catalog, editing, lifecycle, settings as user_settings
+from .. import __version__, assist, booklet, catalog, editing, lifecycle, settings as user_settings
 from ..exam import ANSWER_MODES, Exam, ExamQuestion, exams_of
 from ..importer import import_pool
 from ..module import EXAM_PATHS, MODULE_FILE, Module
@@ -545,7 +545,7 @@ class Api:
         module = Module.around(exam.root)
         entries = [{"pool": str(module.pool_root(q.pool)), "id": q.id, "points": q.points} for q in exam.questions]
         return {**self._exam_entry(exam), "examiners": exam.examiners, "entries": entries,
-                "findings": [f.to_dict() for f in exam.check(module)]}
+                "findings": [f.to_dict() for f in exam.check(module)], "printed": booklet.printed_files(exam)}
 
     @_answer
     def get_exam(self, exam_path: str) -> dict:
@@ -573,4 +573,23 @@ class Api:
                               for e in fields["entries"]]
         exam.save()
         return self._exam_detail(exam)
+
+    @_answer
+    def print_exam(self, exam_path: str, booklets: int) -> dict:
+        """Typeset the booklets, the answer sheet and the answer key into the exam's print folder."""
+        exam = Exam.open(exam_path)
+        try:
+            printed = booklet.print_exam(exam, booklets=booklets)
+        except booklet.BookletError as exc:
+            raise Refusal(exc.code, str(exc), **exc.params) from None
+        return {**self._exam_detail(exam), "folder": str(printed.folder), "pages_per_booklet": printed.pages_per_booklet}
+
+    @_answer
+    def open_printed(self, exam_path: str, name: str) -> None:
+        """Open a PDF of the exam's last print in the program Windows uses for it."""
+        files = {f["name"]: f["path"] for f in booklet.printed_files(Exam.open(exam_path))}
+        if name not in files:
+            raise Refusal("file_missing", f"{name} has not been printed", path=name)
+        if sys.platform == "win32":
+            os.startfile(files[name])  # noqa: S606 (a file Markwise wrote into the exam's print folder)
 

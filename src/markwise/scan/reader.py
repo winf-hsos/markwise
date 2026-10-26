@@ -241,6 +241,8 @@ def _read_boxes(dark: np.ndarray, layout: Layout, t: Thresholds) -> list[BoxRead
     r_wide = int(round(t.search_mm * ppm))
     r_narrow = int(round(t.local_search_mm * ppm))
     boxes = layout.boxes
+    if not boxes:
+        return []  # a page of an exam booklet that carries text only
     maps = [_outline_scores(integral, box, r_wide) for box in boxes]
     best = np.array([np.unravel_index(int(np.argmax(m)), m.shape) for m in maps], dtype=float) - r_wide
     good = np.array([m.max() > t.outline_score for m in maps])

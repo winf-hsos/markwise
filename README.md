@@ -191,7 +191,18 @@ Markwise creates a folder for the exam in the module, in the semester the date f
 
 Clicking an exam opens it. At the top are its title, date, language, answer form and examiners (names separated by commas), below them the number of questions, the points and the total answering time. On the right, **Add questions** shows the questions of the module's pools with search and the usual filters, at first only those meant for exams; **Add** puts a question at the end of the exam. On the left the exam lists its questions in order: each has its points, suggested as one point per minute of answering time (rounded to half points, at least one) and changeable, buttons to move it up or down, and one to take it out. Every change is saved at once.
 
-The exam checks itself as you go and says what needs a look: a question meant for practice only, a question with errors or without a text in the exam's language, a retired one, two variants of the same practice question, points of zero, fewer than two examiners. Printing the booklets, freezing the exam and reading the scans come next (see [Not there yet](#not-there-yet)).
+The exam checks itself as you go and says what needs a look: a question meant for practice only, a question with errors or without a text in the exam's language, a retired one, two variants of the same practice question, points of zero, fewer than two examiners. An exam with errors cannot be printed.
+
+### Printing an exam
+
+**Print** at the top of an exam asks how many copies to make (as many as participants, plus a few spare) and typesets them as PDF into the folder `Druck` of the exam (`Print` for an exam in English):
+
+- With an **answer sheet**: `Klausurheft.pdf`, the question booklet, which is not scanned and is the same for everyone; `Antwortbogen.pdf`, one numbered answer sheet per copy with the tick boxes of all multiple-choice questions and, on its own page, an answer area with lines and a grey point strip "for examiners only" for each free-text question.
+- With the boxes **below the questions**: `Klausurheft mit Antworten.pdf`, one numbered booklet per copy, in which each multiple-choice question has its tick boxes right below it and each free-text question its lines and point strip.
+- `Lösungsschlüssel.pdf`, the answer key: every question with its correct options, and the expected answer and marking notes of the free-text questions.
+- `layout.json`: where every box landed on every page, for reading the scans later.
+
+Every page that is scanned carries four corner marks and a QR code with the exam, the page and the number of the copy; the first page of each copy has the tick grid for the student number and a field for the name. Copies have an even number of pages, so that double-sided printing starts each copy on a new sheet. A choice question is never split across two pages. Each print replaces the last one in the folder; a PDF still open in another program stops it with a message. Once printed, the dialog lists the PDFs of the last print to open.
 
 ## The four things Markwise works with
 
@@ -401,6 +412,7 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise exam add <exam> <pool> <id> [--points]` | add a question; its points follow from its time unless given |
 | `markwise exam remove <exam> <id>` | take a question out of the exam |
 | `markwise exam show <exam>` | show an exam with its questions, points and what the check finds |
+| `markwise exam print <exam> [--booklets N]` | typeset N numbered copies, the answer key and `layout.json` into the exam's print folder |
 | `markwise app` | open the app window |
 | `markwise shortcut [--folder <folder>]` | create the Start menu entry (or put it into another folder) |
 | `markwise serve [--port 8765]` | serve the core on 127.0.0.1 for developing the interface in a browser |
@@ -428,10 +440,10 @@ prints for each sheet whether the QR code, the orientation, the student number a
 | What | Planned for |
 |---|---|
 | Installer for a second computer | 27 Nov 2026 |
-| Exams: booklets and answer sheets as PDF, freezing, participants, shuffling, drawing questions by a blueprint | 27 Nov 2026 |
+| Exams: freezing, booklets personalised from the participant list, shuffling, drawing questions by a blueprint | 27 Nov 2026 |
 | Reading scans, deciding doubtful cases, grading multiple-choice exams | early December 2026 |
 | Item analysis, exports for the examinations office, inspection copies | 15 Jan 2027 |
-| Free-text questions in exams, marking on screen; more help from a language model (drafting expected answers, other providers and local models) | after the first exams in early 2027 |
+| Marking free-text answers on screen; more help from a language model (drafting expected answers, other providers and local models) | after the first exams in early 2027 |
 
 ## Privacy
 
