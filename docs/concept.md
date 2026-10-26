@@ -105,8 +105,9 @@ For multiple-choice exams under § 5 (3) of the general examination regulations,
 - In a personalised exam a few anonymous booklets are printed as spares for late registrations and spoilt booklets.
 
 **Printing.**
-- An exam booklet with the questions (not scanned) and an answer booklet that is scanned: first the tick boxes for all multiple-choice questions, then one answer area per free-text question with a grey point strip "for examiners only" next to it (boxes 0, 1, 2 … up to the maximum, a box for ½ if half points are allowed, two rows for tens and units when the maximum is large).
-- Every page of the answer booklet carries four corner marks and a QR code with exam, variant, page and booklet number.
+- Where the answers go is chosen per exam (decision 12). With a separate answer sheet: an exam booklet with the questions (not scanned) and an answer booklet that is scanned: first the tick boxes for all multiple-choice questions, then one answer area per free-text question with a grey point strip "for examiners only" next to it (boxes 0, 1, 2 … up to the maximum, a box for ½ if half points are allowed, two rows for tens and units when the maximum is large).
+- With the answers below the questions there is one booklet: the tick boxes stand right below each question and the answer area below each free-text question, and the whole booklet is scanned. Where the boxes land depends on the length of the questions, so Markwise reads their positions from the typeset booklet instead of using a fixed grid.
+- Every scanned page carries four corner marks and a QR code with exam, variant, page and booklet number.
 - One print-ready PDF for the copier, the answer key, an examiner's copy, and a marking guide per free-text question (expected answer and notes for partial credit).
 
 ## After the exam
@@ -190,3 +191,7 @@ The repository holds code, documentation and invented test data only. Real exams
 9. **Independent question management:** Markwise keeps its own question format and does not depend on any other tool; existing question banks are imported.
 10. **Pools and modules are separate folders:** pools hold questions only and can be shared; modules hold the exams and point to their pools.
 11. **First use:** the test exams in December 2026 and both multiple-choice exams in early 2027 run on Markwise, without Auto Multiple Choice.
+12. **Where the answers go:** chosen per exam, either a separate answer sheet or the boxes right below the questions in the booklet (Nicolas, 2026-10-26).
+13. **Points:** suggested as one point per minute of answering time, rounded to half points, at least one; changeable per question in the exam.
+14. **Language:** one language per exam; the booklets contain only that language.
+15. **Order of building:** exams are first put together by hand and printed as anonymous booklets with a tick grid for the student number; personalised booklets from the participant list, shuffling and drawing by a blueprint follow.
