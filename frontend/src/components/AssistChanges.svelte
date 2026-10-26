@@ -7,14 +7,30 @@
   // all at once. `label(field)` names a field, `showLang` adds the language to each change, and `note`
   // ({ title, text }) shows something to check first, such as the model's calculation. `additions` are new wrong
   // options, each added on its own with `onadd`.
-  let { findings = [], changes = [], additions = [], label, showLang = false, note = null, onapply, onadd, onclose } = $props();
+  let { findings = [], changes = [], additions = [], label, showLang = false, note = null, title = "", onapply, onadd, onclose } = $props();
   const lang = $derived(ui.lang);
   const textIn = (texts) => texts?.[lang] || Object.values(texts ?? {}).find(Boolean) || "";
 
   const missing = $derived(changes.filter((c) => !c.before?.trim()));
+  const count = $derived(changes.length + additions.length);
+
+  function applyEverything() {
+    onapply([...changes]);
+    if (additions.length) onadd([...additions]);
+  }
 </script>
 
 <div class="assist-review">
+  <div class="assist-bar">
+    <span class="assist-title"><Icon name="wand" />{title}{#if count}<span class="count">{count}</span>{/if}</span>
+    {#if count}
+      <button type="button" class="btn primary btn-small" onclick={applyEverything}>{t("assist.applyAll")}</button>
+      {#if missing.length && missing.length < changes.length}
+        <button type="button" class="btn btn-small" onclick={() => onapply([...missing])}>{t("assist.applyMissing", { n: missing.length })}</button>
+      {/if}
+    {/if}
+    <button type="button" class="btn ghost btn-small" onclick={onclose}>{count ? t("assist.dismiss") : t("dialog.close")}</button>
+  </div>
   {#if note?.text}
     <div class="assist-note"><span class="hint">{note.title}</span><p>{note.text}</p></div>
   {/if}
@@ -49,13 +65,4 @@
       {#if option.misconception}<span class="proposal-why">{t("assist.misconception")}: {option.misconception}</span>{/if}
     </div>
   {/each}
-  <div class="assist-actions">
-    {#if changes.length + additions.length > 1}
-      <button type="button" class="btn primary btn-small" onclick={() => { onapply([...changes]); if (additions.length) onadd([...additions]); }}>{t("assist.applyAll")}</button>
-    {/if}
-    {#if missing.length && missing.length < changes.length}
-      <button type="button" class="btn btn-small" onclick={() => onapply([...missing])}>{t("assist.applyMissing", { n: missing.length })}</button>
-    {/if}
-    <button type="button" class="btn ghost btn-small" onclick={onclose}>{changes.length || additions.length ? t("assist.dismiss") : t("dialog.close")}</button>
-  </div>
 </div>

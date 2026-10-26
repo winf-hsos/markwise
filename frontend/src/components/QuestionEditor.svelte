@@ -310,6 +310,14 @@
 <svelte:window {onkeydown} />
 
 <div class="editor-shell">
+  <!-- While the language model works, a veil over the editor says so and keeps the question from changing meanwhile. -->
+  {#if asking}
+    <div class="assist-veil" role="status" aria-live="polite">
+      <span class="spinner" aria-hidden="true"></span>
+      <b>{t(asking === "numbers" ? "assist.busyNumbers" : "assist.busyReview")}</b>
+      <span class="hint">{t("assist.busyHint")}</span>
+    </div>
+  {/if}
   <header class="editor-bar">
     <button class="btn ghost" onclick={close}><Icon name="back" />{t("edit.back")}</button>
     <span class="qid">{base.data.id}</span>
@@ -404,7 +412,7 @@
       </div>
       {#if review}
         <AssistChanges findings={review.findings} changes={review.changes} additions={review.new_options}
-          label={fieldLabel} showLang={languages.length > 1}
+          title={t("assist.reviewTitle")} label={fieldLabel} showLang={languages.length > 1}
           onapply={(chosen) => applyTo(review, chosen)} onadd={(chosen) => addOptions(review, chosen)} onclose={() => (review = null)} />
       {/if}
 
@@ -487,7 +495,7 @@
             <Icon name="wand" />{asking === "numbers" ? t("assist.working") : t("assist.numbers")}
           </button>
           {#if numbers}
-            <AssistChanges findings={numbers.findings} changes={numbers.changes} label={fieldLabel} showLang={languages.length > 1}
+            <AssistChanges findings={numbers.findings} changes={numbers.changes} title={t("assist.numbersTitle")} label={fieldLabel} showLang={languages.length > 1}
               note={{ title: t("assist.calculation"), text: numbers.calculation }}
               onapply={(chosen) => applyTo(numbers, chosen)} onclose={() => (numbers = null)} />
           {/if}
