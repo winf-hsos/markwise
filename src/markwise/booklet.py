@@ -269,11 +269,48 @@ def _question(item: Item, words: dict, names: dict[Path, str], boxes: bool, free
     return f"#block(breakable: {breakable}, below: 9mm, [{''.join(out)}])\n"
 
 
+def _points(value: float, words: dict) -> str:
+    return f"{value:g} {words['point'] if value == 1 else words['points']}"
+
+
+def _sections_at(exam: Exam) -> dict[int, list]:
+    """The sections that start before each question, by its place; sections without questions are left out."""
+    starts: dict[int, list] = {}
+    for section in sorted(exam.sections, key=lambda s: s.before):
+        if section.before < len(exam.questions):
+            starts.setdefault(section.before, []).append(section)
+    # Of several sections before the same question only the last one has questions.
+    return {at: [sections[-1]] for at, sections in starts.items()}
+
+
+def _section_heading(exam: Exam, section, words: dict) -> str:
+    """A section's title with its points, a rule, and its note; it stays on the page of its first question."""
+    note = f"#text(size: 9.5pt, style: \"italic\", {_s(section.note)})" if section.note.strip() else ""
+    return (f"#block(sticky: true, above: 8mm, below: 6mm, width: 100%, [#grid(columns: (1fr, auto), align: bottom, "
+            f"text(size: 13pt, weight: \"bold\", {_s(section.title)}), "
+            f"text(size: 9.5pt, fill: luma(35%), {_s(_points(exam.section_points(section), words))}))"
+            f"#v(-2mm)#line(length: 100%, stroke: 0.6pt)#v(-1mm){note}])\n")
+
+
+def _with_sections(exam: Exam, items: list[Item], words: dict, render) -> str:
+    """The questions in their order, each section's heading before its first question."""
+    starts = _sections_at(exam)
+    out = []
+    for index, item in enumerate(items):
+        out.extend(_section_heading(exam, s, words) for s in starts.get(index, []))
+        out.append(render(item))
+    return "".join(out)
+
+
 def _cover_text(exam: Exam, items: list[Item], words: dict, module: Module, note: str) -> str:
     total = sum(i.points for i in items)
     facts = [(words["date"], exam.date), (words["total"], f"{total:g}")]
     if exam.examiners:
         facts.append((words["examiners"], ", ".join(exam.examiners)))
+    # The parts of the exam with their points, so that the students can plan their time.
+    for sections in _sections_at(exam).values():
+        for section in sections:
+            facts.append((section.title, _points(exam.section_points(section), words)))
     rows = ", ".join(f"text(fill: luma(35%), {_s(k)}), {_s(v)}" for k, v in facts)
     return (
         f"#text(size: 9pt, fill: luma(35%), {_s(module.name)})\n\n"
@@ -457,7 +494,7 @@ def print_exam(exam: Exam, module: Module | None = None, booklets: int = 1) -> P
 
         if exam.answers == "inline":
             content = (cover_space + _cover_text(exam, items, words, module, words["inline_note"])
-                       + "#pagebreak()\n" + "".join(_question(i, words, names, True, True) for i in items))
+                       + "#pagebreak()\n" + _with_sections(exam, items, words, lambda i: _question(i, words, names, True, True)))
             pdf, found, per = _scanned(content, setup, code, booklets, build)
             output[files["inline"]] = pdf
         else:
@@ -465,7 +502,7 @@ def print_exam(exam: Exam, module: Module | None = None, booklets: int = 1) -> P
                      f"text(size: 8pt, fill: luma(40%), {_s(exam.title + ' · ' + words['page'] + ' ')} + "
                      "counter(page).display())))\n")
             booklet = (plain + _preamble(lang) + _cover_text(exam, items, words, module, words["sheet_note"])
-                       + "#pagebreak()\n" + "".join(_question(i, words, names, False, False) for i in items))
+                       + "#pagebreak()\n" + _with_sections(exam, items, words, lambda i: _question(i, words, names, False, False)))
             output[files["booklet"]] = _compile(booklet, build, query=False).pdf
 
             choice = [i for i in items if i.type in ("single", "multiple")]
@@ -516,7 +553,9 @@ def _answer_key(exam: Exam, items: list[Item], words: dict, module: Module, lang
     parts = [f"#set page(width: 210mm, height: 297mm, margin: {PLAIN_MARGINS})\n", _preamble(lang),
              f"#text(size: 9pt, fill: luma(35%), {_s(module.name + ' · ' + exam.date)})\n\n",
              f"#text(size: 16pt, weight: \"bold\", {_s(words['key'] + ': ' + exam.title)})\n\n"]
-    for item in items:
+    starts = _sections_at(exam)
+    for index, item in enumerate(items):
+        parts.extend(_section_heading(exam, s, words) for s in starts.get(index, []))
         unit = words["point"] if item.points == 1 else words["points"]
         body = [f"#text(weight: \"bold\", {_s(f'{words['question']} {item.number}')}) "
                 f"#text(size: 9pt, fill: luma(40%), {_s(f'({item.id}, {item.points:g} {unit})')})\n\n",

@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 from .. import __version__, assist, booklet, catalog, editing, lifecycle, settings as user_settings
-from ..exam import ANSWER_MODES, Exam, ExamQuestion, exams_of
+from ..exam import ANSWER_MODES, Exam, ExamQuestion, ExamSection, exams_of
 from ..importer import import_pool
 from ..module import EXAM_PATHS, MODULE_FILE, Module
 from ..pool import LANGUAGES, POOL_FILE, Pool, PoolSettings
@@ -543,7 +543,9 @@ class Api:
 
     def _exam_detail(self, exam: Exam) -> dict:
         module = Module.around(exam.root)
-        entries = [{"pool": str(module.pool_root(q.pool)), "id": q.id, "points": q.points} for q in exam.questions]
+        entries = [{"section": item.id, "title": item.title, "note": item.note} if isinstance(item, ExamSection)
+                   else {"pool": str(module.pool_root(item.pool)), "id": item.id, "points": item.points}
+                   for item in exam.flat()]
         return {**self._exam_entry(exam), "examiners": exam.examiners, "entries": entries,
                 "findings": [f.to_dict() for f in exam.check(module)], "printed": booklet.printed_files(exam)}
 
@@ -553,7 +555,8 @@ class Api:
 
     @_answer
     def update_exam(self, exam_path: str, fields: dict) -> dict:
-        """Change an exam: its settings, examiners, and its questions as [{pool, id, points}] in their order."""
+        """Change an exam: its settings, examiners, and its questions as [{pool, id, points}] in their order, with
+        sections as {section, title, note} where they start."""
         exam = Exam.open(exam_path)
         module = Module.around(exam.root)
         if "title" in fields or "date" in fields:
@@ -575,8 +578,14 @@ class Api:
         if "examiners" in fields:
             exam.examiners = [str(e).strip() for e in fields["examiners"] if str(e).strip()]
         if "entries" in fields:
-            exam.questions = [ExamQuestion(exam.pool_ref(module, e["pool"]), str(e["id"]), float(e["points"]))
-                              for e in fields["entries"]]
+            items: list[ExamQuestion | ExamSection] = []
+            for e in fields["entries"]:
+                if "section" in e:
+                    items.append(ExamSection(str(e["section"] or exam.new_section_id()), str(e.get("title") or ""),
+                                             str(e.get("note") or "")))
+                else:
+                    items.append(ExamQuestion(exam.pool_ref(module, e["pool"]), str(e["id"]), float(e["points"])))
+            exam.set_flat(items)
         exam.save()
         return self._exam_detail(exam)
 

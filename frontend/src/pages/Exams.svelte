@@ -82,13 +82,37 @@
 
   // --- the exam's questions ------------------------------------------------------------------
 
-  const entries = $derived((current?.entries ?? []).map((e) => ({ ...e, row: rows.get(key(e.pool, e.id)) })));
-  const inExam = $derived(new Set((current?.entries ?? []).map((e) => key(e.pool, e.id))));
-  const seconds = $derived(entries.reduce((sum, e) => sum + (e.row?.time_seconds ?? 0), 0));
-  const withoutTime = $derived(entries.filter((e) => e.row && e.row.time_seconds == null).length);
-  const points = $derived(entries.reduce((sum, e) => sum + Number(e.points || 0), 0));
+  // The exam as one list: sections where they start, questions with their row from the pools and their number,
+  // counted straight through the sections.
+  const entries = $derived.by(() => {
+    let n = 0;
+    return (current?.entries ?? []).map((e) => (e.section != null
+      ? { ...e, kind: "section", k: `section:${e.section}` }
+      : { ...e, kind: "question", k: key(e.pool, e.id), row: rows.get(key(e.pool, e.id)), number: ++n }));
+  });
+  const asked = $derived(entries.filter((e) => e.kind === "question"));
+  const inExam = $derived(new Set(asked.map((e) => e.k)));
+  const seconds = $derived(asked.reduce((sum, e) => sum + (e.row?.time_seconds ?? 0), 0));
+  const withoutTime = $derived(asked.filter((e) => e.row && e.row.time_seconds == null).length);
+  const points = $derived(asked.reduce((sum, e) => sum + Number(e.points || 0), 0));
+  // Points and time of each section, from its questions up to the next section.
+  const totals = $derived.by(() => sectionTotals(entries));
+  function sectionTotals(list) {
+    const out = {};
+    let open = null;
+    for (const e of list) {
+      if (e.kind === "section" || e.section) out[(open = e.k)] = { points: 0, seconds: 0 };
+      else if (open) {
+        out[open].points += Number(e.points || 0);
+        out[open].seconds += e.row?.time_seconds ?? e.seconds ?? 0;
+      }
+    }
+    return out;
+  }
   const findingsFor = (id) => (current?.findings ?? []).filter((f) => f.question === id && f.severity !== "note");
-  const examFindings = $derived((current?.findings ?? []).filter((f) => !f.question || f.severity === "note"));
+  const sectionFindings = (id) => (current?.findings ?? []).filter((f) => f.params?.section === id);
+  const examFindings = $derived((current?.findings ?? []).filter((f) => (!f.question || f.severity === "note") && !f.params?.section));
+  const formatPoints = (value) => Number(value).toLocaleString(undefined, { maximumFractionDigits: 1 });
 
   let saving = null;
   async function save(fields) {
@@ -103,7 +127,28 @@
     }
   }
 
-  const plainEntries = (list) => list.map(({ pool, id, points }) => ({ pool, id, points: Number(points) }));
+  const plainEntries = (list) => list.map((e) => (e.section != null
+    ? { section: e.section, title: e.title ?? "", note: e.note ?? "" }
+    : { pool: e.pool, id: e.id, points: Number(e.points) }));
+
+  // A new section: the first one opens the exam, so that every question belongs to it; any further one starts at
+  // the end and is dragged to where it begins. Titles follow the exam's language: Teil A, Teil B …
+  function addSection() {
+    const list = [...current.entries];
+    const count = list.filter((e) => e.section != null).length;
+    const title = `${current.language === "en" ? "Part" : "Teil"} ${String.fromCharCode(65 + (count % 26))}`;
+    const section = { section: "", title, note: "" };
+    if (count === 0) list.unshift(section);
+    else list.push(section);
+    current.entries = list;
+    save({ entries: plainEntries(list) });
+  }
+
+  // Title and note are saved when the field is left, so that a reply from the core cannot overwrite typing.
+  function setSection(index, field, value) {
+    current.entries[index][field] = value;
+    save({ entries: plainEntries(current.entries) });
+  }
   const suggest = (s) => (s ? Math.max(1, Math.round((s / 60) * 2) / 2) : 1);
 
   function add(row) {
@@ -152,6 +197,7 @@
   let drag = $state(null); // { kind: "move" | "add", index, row, id, pool, type, stem, points, x, y, target }
   let pressed = null; // a press that has not moved far enough yet to be a drag
   let landedKey = $state(null); // the question that just landed, marked for a moment
+  let anchor = $state(0); // space above the folded exam, so that the grabbed line stays under the pointer
 
   function pressHandle(event, index) {
     if (event.button !== 0) return;
@@ -182,7 +228,10 @@
   }
 
   function onPointerMove(event) {
-    if (!drag && pressed && Math.hypot(event.clientX - pressed.x0, event.clientY - pressed.y0) > 5) begin(event);
+    if (!drag && pressed && Math.hypot(event.clientX - pressed.x0, event.clientY - pressed.y0) > 5) {
+      begin(event);
+      return; // the landing place is the grabbed one until the exam has folded around the pointer
+    }
     if (!drag) return;
     drag.x = event.clientX;
     drag.y = event.clientY;
@@ -190,20 +239,34 @@
   }
 
   function begin(event) {
-    const entry = pressed.kind === "move" ? current.entries[pressed.index] : null;
-    const row = entry ? rows.get(key(entry.pool, entry.id)) : pressed.row;
+    const entry = pressed.kind === "move" ? entries[pressed.index] : null;
+    const row = entry ? entry.row : pressed.row;
     drag = {
-      kind: pressed.kind, index: pressed.index ?? -1, row: pressed.row ?? null,
-      id: (entry ?? row).id, pool: (entry ?? row).pool, type: row?.type, stem: row?.stem ?? "",
-      points: entry ? Number(entry.points) : suggest(row?.time_seconds),
-      x: event.clientX, y: event.clientY, target: pressed.kind === "move" ? pressed.index : null,
+      kind: pressed.kind, index: pressed.index ?? -1, row: pressed.row ?? null, section: entry?.kind === "section",
+      id: entry?.kind === "section" ? entry.title : (entry ?? row).id, pool: (entry ?? row).pool, k: entry?.k,
+      type: entry?.kind === "section" ? "section" : row?.type, stem: entry?.kind === "section" ? entry.note : row?.stem ?? "",
+      seconds: row?.time_seconds ?? 0, points: entry ? Number(entry.points ?? 0) : suggest(row?.time_seconds),
+      x: event.clientX, y: event.clientY, target: pressed.kind === "move" ? pressed.index : null, ready: false,
     };
     document.body.classList.add("dragging");
-    // Once the exam has folded, the grabbed question sits under the pointer again.
+    // Once the exam has folded, the grabbed line sits under the pointer again: by scrolling, and where the folded
+    // exam is too short to scroll, by moving it down. Otherwise a question grabbed in the middle of a long exam
+    // would find the pointer below the folded list and jump to the end.
+    anchor = 0;
     tick().then(() => {
       const slot = listEl?.querySelector(".drop-slot");
-      if (slot) listEl.scrollTop += slot.getBoundingClientRect().top - (event.clientY - 17);
-      if (drag) drag.target = targetAt(drag.x, drag.y);
+      if (slot) {
+        let delta = slot.getBoundingClientRect().top - (event.clientY - 17);
+        const before = listEl.scrollTop;
+        listEl.scrollTop = before + delta;
+        delta -= listEl.scrollTop - before;
+        if (delta < 0) anchor = -delta;
+      }
+      tick().then(() => {
+        if (!drag) return;
+        drag.ready = true;
+        drag.target = targetAt(drag.x, drag.y);
+      });
     });
     requestAnimationFrame(scrollAtEdge);
   }
@@ -211,6 +274,7 @@
   // Where the question would land: the number of folded questions whose middle lies above the pointer.
   function targetAt(x, y) {
     if (!listEl) return null;
+    if (!drag.ready) return drag.target;
     const box = listEl.getBoundingClientRect();
     if (x < box.left || x > box.right || y < box.top || y > box.bottom) return drag.kind === "move" ? drag.target : null;
     let n = 0;
@@ -243,6 +307,7 @@
     release();
     if (!done || done.target == null) return;
     const list = [...current.entries];
+    anchor = 0;
     const moved = done.kind === "move" ? list.splice(done.index, 1)[0]
       : { pool: done.row.pool, id: done.row.id, points: done.points };
     list.splice(done.target, 0, moved);
@@ -257,24 +322,35 @@
     if (event.key !== "Escape") return;
     event.preventDefault();
     drag = null;
+    anchor = 0;
     release();
   }
 
   async function landed(entry) {
-    landedKey = key(entry.pool, entry.id);
+    landedKey = entry.section != null ? `section:${entry.section}` : key(entry.pool, entry.id);
     await tick();
     listEl?.querySelector(`[data-key="${CSS.escape(landedKey)}"]`)?.scrollIntoView({ block: "center" });
     setTimeout(() => (landedKey = null), 1600);
   }
 
-  // The folded exam while a question is held: the others in their order, and a place where it would land.
+  // The folded exam while something is held: the rest in its order, and a place where it would land. Numbers and
+  // the points of the sections are those after letting go, so that they change while the question travels.
   const folded = $derived.by(() => {
     if (!drag) return [];
     const list = entries
       .filter((_, i) => !(drag.kind === "move" && i === drag.index))
-      .map((e) => ({ k: key(e.pool, e.id), id: e.id, type: e.row?.type, stem: e.row?.stem ?? "", points: Number(e.points) }));
-    if (drag.target != null) list.splice(drag.target, 0, { k: "slot", slot: true, id: drag.id, type: drag.type, stem: drag.stem, points: drag.points });
-    return list.map((x, i) => ({ ...x, number: i + 1 }));
+      .map((e) => (e.kind === "section"
+        ? { k: e.k, section: true, id: e.title, stem: e.note }
+        : { k: e.k, id: e.id, type: e.row?.type, stem: e.row?.stem ?? "", points: Number(e.points), seconds: e.row?.time_seconds ?? 0 }));
+    if (drag.target != null) {
+      list.splice(drag.target, 0, drag.section
+        ? { k: drag.k, slot: true, section: true, id: drag.id, stem: drag.stem }
+        : { k: "slot", slot: true, id: drag.id, type: drag.type, stem: drag.stem, points: drag.points, seconds: drag.seconds });
+    }
+    let n = 0;
+    const numbered = list.map((x) => (x.section ? x : { ...x, number: ++n }));
+    const sums = sectionTotals(numbered);
+    return numbered.map((x) => (x.section ? { ...x, sum: sums[x.k] } : x));
   });
 
   // Up and down on a focused handle move the question without a mouse.
@@ -282,9 +358,9 @@
     if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
     event.preventDefault();
     const step = event.key === "ArrowUp" ? -1 : 1;
-    const entry = current.entries[index];
+    const k = entries[index].k;
     move(index, step);
-    tick().then(() => listEl?.querySelector(`[data-key="${CSS.escape(key(entry.pool, entry.id))}"] .drag-handle`)?.focus());
+    tick().then(() => listEl?.querySelector(`[data-key="${CSS.escape(k)}"] .drag-handle`)?.focus());
   }
 
   // --- the questions as the booklet shows them ----------------------------------------------------------
@@ -297,7 +373,7 @@
   $effect(() => {
     const lang = current?.language;
     const version = store.version;
-    const refs = (current?.entries ?? []).map((e) => ({ pool: e.pool, id: e.id }));
+    const refs = (current?.entries ?? []).filter((e) => e.section == null).map((e) => ({ pool: e.pool, id: e.id }));
     untrack(() => {
       if (!current) return;
       const stamp = `${current.path}|${lang}|${version}`;
@@ -435,7 +511,7 @@
       </div>
 
       <div class="exam-totals">
-        <span><b>{entries.length}</b> {t(entries.length === 1 ? "exams.question" : "exams.questions")}</span>
+        <span><b>{asked.length}</b> {t(asked.length === 1 ? "exams.question" : "exams.questions")}</span>
         <span><b>{points.toLocaleString(undefined, { maximumFractionDigits: 1 })}</b> {t("exams.points")}</span>
         <span><b>{formatTotal(seconds)}</b> {t("exams.time")}</span>
         {#if withoutTime}<span class="warn-text">{t("stats.withoutTime", { n: withoutTime })}</span>{/if}
@@ -493,25 +569,49 @@
           </div>
         </section>
         <section class="exam-list" class:drop-zone={drag?.kind === "add"} aria-label={t("exams.content")} bind:this={listEl}>
-          <h3 class="pane-title">{drag ? t("exams.dragHint") : t("exams.content")}</h3>
+          <h3 class="pane-title exam-pane-title">
+            <span>{drag ? t("exams.dragHint") : t("exams.content")}</span>
+            {#if !drag}<button class="btn btn-small ghost" title={t("exams.addSectionHint")} onclick={addSection}><Icon name="plus" />{t("exams.addSection")}</button>{/if}
+          </h3>
           {#if !entries.length && !drag}<p class="muted pad">{t("exams.emptyExam")}</p>{/if}
           {#if drag}
-            <ol class="exam-entries compact">
+            <ol class="exam-entries compact" style:padding-top="{anchor}px">
               {#each folded as x (x.k)}
-                <li class="entry-compact" class:drop-slot={x.slot} animate:flip={{ duration: 160 }}>
-                  <span class="compact-no">{x.number}</span>
-                  <span class="type-icon"><Icon name={TYPE_ICONS[x.type] ?? "questions"} /></span>
-                  <span class="qid">{x.id}</span>
-                  <span class="compact-stem">{x.stem}</span>
-                  <span class="compact-points">{x.points.toLocaleString(undefined, { maximumFractionDigits: 1 })} {t("exams.pointsShort")}</span>
+                <li class="entry-compact" class:section-compact={x.section} class:drop-slot={x.slot} animate:flip={{ duration: 160 }}>
+                  {#if x.section}
+                    <span class="compact-title">{x.id || t("exams.sectionTitle")}</span>
+                    <span class="compact-stem">{x.stem}</span>
+                    {#if x.sum}<span class="compact-points">{formatPoints(x.sum.points)} {t("exams.pointsShort")}</span>{/if}
+                  {:else}
+                    <span class="compact-no">{x.number}</span>
+                    <span class="type-icon"><Icon name={TYPE_ICONS[x.type] ?? "questions"} /></span>
+                    <span class="qid">{x.id}</span>
+                    <span class="compact-stem">{x.stem}</span>
+                    <span class="compact-points">{formatPoints(x.points)} {t("exams.pointsShort")}</span>
+                  {/if}
                 </li>
               {/each}
             </ol>
           {:else}
           <ol class="exam-entries">
-            {#each entries as entry, i (entry.pool + entry.id)}
-              {@const item = rendered[key(entry.pool, entry.id)]}
-              <li class="exam-entry" class:landed={landedKey === key(entry.pool, entry.id)} data-key={key(entry.pool, entry.id)}>
+            {#each entries as entry, i (entry.k)}
+              {#if entry.kind === "section"}
+              <li class="exam-section" class:landed={landedKey === entry.k} data-key={entry.k}>
+                <div class="section-bar">
+                  <button class="drag-handle" title={t("exams.dragHandle")} aria-label={t("exams.dragHandle")}
+                    onpointerdown={(e) => pressHandle(e, i)} onkeydown={(e) => onHandleKey(e, i)}><Icon name="grip" /></button>
+                  <input class="section-title" value={entry.title} placeholder={t("exams.sectionTitle")} aria-label={t("exams.sectionTitle")}
+                    onchange={(e) => setSection(i, "title", e.currentTarget.value.trim())} />
+                  {#if totals[entry.k]}<span class="section-sum">{formatPoints(totals[entry.k].points)} {t("exams.points")}{#if totals[entry.k].seconds} · {formatTotal(totals[entry.k].seconds)}{/if}</span>{/if}
+                  <button class="icon-btn small-icon danger" title={t("exams.removeSection")} aria-label={t("exams.removeSection")} onclick={() => removeAt(i)}><Icon name="remove" /></button>
+                </div>
+                <input class="section-note" value={entry.note} placeholder={t("exams.sectionNote")} aria-label={t("exams.sectionNote")}
+                  onchange={(e) => setSection(i, "note", e.currentTarget.value.trim())} />
+                {#each sectionFindings(entry.section) as f}<span class="entry-finding {f.severity}">{findingText(f)}</span>{/each}
+              </li>
+              {:else}
+              {@const item = rendered[entry.k]}
+              <li class="exam-entry" class:landed={landedKey === entry.k} data-key={entry.k}>
                 <div class="entry-bar">
                   <button class="drag-handle" title={t("exams.dragHandle")} aria-label={t("exams.dragHandle")}
                     onpointerdown={(e) => pressHandle(e, i)} onkeydown={(e) => onHandleKey(e, i)}><Icon name="grip" /></button>
@@ -538,9 +638,10 @@
                 {:else if item.missing}
                   <div class="booklet-item waiting">{t("exams.missing")}</div>
                 {:else}
-                  <ExamItem {item} number={i + 1} points={Number(entry.points)} words={printWords} />
+                  <ExamItem {item} number={entry.number} points={Number(entry.points)} words={printWords} />
                 {/if}
               </li>
+              {/if}
             {/each}
           </ol>
           {/if}

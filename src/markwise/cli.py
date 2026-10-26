@@ -334,6 +334,8 @@ def _exam_report(exam) -> dict:
     return {"title": exam.title, "date": exam.date, "semester": exam.semester, "language": exam.language,
             "answers": exam.answers, "examiners": exam.examiners, "points": exam.total_points(),
             "questions": [{"pool": q.pool, "id": q.id, "points": q.points} for q in exam.questions],
+            "sections": [{"id": s.id, "title": s.title, "note": s.note, "before": s.before,
+                          "points": exam.section_points(s)} for s in exam.sections],
             "findings": [f.to_dict() for f in exam.check(module)]}
 
 
@@ -344,8 +346,16 @@ def cmd_exam_show(args) -> int:
         _print_json(report)
     else:
         print(f"{report['title']}, {report['date']} ({report['semester']}), {report['language']}, answers: {report['answers']}")
-        for i, q in enumerate(report["questions"], 1):
-            print(f"  {i:>2}. {q['id']:<12} {q['points']:>5g} points  ({q['pool']})")
+        starts = {}
+        for s in report["sections"]:
+            starts.setdefault(s["before"], []).append(s)
+        for i, q in enumerate(report["questions"]):
+            for s in starts.pop(i, []):
+                print(f"  {s['title'] or '(no title)'}  [{s['id']}, {s['points']:g} points]")
+            print(f"  {i + 1:>2}. {q['id']:<12} {q['points']:>5g} points  ({q['pool']})")
+        for rest in starts.values():
+            for s in rest:
+                print(f"  {s['title'] or '(no title)'}  [{s['id']}, no questions]")
         print(f"  {len(report['questions'])} questions, {report['points']:g} points")
         for f in report["findings"]:
             print(f"  {f['severity']:<8} {f['question'] or '-':<10} {f['message']}")
@@ -369,11 +379,38 @@ def cmd_exam_rename(args) -> int:
     return 0
 
 
+def cmd_exam_section(args) -> int:
+    from .exam import Exam, ExamQuestion, ExamSection
+    exam = Exam.open(args.exam)
+    items = exam.flat()
+    if args.remove:
+        if not any(isinstance(i, ExamSection) and i.id == args.remove for i in items):
+            raise KeyError(f"the exam has no section {args.remove}")
+        exam.set_flat([i for i in items if not (isinstance(i, ExamSection) and i.id == args.remove)])
+        exam.save()
+        print(json.dumps({"removed": args.remove}) if args.json else f"section {args.remove} removed")
+        return 0
+    if not args.title:
+        raise ValueError("a new section needs --title")
+    section = ExamSection(exam.new_section_id(), args.title, args.note or "")
+    if args.before:
+        at = next((n for n, i in enumerate(items) if isinstance(i, ExamQuestion) and i.id == args.before), None)
+        if at is None:
+            raise KeyError(f"{args.before} is not in the exam")
+        items.insert(at, section)
+    else:
+        items.append(section)
+    exam.set_flat(items)
+    exam.save()
+    print(json.dumps({"section": section.id}) if args.json else f"section {section.id} added")
+    return 0
+
+
 def cmd_exam_remove(args) -> int:
-    from .exam import Exam
+    from .exam import Exam, ExamQuestion
     exam = Exam.open(args.exam)
     before = len(exam.questions)
-    exam.questions = [q for q in exam.questions if q.id != args.id]
+    exam.set_flat([item for item in exam.flat() if not (isinstance(item, ExamQuestion) and item.id == args.id)])
     if len(exam.questions) == before:
         raise KeyError(f"{args.id} is not in the exam")
     exam.save()
@@ -606,6 +643,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("exam")
     p.add_argument("id")
     p.set_defaults(func=cmd_exam_remove)
+    p = exam.add_parser("section", parents=[common],
+                        help="add a section (Teil A, Teil B …) before a question or at the end, or remove one")
+    p.add_argument("exam")
+    p.add_argument("--title")
+    p.add_argument("--note", help="a few words for the students below the title")
+    p.add_argument("--before", metavar="ID", help="the question the section starts with (default: at the end)")
+    p.add_argument("--remove", metavar="SECTION", help="remove this section; its questions stay")
+    p.set_defaults(func=cmd_exam_section)
     p = exam.add_parser("rename", parents=[common], help="give an exam a new title or date; its folder follows")
     p.add_argument("exam")
     p.add_argument("--title")

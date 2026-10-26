@@ -1,5 +1,6 @@
 """An exam: exam.toml in its own folder below the module, with the questions chosen by hand, in their order, and
-their points.
+their points, and optionally divided into sections ("Teil A", "Teil B" …). A section starts before a question and
+runs until the next section; the questions are numbered straight through.
 
 While an exam is being put together it refers to its questions in the module's pools. Freezing it, which comes
 later, copies them into the exam folder so that the exam stays complete whatever happens to the pools.
@@ -54,6 +55,14 @@ class ExamQuestion:
 
 
 @dataclass
+class ExamSection:
+    id: str  # stable while the exam is put together, for the interface
+    title: str
+    note: str = ""  # a few words for the students below the title
+    before: int = 0  # the section starts before this question (0-based); len(questions) for one at the end
+
+
+@dataclass
 class Exam:
     root: Path
     title: str
@@ -63,6 +72,7 @@ class Exam:
     answers: str = "sheet"
     examiners: list[str] = field(default_factory=list)
     questions: list[ExamQuestion] = field(default_factory=list)
+    sections: list[ExamSection] = field(default_factory=list)
     created_by: str = ""
     created_at: str = ""
 
@@ -86,6 +96,8 @@ class Exam:
             examiners=[str(e) for e in raw.get("examiners", [])],
             questions=[ExamQuestion(str(q["pool"]), str(q["id"]), float(q.get("points", 1)))
                        for q in raw.get("questions", [])],
+            sections=[ExamSection(str(s.get("id") or f"s{i + 1}"), str(s.get("title", "")), str(s.get("note", "")),
+                                  int(s.get("before", 0))) for i, s in enumerate(raw.get("sections", []))],
             created_by=str(raw.get("created_by", "")),
             created_at=str(raw.get("created_at", "")),
         )
@@ -141,8 +153,48 @@ class Exam:
             "created_by": self.created_by,
             "created_at": self.created_at,
             "questions": [{"pool": q.pool, "id": q.id, "points": q.points} for q in self.questions],
+            "sections": [{k: v for k, v in (("id", s.id), ("title", s.title), ("note", s.note), ("before", s.before))
+                          if v != ""} for s in self.sections],
         }
-        self.file.write_text(tomli_w.dumps({k: v for k, v in data.items() if v not in ("", None)}), encoding="utf-8")
+        self.file.write_text(tomli_w.dumps({k: v for k, v in data.items() if v not in ("", None, [])
+                                            or k == "questions"}), encoding="utf-8")
+
+    # --- sections ------------------------------------------------------------------------
+
+    def flat(self) -> list[ExamQuestion | ExamSection]:
+        """Questions and sections in one list, each section right before its first question."""
+        out: list[ExamQuestion | ExamSection] = []
+        starts = sorted(self.sections, key=lambda s: s.before)  # stable: sections at the same place keep their order
+        k = 0
+        for i, question in enumerate(self.questions):
+            while k < len(starts) and starts[k].before <= i:
+                out.append(starts[k])
+                k += 1
+            out.append(question)
+        out.extend(starts[k:])
+        return out
+
+    def set_flat(self, items: list[ExamQuestion | ExamSection]) -> None:
+        """Take questions and sections from one list, as `flat` gives it."""
+        self.questions, self.sections = [], []
+        for item in items:
+            if isinstance(item, ExamSection):
+                item.before = len(self.questions)
+                self.sections.append(item)
+            else:
+                self.questions.append(item)
+
+    def new_section_id(self) -> str:
+        taken = {s.id for s in self.sections}
+        return next(f"s{n}" for n in range(1, len(taken) + 2) if f"s{n}" not in taken)
+
+    def section_of(self, index: int) -> ExamSection | None:
+        """The section a question (by its place) belongs to, if any."""
+        found = None
+        for section in sorted(self.sections, key=lambda s: s.before):
+            if section.before <= index:
+                found = section
+        return found
 
     # --- the questions ---------------------------------------------------------------------
 
@@ -165,6 +217,9 @@ class Exam:
 
     def total_points(self) -> float:
         return sum(q.points for q in self.questions)
+
+    def section_points(self, section: ExamSection) -> float:
+        return sum(q.points for i, q in enumerate(self.questions) if self.section_of(i) is section)
 
     # --- checking ------------------------------------------------------------------------
 
@@ -212,6 +267,12 @@ class Exam:
                 add(ERROR, entry.id, "exam_points", f"{entry.id} needs more than 0 points", id=entry.id)
             family = question.variant_of or question.id
             parents.setdefault(f"{entry.pool}|{family}", []).append(entry.id)
+        for section in self.sections:
+            if not section.title.strip():
+                add(WARNING, None, "exam_section_title", "a section has no title", section=section.id)
+            if not any(self.section_of(i) is section for i in range(len(self.questions))):
+                add(WARNING, None, "exam_section_empty", f"section {section.title} has no questions",
+                    section=section.id, title=section.title)
         for ids in parents.values():
             if len(ids) > 1:
                 add(WARNING, ids[0], "exam_same_family", f"{', '.join(ids)} are variants of the same question",

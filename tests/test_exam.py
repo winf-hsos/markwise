@@ -113,3 +113,27 @@ def test_a_new_title_or_date_moves_the_folder_along(module):
     refused = api.update_exam(answer["path"], {"title": "Other"})
     assert refused["code"] == "exam_exists" and Path(answer["path"]).exists()
     assert api.update_exam(answer["path"], {"title": "  "})["code"] == "exam_title_missing"
+
+
+def test_sections_start_before_a_question_and_follow_it_when_the_order_changes(module):
+    from markwise.exam import ExamSection
+    exam = Exam.create(module, "Parts", "2027-01-21", "en", author="")
+    pool = module.open_pools()[0]
+    exam.add(module, pool.root, "co-001")
+    exam.add(module, pool.root, "co-002", points=3)
+    a, b = ExamSection("s1", "Part A", "Tick one box."), ExamSection("s2", "Part B")
+    exam.set_flat([a, exam.questions[0], b, exam.questions[1]])
+    exam.save()
+    again = Exam.open(exam.root)
+    assert [(s.id, s.title, s.note, s.before) for s in again.sections] == [("s1", "Part A", "Tick one box.", 0), ("s2", "Part B", "", 1)]
+    assert [getattr(i, "title", None) or i.id for i in again.flat()] == ["Part A", "co-001", "Part B", "co-002"]
+    assert again.section_points(again.sections[1]) == 3 and again.new_section_id() == "s3"
+    # the interface sends the exam as one list; moving a question across a heading moves it into the other part
+    api = Api()
+    entries = api.get_exam(str(exam.root))["data"]["entries"]
+    assert [e.get("section") or e["id"] for e in entries] == ["s1", "co-001", "s2", "co-002"]
+    entries = [entries[0], entries[1], entries[3], entries[2], {"section": "", "title": "", "note": ""}]
+    answer = api.update_exam(str(exam.root), {"entries": entries})["data"]
+    assert [e.get("section") or e["id"] for e in answer["entries"]] == ["s1", "co-001", "co-002", "s2", "s3"]
+    codes = {(f["code"], f["params"].get("section")) for f in answer["findings"]}
+    assert {("exam_section_empty", "s2"), ("exam_section_empty", "s3"), ("exam_section_title", "s3")} <= codes

@@ -131,3 +131,19 @@ def test_the_exam_page_gets_questions_as_the_booklet_shows_them(exam):
     assert task["type"] == "free_text" and task["lines"] == 4 and task["stem"].startswith("Mix")
     assert gone == {"pool": pool, "id": "co-404", "missing": True}
     assert answer["words"]["question"] == "Question" and answer["words"]["multiple"].startswith("One or more")
+
+
+def test_sections_head_their_questions_in_the_booklet_and_the_key(exam):
+    from markwise.exam import ExamSection
+    exam.set_flat([ExamSection("s1", "Part A", "Tick the boxes."), exam.questions[0],
+                   ExamSection("s2", "Part B"), exam.questions[1], ExamSection("s3", "Empty part")])
+    exam.answers = "sheet"
+    exam.save()
+    printed = booklet.print_exam(exam)
+    text = " ".join(" ".join(p.get_text() for name in ("Exam booklet.pdf", "Answer key.pdf")
+                             for p in pymupdf.open(printed.folder / name)).split())
+    assert text.count("Part A") >= 3 and "Tick the boxes." in text  # cover, booklet, key
+    pages = " ".join(" ".join(p.get_text() for p in pymupdf.open(printed.folder / "Exam booklet.pdf")[1:]).split())
+    assert pages.index("Part A") < pages.index("Question 1") < pages.index("Part B") < pages.index("Question 2")
+    assert "Empty part" not in text
+    assert "Part B 2 points" in text  # the cover lists the parts with their points
