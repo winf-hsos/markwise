@@ -1,6 +1,7 @@
 <script>
   import { t } from "../lib/i18n.svelte.js";
   import { app, updateSettings } from "../lib/state.svelte.js";
+  import { refreshAllQuestions } from "../lib/questions.svelte.js";
   import { transportName } from "../lib/api.js";
   import LanguageModelSettings from "../components/LanguageModelSettings.svelte";
 
@@ -15,6 +16,7 @@
 
   async function setLanguage(lang) {
     await updateSettings({ language: lang });
+    refreshAllQuestions(); // the lists show question texts in the interface's language where there is one
   }
 
   async function saveExaminer(event) {

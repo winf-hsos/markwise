@@ -12,14 +12,18 @@
   import { errorText, t } from "../lib/i18n.svelte.js";
   import { app, pending, showToast } from "../lib/state.svelte.js";
   import { drafts, recall, remember } from "../lib/viewstate.svelte.js";
+  import { dropQuestions, ensureQuestions, questionsOf, refreshQuestions } from "../lib/questions.svelte.js";
+  import { route } from "../lib/router.svelte.js";
 
   const modulePath = $derived(app.settings?.current_module || "");
   const module = $derived(app.workspace.modules.find((m) => m.path === modulePath) ?? null);
 
-  let loading = $state(false);
-  let error = $state("");
-  let pools = $state([]);
-  let questions = $state([]);
+  // The questions come from memory, shared with the other pages; see lib/questions.svelte.js.
+  const store = $derived(questionsOf(modulePath));
+  const pools = $derived(store.pools);
+  const questions = $derived(store.questions);
+  const loading = $derived(store.loading);
+  const error = $derived(store.error && !store.loaded ? errorText(store.error) : "");
   let selected = $state(null); // { pool, id }
   let detail = $state(null);
   let editing = $state(null); // the detail of the question in the editor
@@ -42,22 +46,19 @@
     return result;
   }
 
-  async function load() {
-    if (!modulePath) return;
-    loading = true;
-    error = "";
-    try {
-      const result = await call("list_questions", modulePath);
-      pools = result.pools;
-      questions = result.questions;
-      if (selected && !questions.some((q) => q.id === selected.id && q.pool === selected.pool)) selected = null;
-      if (selected) await show(selected);
-    } catch (err) {
-      error = errorText(err);
-    } finally {
-      loading = false;
-    }
-  }
+  // Read the pools again, here or on another page: the selection follows, and its preview shows the new state.
+  const load = () => refreshQuestions(modulePath);
+  $effect(() => {
+    store.version;
+    untrack(() => {
+      if (!selected || !store.loaded) return;
+      if (!questions.some((q) => q.id === selected.id && q.pool === selected.pool)) selected = null;
+      else if (detail) show(selected);
+    });
+  });
+  $effect(() => {
+    if (store.error && store.loaded) untrack(() => showToast(errorText(store.error)));
+  });
 
   // Whenever the page opens or another module becomes the current one: take up where the person left this
   // module (filters, selection, scroll position, an open editor), then load.
@@ -80,7 +81,8 @@
     const wanted = pending.newQuestion;
     pending.newQuestion = null;
     restoredFor = ""; // remember nothing until the remembered state is back, or a half-done restore overwrites it
-    await load();
+    await ensureQuestions(modulePath);
+    if (selected) await show(selected);
     await tick();
     if (listPane && kept.scroll && !wanted) listPane.scrollTop = kept.scroll;
     if (wanted) {
@@ -95,6 +97,24 @@
     }
     restoredFor = modulePath;
   }
+
+  // The page stays open in the background, so a hand-over from another page can arrive while it lives.
+  $effect(() => {
+    const wanted = pending.questionsFilter;
+    const create = pending.newQuestion;
+    if (!wanted && !create) return;
+    untrack(() => {
+      if (restoredFor !== modulePath) return; // restore() takes it up
+      editing = null; // unsaved changes stay among the drafts
+      if (wanted) filter = normalized(wanted);
+      if (create) {
+        newPreset = create;
+        newOpen = true;
+      }
+      pending.questionsFilter = null;
+      pending.newQuestion = null;
+    });
+  });
 
   // Remember what the page shows, for the next visit.
   $effect(() => {
@@ -218,7 +238,7 @@
 
   // Up and down move through the list while the search field or the list has the focus.
   function onkeydown(event) {
-    if (editing || !["ArrowDown", "ArrowUp"].includes(event.key) || event.target.closest?.("select, .preview")) return;
+    if (route.path !== "/questions" || editing || !["ArrowDown", "ArrowUp"].includes(event.key) || event.target.closest?.("select, .preview")) return;
     if (!shown.length) return;
     event.preventDefault();
     const index = selectedRow ? order.indexOf(selectedRow) : -1;
@@ -241,9 +261,8 @@
     load();
   }
 
-  async function closeEditor() {
-    editing = null;
-    await load();
+  function closeEditor() {
+    editing = null; // what was saved is being read again already (onsaved)
   }
 
   // A step of a question's life, from the preview: release, withdraw, variant, retire, restore, delete.
@@ -276,17 +295,16 @@
         showToast(detached.length ? t("life.variantsDetached", { done, ids: detached.join(", ") })
           : result.variants.length ? t("life.variantsDeleted", { done, n: result.variants.length }) : done);
         // Out of the list at once; reading the pools again takes a moment.
-        const gone = new Set([id, ...result.variants.map((v) => v.id)]);
-        questions = questions.filter((q) => q.pool !== pool || !gone.has(q.id));
+        dropQuestions(modulePath, pool, [id, ...result.variants.map((v) => v.id)]);
         selected = null;
         detail = null;
-        await load();
+        load();
         return;
       }
       const method = { release: "release_question", withdraw: "withdraw_release", variant: "create_variant",
         retire: "retire_question", restore: "restore_question" }[name];
       const result = await call(method, pool, id);
-      await load();
+      load();
       if (name === "variant") {
         selected = { pool: result.pool, id: result.id };
         editing = result;

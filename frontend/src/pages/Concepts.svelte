@@ -8,6 +8,7 @@
   import { app, pending, showToast } from "../lib/state.svelte.js";
   import { slugify } from "../lib/slug.js";
   import { recall, remember } from "../lib/viewstate.svelte.js";
+  import { questionsChanged, questionsOf } from "../lib/questions.svelte.js";
 
   const modulePath = $derived(app.settings?.current_module || "");
   const module = $derived(app.workspace.modules.find((m) => m.path === modulePath) ?? null);
@@ -30,6 +31,7 @@
     loading = true;
     error = "";
     try {
+      seen = questionsOf(modulePath).version;
       concepts = await call("concept_overview", modulePath);
     } catch (err) {
       error = errorText(err);
@@ -53,6 +55,16 @@
       await tick();
       if (listPane && kept.scroll) listPane.scrollTop = kept.scroll;
       restoredFor = modulePath;
+    });
+  });
+
+  // The page stays open in the background: when the questions were read again after a change on another page,
+  // the counts here follow.
+  let seen = -1;
+  $effect(() => {
+    const version = questionsOf(modulePath).version;
+    untrack(() => {
+      if (restoredFor === modulePath && version !== seen) load();
     });
   });
 
@@ -84,6 +96,7 @@
     try {
       await call("update_concept", current.pool, current.id, draft.name, draft.description);
       await load();
+      questionsChanged(modulePath); // the questions show the concept's name
       showToast(t("concepts.saved"));
     } catch (err) {
       showToast(errorText(err));
@@ -96,6 +109,7 @@
       await call("delete_concept", current.pool, current.id);
       selected = null;
       await load();
+      questionsChanged(modulePath);
       showToast(t("concepts.deleted"));
     } catch (err) {
       showToast(errorText(err));
@@ -125,6 +139,7 @@
       const created = await call("add_concept", added.pool, added.name, added.description);
       newOpen = false;
       await load();
+      questionsChanged(modulePath); // new questions can go into it
       choose(concepts.find((c) => c.pool === added.pool && c.id === created.id));
       showToast(t("concepts.added", { name: created.name }));
     } catch (err) {

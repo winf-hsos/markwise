@@ -17,7 +17,9 @@
   // Edits one question: form on the left, the question as it reads on the right, checked while typing.
   // `practice` lists the practice questions of the same pool for the variant choice.
   // `draft` brings back unsaved changes from an earlier visit; `ondraft` hears of every change while unsaved.
-  let { question, practice = [], onclose, onsaved, draft = null, ondraft } = $props();
+  // `back` names where closing leads, the question list unless the editor was opened from elsewhere.
+  let { question, practice = [], onclose, onsaved, draft = null, ondraft, back = "" } = $props();
+  let shell; // the editor's element: pages stay open in the background, and a hidden editor must not save
   // The editor is created anew for every question (see {#key} in the page), so it starts from this snapshot.
   const initial = untrack(() => question);
   const kept = untrack(() => draft);
@@ -312,6 +314,7 @@
   }
 
   function onkeydown(event) {
+    if (!shell?.offsetParent) return; // on a page in the background
     if (event.ctrlKey && event.key.toLowerCase() === "s") {
       event.preventDefault();
       save();
@@ -321,7 +324,7 @@
 
 <svelte:window {onkeydown} />
 
-<div class="editor-shell">
+<div class="editor-shell" bind:this={shell}>
   <!-- While the language model works, a veil over the editor says so and keeps the question from changing meanwhile. -->
   {#if asking}
     <div class="assist-veil" role="status" aria-live="polite">
@@ -331,7 +334,7 @@
     </div>
   {/if}
   <header class="editor-bar">
-    <button class="btn ghost" onclick={close}><Icon name="back" />{t("edit.back")}</button>
+    <button class="btn ghost" onclick={close}><Icon name="back" />{back || t("edit.back")}</button>
     <span class="qid">{base.data.id}</span>
     <span class="tag" class:ok={base.data.status === "reviewed"}>{t(`status.${base.data.status}`)}</span>
     {#if dirty}<span class="unsaved"><i class="dot"></i>{t("edit.unsaved")}</span>{/if}

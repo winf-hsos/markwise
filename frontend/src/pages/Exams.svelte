@@ -8,7 +8,9 @@
   import { errorText, findingText, t } from "../lib/i18n.svelte.js";
   import { formatDate, formatTime, formatTotal } from "../lib/time.js";
   import { app, showToast } from "../lib/state.svelte.js";
-  import { recall, remember } from "../lib/viewstate.svelte.js";
+  import { drafts, recall, remember } from "../lib/viewstate.svelte.js";
+  import { ensureQuestions, questionsOf, refreshQuestions } from "../lib/questions.svelte.js";
+  import QuestionEditor from "../components/QuestionEditor.svelte";
 
   // The exams of the current module, and putting one together by hand: its questions in order, with points.
   const modulePath = $derived(app.settings?.current_module || "");
@@ -16,8 +18,11 @@
   let exams = $state([]);
   let loading = $state(false);
   let current = $state(null); // the exam being put together, as get_exam answers
-  let pools = $state([]);
-  let questions = $state([]); // every question of the module's pools, as rows of the question list
+  // Every question of the module's pools, as rows of the question list, from memory (lib/questions.svelte.js).
+  const store = $derived(questionsOf(modulePath));
+  const pools = $derived(store.pools);
+  const questions = $derived(store.questions);
+  let editing = $state(null); // the detail of a question opened from the exam, in the editor
   let newOpen = $state(false);
   let printOpen = $state(false);
 
@@ -28,6 +33,7 @@
 
   async function start() {
     current = null;
+    editing = null;
     exams = [];
     if (!modulePath) return;
     loading = true;
@@ -42,15 +48,11 @@
     }
   }
 
-  async function loadQuestions() {
-    const answer = await call("list_questions", modulePath);
-    pools = answer.pools;
-    questions = answer.questions;
-  }
+  const loadQuestions = () => ensureQuestions(modulePath);
 
   async function openExam(path) {
     try {
-      const [exam] = await Promise.all([call("get_exam", path), questions.length ? null : loadQuestions()]);
+      const [exam] = await Promise.all([call("get_exam", path), loadQuestions()]);
       current = exam;
       remember("exams", modulePath, { open: path });
     } catch (err) {
@@ -130,6 +132,29 @@
     if (!(await save({ [name]: value })) && input) input.value = current[name];
   }
 
+  // --- editing a question without leaving the exam ----------------------------------------------------
+
+  async function editQuestion(pool, id) {
+    try {
+      editing = await call("get_question", pool, id);
+    } catch (err) {
+      showToast(errorText(err));
+    }
+  }
+
+  // The practice questions of the pool being edited, for the choice "exam variant of".
+  const practice = $derived(editing ? questions.filter((q) => q.pool === editing.pool && q.public && !q.variant_of) : []);
+  const draftKey = (q) => `${q.pool}\n${q.id}`;
+
+  // Whenever the questions were read again, here or on another page, the exam checks itself anew: a time
+  // added or an error fixed changes what it says.
+  $effect(() => {
+    store.version;
+    untrack(() => {
+      if (current && store.loaded) call("get_exam", current.path).then((exam) => (current = exam)).catch(() => {});
+    });
+  });
+
   // --- choosing questions ---------------------------------------------------------------------
 
   let search = $state("");
@@ -160,7 +185,15 @@
     <div class="page-head"><div><h1>{t("exams.title")}</h1><p>{t("exams.lead")}</p></div></div>
     <div class="empty"><div class="mark"><Icon name="exams" /></div><p>{t("exams.noModule")}</p></div>
   {:else if current}
-    <div class="exam-shell">
+    {#if editing}
+      {#key editing.pool + editing.id}
+        <QuestionEditor question={editing} {practice} back={t("exams.backToExam")} onclose={() => (editing = null)}
+          onsaved={() => refreshQuestions(modulePath)} draft={drafts.get(draftKey(editing))}
+          ondraft={(d) => (d ? drafts.set(draftKey(editing), d) : drafts.delete(draftKey(editing)))} />
+      {/key}
+    {/if}
+    <!-- Hidden, not closed, while a question is being edited: search, filters and scroll positions stay. -->
+    <div class="exam-shell" style:display={editing ? "none" : null}>
       <header class="editor-bar">
         <button class="btn ghost" onclick={closeExam}><Icon name="back" />{t("exams.back")}</button>
         <b class="exam-title">{current.title}</b>
@@ -220,7 +253,8 @@
                     <span class="qid">{entry.id}</span>
                     <span class="q-concept">{entry.row?.concept_name ?? ""}</span>
                     {#if entry.row?.level}<span class="tag">{t(`level.${entry.row.level}`)}</span>{/if}
-                    {#if entry.row?.time_seconds}<span class="tag">{formatTime(entry.row.time_seconds)}</span>{/if}
+                    {#if entry.row?.time_seconds}<span class="tag">{formatTime(entry.row.time_seconds)}</span>
+                    {:else if entry.row}<span class="tag warn">{t("exams.noTime")}</span>{/if}
                   </div>
                   <span class="q-stem">{entry.row?.stem ?? t("exams.missing")}</span>
                   {#each findingsFor(entry.id) as f}<span class="entry-finding {f.severity}">{findingText(f)}</span>{/each}
@@ -231,6 +265,7 @@
                   <span>{t("exams.pointsShort")}</span>
                 </label>
                 <span class="entry-tools">
+                  <button class="icon-btn small-icon" title={t("exams.edit")} aria-label={t("exams.edit")} disabled={!entry.row} onclick={() => editQuestion(entry.pool, entry.id)}><Icon name="edit" /></button>
                   <button class="icon-btn small-icon" title={t("exams.up")} aria-label={t("exams.up")} disabled={i === 0} onclick={() => move(i, -1)}><Icon name="chevron" /></button>
                   <button class="icon-btn small-icon down" title={t("exams.down")} aria-label={t("exams.down")} disabled={i === entries.length - 1} onclick={() => move(i, 1)}><Icon name="chevron" /></button>
                   <button class="icon-btn small-icon danger" title={t("exams.remove")} aria-label={t("exams.remove")} onclick={() => removeAt(i)}><Icon name="remove" /></button>
@@ -277,6 +312,7 @@
                   </div>
                   <span class="q-stem">{q.stem}</span>
                 </div>
+                <button class="icon-btn small-icon" title={t("exams.edit")} aria-label={t("exams.edit")} onclick={() => editQuestion(q.pool, q.id)}><Icon name="edit" /></button>
                 {#if added}
                   <span class="hint">{t("exams.added")}</span>
                 {:else}

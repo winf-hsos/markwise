@@ -2,6 +2,7 @@
 
 import { call } from "./api.js";
 import { ui } from "./i18n.svelte.js";
+import { refreshAllQuestions } from "./questions.svelte.js";
 
 export const app = $state({
   loaded: false,
@@ -58,6 +59,7 @@ export function applyTheme(theme) {
 export async function refreshWorkspace() {
   app.workspace = await call("workspace");
   app.settings = await call("get_settings");
+  refreshAllQuestions(); // a pool may have come, gone or changed its languages
 }
 
 export async function setCurrentModule(path) {
