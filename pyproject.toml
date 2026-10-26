@@ -31,7 +31,7 @@ markwise = "markwise.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-markwise = ["app/static/**/*", "app/markwise.ico"]
+markwise = ["app/static/**/*", "app/markwise.ico", "typst/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

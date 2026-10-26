@@ -101,11 +101,21 @@ def test_the_answer_sheet_reads_back_and_replaces_the_last_print(exam):
 
 
 def test_question_text_cannot_break_the_typesetting(tmp_path):
-    text = "A `#raw` value, *stress*, **bold**, [brackets], $dollars$, <label>, a # hash and a\nwrapped line.\n\n- one\n- two"
+    text = ("A `#raw` value, *stress*, **bold**, [brackets], 5 $ or \\$x\\$, <label>, a # hash and a\nwrapped line."
+            "\n\n- one\n- two")
     pdf = booklet._compile(booklet._preamble("en") + booklet.markdown(text), tmp_path, query=False).pdf
     shown = pymupdf.open(stream=pdf).load_page(0).get_text()
-    for part in ("#raw", "stress", "bold", "[brackets]", "$dollars$", "<label>", "a # hash and a wrapped line", "two"):
+    for part in ("#raw", "stress", "bold", "[brackets]", "5 $ or $x$", "<label>", "a # hash and a wrapped line", "two"):
         assert part in " ".join(shown.split())
+
+
+def test_formulas_are_typeset_without_internet(tmp_path):
+    text = "Mit $x^2 + y^2 = r^2$ gilt\n\n$$\n\\frac{a}{b} = \\sum_{i=1}^{n} x_i\n$$"
+    pdf = booklet._compile(booklet._preamble("de") + booklet.markdown(text), tmp_path, query=False).pdf
+    shown = pymupdf.open(stream=pdf).load_page(0).get_text()
+    assert "Mit" in shown and "gilt" in shown
+    assert "x^2" not in shown and "frac" not in shown  # set as formulas, not printed as their source
+    assert any(ch in shown for ch in ("\u2211", "\U0001d465"))  # the sum sign or a math italic x
 
 
 def test_an_exam_with_errors_or_without_questions_does_not_print(exam):

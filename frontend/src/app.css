@@ -524,6 +524,9 @@ div.inline-view { white-space: pre-wrap; }
 .inline-edit.stem { white-space: normal; font: inherit; }
 .inline-edit textarea { width: 100%; min-height: 60px; resize: vertical; font: 14px/1.5 var(--code); padding: 8px 10px; }
 .inline-edit.code textarea { font-size: 13px; }
+.formula-preview { padding: 6px 10px; border: 1px dashed var(--line); border-radius: 5px; background: var(--paper); font: 15px/1.6 var(--print); }
+.formula-error { font-size: 12px; color: var(--red); }
+.katex { font-size: 1.05em; }
 .inline-tools { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
 .inline-tools .hint { margin-right: auto; font-size: 11.5px; color: var(--faint); }
 .inline-tools .inline-ok { color: var(--green-strong); }

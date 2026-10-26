@@ -43,6 +43,9 @@ Rules for good multiple-choice questions in university exams:
   not answer the question asked, typical confusions of neighbouring concepts. No joke answers, no "all of the
   above", no "none of the above".
 - Every option has a short feedback that says why it is right or wrong.
+- Formulas are LaTeX math between dollar signs: `$x^2$` in the running text, `$$ … $$` set apart. Keep every
+  formula exactly as it is, also when translating; write new ones the same way, never as Unicode or plain text.
+  A dollar sign as a character is written `\\$`.
 - The correct answer is not systematically the longest or the most cautious.
 - Write in connected sentences; avoid chains of short sentences."""
 
@@ -423,6 +426,8 @@ def vary_numbers(fields: dict, languages: list[str], answer_lang: str, figures: 
     system = (
         "You help an examiner write a variant of a free-text exam question: the same task with other numbers.\n\n" +
         LABELS + "\n\n"
+        "Formulas are LaTeX math between dollar signs (`$x^2$` in the text, `$$ … $$` set apart); keep them in this "
+        "form and put the new numbers into them the same way.\n\n"
         "Choose new numbers for the task so that it tests exactly the same thing at the same difficulty: the same "
         "steps, the same units, values of a similar size and a result as easy or hard to state as in the original "
         "(no awkward rounding unless the original has it). Change nothing else in the question text. Then work out "

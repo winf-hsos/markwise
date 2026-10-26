@@ -6,6 +6,7 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from . import formulas
 from .pool import Pool
 from .question import LEVELS, STATUSES, TYPES, Question
 
@@ -76,6 +77,19 @@ def check_question(q: Question, pool: Pool) -> list[Finding]:
         add(NOTE, "no_time", "no time for answering is set")
     elif not isinstance(seconds, int) or isinstance(seconds, bool) or not 5 <= seconds <= 3600:
         add(ERROR, "time_invalid", "time_seconds must be a whole number of seconds from 5 to 3600")
+
+    # Formulas: a `$$` left open, or a formula the booklet could not set (unbalanced braces, an open environment).
+    texts = [q.data.get(key) for key in ("stem", "expected", "marking_notes")]
+    texts += [o.get(key) for o in (q.data.get("options") or []) if isinstance(o, dict) for key in ("text", "feedback")]
+    for value in texts:
+        for lang, text in (value.items() if isinstance(value, dict) else []):
+            pieces = formulas.split(str(text or ""))
+            if any(kind == formulas.TEXT and "$$" in piece for kind, piece in pieces):
+                add(ERROR, "formula_open", f"a formula set apart with $$ is not closed ({lang})", lang=lang)
+            for kind, latex in pieces:
+                if kind in (formulas.INLINE, formulas.DISPLAY) and formulas.problems(latex):
+                    add(ERROR, "formula_invalid", f"the formula {latex} cannot be read ({lang})",
+                        formula=latex if len(latex) <= 40 else latex[:37] + "…", lang=lang)
 
     missing = _texts(q.data.get("stem"), s.languages)
     if "stem" in q.data and missing:

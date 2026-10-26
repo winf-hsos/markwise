@@ -42,7 +42,9 @@ def _string(old, new: str):
     """New text in the style of the old value: a block for several lines, the old quoting otherwise."""
     if isinstance(old, str) and old == new:
         return old
-    if "\n" in new:
+    if "\n" in new or "\\" in new:
+        # Several lines, or a backslash (LaTeX in a formula): a block shows the text exactly as typed, where
+        # quotes would double every backslash.
         return LiteralScalarString(new)
     if isinstance(old, str) and type(old) is not str and not isinstance(old, LiteralScalarString):
         return type(old)(new)  # keeps double or single quotes

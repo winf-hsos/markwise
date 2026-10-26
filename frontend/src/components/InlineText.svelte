@@ -3,6 +3,7 @@
   import { highlight } from "../lib/highlight.js";
   import { inline } from "../lib/inline.js";
   import { t } from "../lib/i18n.svelte.js";
+  import { formulaErrors, hasFormula } from "../lib/formulas.js";
 
   // A text of a question shown as it reads, which turns into a field for its Markdown on a click. The tick,
   // Ctrl+Enter or leaving the field renders it again and hands the new text to `onsave`; Escape keeps the old one.
@@ -70,6 +71,11 @@
   <div class="inline-edit {klass}" class:code>
     <textarea bind:this={area} bind:value={draft} class="input" aria-label={label || placeholder} spellcheck={!code}
       oninput={fit} {onkeydown} {onblur}></textarea>
+    {#if !code && hasFormula(draft)}
+      {@const errors = formulaErrors(draft)}
+      <div class="formula-preview" aria-live="polite">{@html inline(draft)}</div>
+      {#each errors as error}<span class="formula-error">{error}</span>{/each}
+    {/if}
     <div class="inline-tools">
       <span class="hint">{t(code ? "inline.hintCode" : "inline.hint")}</span>
       <button type="button" class="icon-btn small-icon" title={t("inline.cancel")} aria-label={t("inline.cancel")}

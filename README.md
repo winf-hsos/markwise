@@ -339,6 +339,23 @@ markwise question set "D:\Teaching\Statistics\pool" r-001 options.b.correct true
 
 The command prints the check's findings for the question afterwards and ends with exit code 1 if there are errors.
 
+### Formulas
+
+Formulas are LaTeX math between dollar signs, as Markdown with Pandoc and Quarto knows it: `$E = mc^2$` stands in the running text, and a formula on lines of its own is set apart with `$$`:
+
+```yaml
+stem:
+  de: |-
+    Für welche Werte von $x$ gilt
+    $$
+    \frac{x^2 - 1}{x + 1} = 0 ?
+    $$
+```
+
+So that a dollar sign as a character does not start a formula by chance, the opening `$` must be followed right away by something other than a space, and the closing one preceded by something other than a space and not followed by a digit; `5 $` or `$10` stay text, `\$` is a dollar sign as such, and code between backticks never holds a formula. Texts with a formula are written to the file as a block (`|-`), so that every backslash stands there once, exactly as typed; within double quotes YAML would need it twice.
+
+The window sets formulas with KaTeX, also while typing below the field, where a formula that cannot be read is named with the reason. The printed booklet and the answer key set them with the Typst package [mitex](https://github.com/mitex-rs/mitex), which comes with Markwise, so that printing needs no internet. The check reports a formula with unbalanced braces or an open environment, and a `$$` not closed, as an error. The help from a language model keeps formulas as they are when it translates or improves a text, and writes new ones the same way.
+
 ## Checking a pool
 
 `markwise check <pool>` reads every question and reports three kinds of findings:

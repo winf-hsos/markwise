@@ -24,12 +24,16 @@ from .module import Module
 from .pool import Pool
 from .sheet.layout import BoxSpec, Layout, Rect, SheetParams
 from .sheet.qr import encode_payload, qr_svg
+from . import formulas
 from .text import unwrap
 
 PARAMS = SheetParams()
 BOX = PARAMS.box_size
 FONTS = '("Arial", "Liberation Sans", "DejaVu Sans")'
 LAYOUT_FILE = "layout.json"
+# Typst packages that come with Markwise, so that printing needs no internet: mitex sets LaTeX formulas.
+PACKAGES = Path(__file__).parent / "typst"
+MITEX = '#import "@preview/mitex:0.2.7": mi, mitex\n'
 
 # Where the content of a scanned page may go: clear of the marks, the QR code and the region opposite the QR code,
 # which the reader keeps blank to tell an upside-down page.
@@ -155,7 +159,23 @@ LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+")
 
 
 def _inline(text: str) -> str:
-    """One line of question text as Typst markup: **bold**, *italic* and `code`; everything else stays literal."""
+    """One line of question text as Typst markup: **bold**, *italic*, `code` and formulas (LaTeX, typeset by the
+    package mitex); everything else stays literal."""
+    out = []
+    for kind, piece in formulas.split(text):
+        if kind == formulas.INLINE:
+            out.append(f"#mi({_s(piece)})")
+        elif kind == formulas.DISPLAY:
+            out.append(f"#mitex({_s(piece)})")
+        elif kind == formulas.CODE:
+            out.append(f"#raw({_s(piece[1:-1])})")
+        else:
+            out.append(_styled(piece))
+    return "".join(out)
+
+
+def _styled(text: str) -> str:
+    """Running text without code or formulas: **bold** and *italic*; everything else stays literal."""
     out = []
     for part in INLINE.split(text):
         if not part:
@@ -191,6 +211,7 @@ def markdown(text: str) -> str:
 
 def _preamble(lang: str) -> str:
     return (
+        MITEX +
         f'#set text(font: {FONTS}, size: 10.5pt, lang: "{lang}")\n'
         "#set par(leading: 0.62em, spacing: 1.1em)\n"
         "#show raw: set text(font: (\"Cascadia Code\", \"Consolas\", \"DejaVu Sans Mono\"), size: 9pt)\n"
@@ -387,7 +408,7 @@ class Typeset:
 def _compile(body: str, build: Path, query: bool) -> Typeset:
     source = build / "main.typ"
     source.write_text(body + (_positions_query() if query else ""), encoding="utf-8")
-    pdf = typst.compile(str(source), root=str(build))
+    pdf = typst.compile(str(source), root=str(build), package_path=str(PACKAGES))
     boxes = []
     if query:
         boxes = json.loads(typst.query(str(source), "<mwpos>", field="value", one=True, root=str(build)))

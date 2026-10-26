@@ -196,3 +196,4 @@ The repository holds code, documentation and invented test data only. Real exams
 13. **Points:** suggested as one point per minute of answering time, rounded to half points, at least one; changeable per question in the exam.
 14. **Language:** one language per exam; the booklets contain only that language.
 15. **Order of building:** exams are first put together by hand and printed as anonymous booklets with a tick grid for the student number; personalised booklets from the participant list, shuffling and drawing by a blueprint follow.
+16. **Formulas:** LaTeX math between dollar signs (`$…$`, `$$…$$`) with the rules of Pandoc, so that people and language models write them as text and the websites read them alike; KaTeX sets them in the window, the bundled Typst package mitex in the booklet (Nicolas, 2026-10-26).

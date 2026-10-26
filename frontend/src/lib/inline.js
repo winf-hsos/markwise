@@ -1,4 +1,6 @@
-// The inline Markdown that question texts use: **bold**, *italic* and `code`, as safe HTML.
+// The inline Markdown that question texts use: **bold**, *italic*, `code` and formulas, as safe HTML.
+
+import { renderFormula, split } from "./formulas.js";
 
 const escape = (text) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -35,15 +37,14 @@ export function softBreaks(text) {
 
 export function inline(text) {
   if (!text) return "";
-  // Code first, so that stars inside code stay stars.
-  const parts = escape(softBreaks(text)).split(/(`[^`\n]+`)/g);
-  return parts
-    .map((part) =>
-      part.startsWith("`") && part.endsWith("`") && part.length > 1
-        ? `<code>${part.slice(1, -1)}</code>`
-        : part
-            .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
-            .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>"),
-    )
+  // Code and formulas first, so that stars inside them stay stars.
+  return split(softBreaks(text))
+    .map(([kind, part]) => {
+      if (kind === "code") return `<code>${escape(part.slice(1, -1))}</code>`;
+      if (kind === "inline" || kind === "display") return renderFormula(part, kind === "display");
+      return escape(part)
+        .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+        .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>");
+    })
     .join("");
 }
