@@ -274,3 +274,20 @@ def test_the_level_is_judged_and_a_different_one_proposed(provider):
 
     provider["answers"]["question_review"] = {"findings": [], "changes": [], "level": "apply"}
     assert assist.review(question, LANGS, "de", "de", min_options=2)["level"] is None  # fits: nothing to propose
+
+
+def test_the_check_findings_go_along_and_the_model_is_asked_to_act_on_them(provider):
+    provider["store"]["key"] = "sk-good"
+    switch_on()
+    provider["answers"]["question_review"] = {"findings": [], "changes": [], "level": "understand"}
+    known = [{"severity": "warning", "message": "option a is much longer than the others and may give itself away"},
+             {"severity": "note", "message": "no time for answering is set"},  # a note is left out
+             {"severity": "error", "message": "single choice needs exactly one correct option, has 2"}]
+    assist.review(QUESTION, LANGS, "de", "de", min_options=2, known=known)
+    body = provider["sent"][-1]["body"]
+    user = body["messages"][1]["content"]
+    assert "- warning: option a is much longer" in user and "- error: single choice needs" in user
+    assert "no time for answering" not in user
+    assert "Act on each of them" in body["messages"][0]["content"]
+    assist.review(QUESTION, LANGS, "de", "de", min_options=2)
+    assert "automatic check" not in provider["sent"][-1]["body"]["messages"][1]["content"]

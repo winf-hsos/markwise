@@ -276,8 +276,9 @@ def cmd_assist_review(args) -> int:
     pool = Pool.open(args.pool)
     lang = args.lang or pool.settings.languages[0]
     fields = _model_fields(pool, args.id)
+    known = catalog.detail(pool, args.id)["findings"]
     answer = assist.review(fields, pool.settings.languages, lang, "de", pool.settings.min_options,
-                           assist.figures_for_model(pool, fields))
+                           assist.figures_for_model(pool, fields), known)
     if args.json:
         _print_json(answer)
     else:

@@ -501,11 +501,12 @@ class Api:
         return self._assist(assist.list_models)
 
     @_answer
-    def assist_review(self, pool_path: str, fields: dict, lang: str) -> dict:
-        """Check a question with its answers and complete it: languages, feedback and missing wrong options."""
+    def assist_review(self, pool_path: str, fields: dict, lang: str, known: list | None = None) -> dict:
+        """Check a question with its answers and complete it: languages, feedback and missing wrong options.
+        `known` are the findings of Markwise's own check as the editor shows them, for the model to act on."""
         pool = Pool.open(pool_path)
         return self._assist(assist.review, fields, pool.settings.languages, lang, user_settings.load().language,
-                            pool.settings.min_options, assist.figures_for_model(pool, fields))
+                            pool.settings.min_options, assist.figures_for_model(pool, fields), known or [])
 
     @_answer
     def assist_vary_numbers(self, pool_path: str, fields: dict) -> dict:

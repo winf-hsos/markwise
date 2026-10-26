@@ -200,7 +200,9 @@
   }
 
   async function reviewQuestion() {
-    const answer = await askModel("review", "assist_review", lang);
+    // The errors and warnings of the check go along, so that the model proposes what to do about them.
+    const known = $state.snapshot(findings).filter((f) => f.severity === "error" || f.severity === "warning");
+    const answer = await askModel("review", "assist_review", lang, known);
     if (answer?.level) {
       // A different level appears among the proposals like a text, and applying it sets the question's own level.
       const { before, proposed } = answer.level;

@@ -316,8 +316,17 @@ def _missing_options(fields: dict, min_options: int) -> int:
     return max(0, min_options - len(fields.get("options") or []))
 
 
+def _known_findings(known: list[dict]) -> str:
+    """The errors and warnings of Markwise's own check, for the model to act on."""
+    lines = [f"- {f.get('severity')}: {f.get('message')}" for f in known or []
+             if f.get("severity") in ("error", "warning") and f.get("message")]
+    if not lines:
+        return ""
+    return ("\n\nMarkwise's automatic check reports for this question:\n" + "\n".join(lines))
+
+
 def review(fields: dict, languages: list[str], lang: str, answer_lang: str, min_options: int = 4,
-           figures: list[str] = ()) -> dict:
+           figures: list[str] = (), known: list[dict] = ()) -> dict:
     """Check the question as a whole and complete it, in one go: findings, improved texts per field and language
     (including texts in the wrong or a missing language and missing feedback), and for a choice question with too
     few options as many new wrong options as it lacks."""
@@ -375,7 +384,15 @@ def review(fields: dict, languages: list[str], lang: str, answer_lang: str, min_
         f"Finally judge the level: give in `level` the level the question demands as it stands (after your proposed "
         f"changes). If it differs from the level the question carries, explain why in one finding about `level`."
     )
-    answer = _ask(system, _question_text(fields, languages), "question_review", schema, figures)
+    reported = _known_findings(known)
+    if reported:
+        system += (
+            "\n\nThe question comes with the errors and warnings of Markwise's automatic check. Act on each of them: "
+            "propose the change that resolves it where a text can resolve it, or say in a finding why it does not "
+            "apply or what the examiner has to do (for example add an option or a figure). Do not repeat a reported "
+            "problem without saying what to do about it."
+        )
+    answer = _ask(system, _question_text(fields, languages) + reported, "question_review", schema, figures)
     result = {"findings": _findings(answer, names + ["level"]),
               "changes": _flatten(fields, answer.get("changes", []), names, languages), "new_options": [], "level": None}
     judged = answer.get("level")
