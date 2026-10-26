@@ -11,6 +11,7 @@
   import { drafts, recall, remember } from "../lib/viewstate.svelte.js";
   import { ensureQuestions, questionsOf, refreshQuestions } from "../lib/questions.svelte.js";
   import QuestionEditor from "../components/QuestionEditor.svelte";
+  import ExamItem from "../components/ExamItem.svelte";
 
   // The exams of the current module, and putting one together by hand: its questions in order, with points.
   const modulePath = $derived(app.settings?.current_module || "");
@@ -107,6 +108,10 @@
     save({ entries: plainEntries(current.entries) });
   }
 
+  function removeRow(row) {
+    removeAt(current.entries.findIndex((e) => e.pool === row.pool && e.id === row.id));
+  }
+
   function removeAt(index) {
     current.entries = current.entries.filter((_, i) => i !== index);
     save({ entries: plainEntries(current.entries) });
@@ -131,6 +136,36 @@
   async function saveSetting(name, value, input) {
     if (!(await save({ [name]: value })) && input) input.value = current[name];
   }
+
+  // --- the questions as the booklet shows them ----------------------------------------------------------
+
+  // Read once per question and kept; read anew for another language or after the questions changed. Until the
+  // new readings are there, the old ones stay on screen.
+  let rendered = $state({}); // key(pool, id) -> item from exam_items
+  let printWords = $state(null); // the booklet's words in the exam's language
+  let renderedFor = "";
+  $effect(() => {
+    const lang = current?.language;
+    const version = store.version;
+    const refs = (current?.entries ?? []).map((e) => ({ pool: e.pool, id: e.id }));
+    untrack(() => {
+      if (!current) return;
+      const stamp = `${current.path}|${lang}|${version}`;
+      const fresh = stamp !== renderedFor;
+      renderedFor = stamp;
+      const wanted = fresh ? refs : refs.filter((r) => !(key(r.pool, r.id) in rendered));
+      if (!wanted.length) return;
+      call("exam_items", lang, wanted)
+        .then((answer) => {
+          if (renderedFor !== stamp) return;
+          printWords = answer.words;
+          const next = fresh ? {} : { ...rendered };
+          for (const item of answer.items) next[key(item.pool, item.id)] = item;
+          rendered = next;
+        })
+        .catch((err) => showToast(errorText(err)));
+    });
+  });
 
   // --- editing a question without leaving the exam ----------------------------------------------------
 
@@ -240,41 +275,6 @@
       </div>
 
       <div class="exam-split">
-        <section class="exam-list" aria-label={t("exams.content")}>
-          <h3 class="pane-title">{t("exams.content")}</h3>
-          {#if !entries.length}<p class="muted pad">{t("exams.emptyExam")}</p>{/if}
-          <ol class="exam-entries">
-            {#each entries as entry, i (entry.pool + entry.id)}
-              <li>
-                <span class="entry-no">{i + 1}</span>
-                <div class="entry-main">
-                  <div class="q-row-head">
-                    <span class="type-icon"><Icon name={TYPE_ICONS[entry.row?.type] ?? "questions"} /></span>
-                    <span class="qid">{entry.id}</span>
-                    <span class="q-concept">{entry.row?.concept_name ?? ""}</span>
-                    {#if entry.row?.level}<span class="tag">{t(`level.${entry.row.level}`)}</span>{/if}
-                    {#if entry.row?.time_seconds}<span class="tag">{formatTime(entry.row.time_seconds)}</span>
-                    {:else if entry.row}<span class="tag warn">{t("exams.noTime")}</span>{/if}
-                  </div>
-                  <span class="q-stem">{entry.row?.stem ?? t("exams.missing")}</span>
-                  {#each findingsFor(entry.id) as f}<span class="entry-finding {f.severity}">{findingText(f)}</span>{/each}
-                </div>
-                <label class="entry-points" title={t("exams.pointsHint")}>
-                  <input class="input" type="number" min="0.5" step="0.5" value={entry.points}
-                    oninput={(e) => setPoints(i, Number(e.currentTarget.value))} aria-label={t("exams.points")} />
-                  <span>{t("exams.pointsShort")}</span>
-                </label>
-                <span class="entry-tools">
-                  <button class="icon-btn small-icon" title={t("exams.edit")} aria-label={t("exams.edit")} disabled={!entry.row} onclick={() => editQuestion(entry.pool, entry.id)}><Icon name="edit" /></button>
-                  <button class="icon-btn small-icon" title={t("exams.up")} aria-label={t("exams.up")} disabled={i === 0} onclick={() => move(i, -1)}><Icon name="chevron" /></button>
-                  <button class="icon-btn small-icon down" title={t("exams.down")} aria-label={t("exams.down")} disabled={i === entries.length - 1} onclick={() => move(i, 1)}><Icon name="chevron" /></button>
-                  <button class="icon-btn small-icon danger" title={t("exams.remove")} aria-label={t("exams.remove")} onclick={() => removeAt(i)}><Icon name="remove" /></button>
-                </span>
-              </li>
-            {/each}
-          </ol>
-        </section>
-
         <section class="exam-picker" aria-label={t("exams.choose")}>
           <h3 class="pane-title">{t("exams.choose")}</h3>
           <div class="q-tools">
@@ -301,7 +301,7 @@
           <div class="picker-list">
             {#each candidates as q (q.pool + q.id)}
               {@const added = inExam.has(key(q.pool, q.id))}
-              <div class="picker-row" class:added>
+              <div class="picker-row" class:added title={added ? t("exams.inExam") : null}>
                 <div class="entry-main">
                   <div class="q-row-head">
                     <span class="type-icon"><Icon name={TYPE_ICONS[q.type] ?? "questions"} /></span>
@@ -314,13 +314,51 @@
                 </div>
                 <button class="icon-btn small-icon" title={t("exams.edit")} aria-label={t("exams.edit")} onclick={() => editQuestion(q.pool, q.id)}><Icon name="edit" /></button>
                 {#if added}
-                  <span class="hint">{t("exams.added")}</span>
+                  <button class="btn btn-small" onclick={() => removeRow(q)}><Icon name="remove" />{t("exams.take")}</button>
                 {:else}
                   <button class="btn btn-small" onclick={() => add(q)}><Icon name="plus" />{t("exams.add")}</button>
                 {/if}
               </div>
             {/each}
           </div>
+        </section>
+        <section class="exam-list" aria-label={t("exams.content")}>
+          <h3 class="pane-title">{t("exams.content")}</h3>
+          {#if !entries.length}<p class="muted pad">{t("exams.emptyExam")}</p>{/if}
+          <ol class="exam-entries">
+            {#each entries as entry, i (entry.pool + entry.id)}
+              {@const item = rendered[key(entry.pool, entry.id)]}
+              <li class="exam-entry">
+                <div class="entry-bar">
+                  <span class="type-icon"><Icon name={TYPE_ICONS[entry.row?.type] ?? "questions"} /></span>
+                  <span class="qid">{entry.id}</span>
+                  <span class="q-concept">{entry.row?.concept_name ?? ""}</span>
+                  {#if entry.row?.level}<span class="tag">{t(`level.${entry.row.level}`)}</span>{/if}
+                  {#if entry.row?.time_seconds}<span class="tag">{formatTime(entry.row.time_seconds)}</span>
+                  {:else if entry.row}<span class="tag warn">{t("exams.noTime")}</span>{/if}
+                  <label class="entry-points" title={t("exams.pointsHint")}>
+                    <input class="input" type="number" min="0.5" step="0.5" value={entry.points}
+                      oninput={(e) => setPoints(i, Number(e.currentTarget.value))} aria-label={t("exams.points")} />
+                    <span>{t("exams.pointsShort")}</span>
+                  </label>
+                  <span class="entry-tools">
+                    <button class="icon-btn small-icon" title={t("exams.edit")} aria-label={t("exams.edit")} disabled={!entry.row} onclick={() => editQuestion(entry.pool, entry.id)}><Icon name="edit" /></button>
+                    <button class="icon-btn small-icon up" title={t("exams.up")} aria-label={t("exams.up")} disabled={i === 0} onclick={() => move(i, -1)}><Icon name="chevron" /></button>
+                    <button class="icon-btn small-icon" title={t("exams.down")} aria-label={t("exams.down")} disabled={i === entries.length - 1} onclick={() => move(i, 1)}><Icon name="chevron" /></button>
+                    <button class="icon-btn small-icon danger" title={t("exams.remove")} aria-label={t("exams.remove")} onclick={() => removeAt(i)}><Icon name="remove" /></button>
+                  </span>
+                </div>
+                {#each findingsFor(entry.id) as f}<span class="entry-finding {f.severity}">{findingText(f)}</span>{/each}
+                {#if !item || !printWords}
+                  <div class="booklet-item waiting">{entry.row?.stem ?? ""}</div>
+                {:else if item.missing}
+                  <div class="booklet-item waiting">{t("exams.missing")}</div>
+                {:else}
+                  <ExamItem {item} number={i + 1} points={Number(entry.points)} words={printWords} />
+                {/if}
+              </li>
+            {/each}
+          </ol>
         </section>
       </div>
     </div>

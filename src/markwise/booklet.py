@@ -123,22 +123,23 @@ def items_of(exam: Exam, module: Module) -> list[Item]:
                            count=len(errors))
     if not exam.questions:
         raise BookletError("booklet_empty", "the exam has no questions")
-    lang = exam.language
-    out = []
-    for number, entry in enumerate(exam.questions, 1):
-        pool = Pool.open(module.pool_root(entry.pool))
-        q = pool.find(entry.id)
-        figures = [path for name in q.images if (path := pool.image_file(name)) is not None]
-        options = [{"id": str(o.get("id")), "text": _pick(o.get("text"), lang), "correct": o.get("correct") is True,
-                    "feedback": _pick(o.get("feedback"), lang)} for o in q.options if isinstance(o, dict)]
-        out.append(Item(
-            number=number, id=q.id, points=entry.points, type=q.type, stem=_pick(q.get("stem"), lang),
-            code=str(q.get("code") or ""), code_language=str(q.get("code_language") or ""), figures=figures,
-            image_columns=q.image_columns, options=options, lines=int(q.get("lines") or 8),
-            half_points=q.get("half_points") is True, expected=_pick(q.get("expected"), lang),
-            marking_notes=_pick(q.get("marking_notes"), lang),
-        ))
-    return out
+    return [item_of(Pool.open(module.pool_root(entry.pool)), entry.id, exam.language, number, entry.points)
+            for number, entry in enumerate(exam.questions, 1)]
+
+
+def item_of(pool: Pool, qid: str, lang: str, number: int = 0, points: float = 0) -> Item:
+    """One question as the booklet shows it, in one language."""
+    q = pool.find(qid)
+    figures = [path for name in q.images if (path := pool.image_file(name)) is not None]
+    options = [{"id": str(o.get("id")), "text": _pick(o.get("text"), lang), "correct": o.get("correct") is True,
+                "feedback": _pick(o.get("feedback"), lang)} for o in q.options if isinstance(o, dict)]
+    return Item(
+        number=number, id=q.id, points=points, type=q.type, stem=_pick(q.get("stem"), lang),
+        code=str(q.get("code") or ""), code_language=str(q.get("code_language") or ""), figures=figures,
+        image_columns=q.image_columns, options=options, lines=int(q.get("lines") or 8),
+        half_points=q.get("half_points") is True, expected=_pick(q.get("expected"), lang),
+        marking_notes=_pick(q.get("marking_notes"), lang),
+    )
 
 
 # --- Markdown to Typst ---------------------------------------------------------------------

@@ -591,6 +591,31 @@ class Api:
         return {**self._exam_detail(exam), "folder": str(printed.folder), "pages_per_booklet": printed.pages_per_booklet}
 
     @_answer
+    def exam_items(self, lang: str, refs: list) -> dict:
+        """Questions as the booklet shows them, in the exam's language and without the solution, for the exam page:
+        `refs` are [{pool, id}]. A question that cannot be read comes back with `missing`."""
+        lang = lang if lang in booklet.WORDS else "de"
+        pools: dict[str, Pool] = {}
+        items = []
+        for ref in refs:
+            pool_path, qid = str(ref["pool"]), str(ref["id"])
+            try:
+                pool = pools.get(pool_path) or pools.setdefault(pool_path, Pool.open(pool_path))
+                item = booklet.item_of(pool, qid, lang)
+            except (FileNotFoundError, KeyError, ValueError):
+                items.append({"pool": pool_path, "id": qid, "missing": True})
+                continue
+            items.append({
+                "pool": pool_path, "id": qid, "type": item.type, "stem": item.stem, "code": item.code,
+                "code_language": item.code_language, "image_columns": item.image_columns, "lines": item.lines,
+                "half_points": item.half_points, "options": [{"id": o["id"], "text": o["text"]} for o in item.options],
+                "figures": [{"name": path.name, "data": catalog.data_url(path)} for path in item.figures],
+            })
+        words = booklet.WORDS[lang]
+        return {"items": items, "words": {k: words[k] for k in ("question", "point", "points", "single", "multiple",
+                                                                 "examiners_only")}}
+
+    @_answer
     def open_printed(self, exam_path: str, name: str) -> None:
         """Open a PDF of the exam's last print in the program Windows uses for it."""
         files = {f["name"]: f["path"] for f in booklet.printed_files(Exam.open(exam_path))}
