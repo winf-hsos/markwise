@@ -137,3 +137,24 @@ def test_sections_start_before_a_question_and_follow_it_when_the_order_changes(m
     assert [e.get("section") or e["id"] for e in answer["entries"]] == ["s1", "co-001", "co-002", "s2", "s3"]
     codes = {(f["code"], f["params"].get("section")) for f in answer["findings"]}
     assert {("exam_section_empty", "s2"), ("exam_section_empty", "s3"), ("exam_section_title", "s3")} <= codes
+
+
+def test_a_section_about_one_concept_points_out_questions_about_another(module):
+    from markwise.exam import ExamSection
+    exam = Exam.create(module, "Topics", "2027-01-21", "en", author="")
+    pool = module.open_pools()[0]
+    q = pool.new_question("shapes", "single", author="")
+    exam.add(module, pool.root, "co-001")
+    exam.add(module, pool.root, q.id)
+    exam.set_flat([ExamSection("s1", "Colours", pool=module.pools[0], concept="colours"), *exam.questions])
+    exam.save()
+    again = Exam.open(exam.root)
+    assert (again.sections[0].pool, again.sections[0].concept) == (module.pools[0], "colours")
+    found = [(f.code, f.question) for f in again.check(module) if f.code == "exam_section_concept"]
+    assert found == [("exam_section_concept", q.id)]
+    entry = Api().get_exam(str(exam.root))["data"]["entries"][0]
+    assert entry["concept"] == "colours" and entry["pool"] == str(pool.root)
+    entry["concept"] = ""
+    rest = Api().get_exam(str(exam.root))["data"]["entries"][1:]
+    Api().update_exam(str(exam.root), {"entries": [entry, *rest]})
+    assert Exam.open(exam.root).sections[0].concept == ""

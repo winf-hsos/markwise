@@ -543,7 +543,8 @@ class Api:
 
     def _exam_detail(self, exam: Exam) -> dict:
         module = Module.around(exam.root)
-        entries = [{"section": item.id, "title": item.title, "note": item.note} if isinstance(item, ExamSection)
+        entries = [{"section": item.id, "title": item.title, "note": item.note, "concept": item.concept,
+                    "pool": str(module.pool_root(item.pool)) if item.concept else ""} if isinstance(item, ExamSection)
                    else {"pool": str(module.pool_root(item.pool)), "id": item.id, "points": item.points}
                    for item in exam.flat()]
         return {**self._exam_entry(exam), "examiners": exam.examiners, "entries": entries,
@@ -581,8 +582,10 @@ class Api:
             items: list[ExamQuestion | ExamSection] = []
             for e in fields["entries"]:
                 if "section" in e:
+                    concept = str(e.get("concept") or "")
                     items.append(ExamSection(str(e["section"] or exam.new_section_id()), str(e.get("title") or ""),
-                                             str(e.get("note") or "")))
+                                             str(e.get("note") or ""), pool=exam.pool_ref(module, e["pool"]) if concept else "",
+                                             concept=concept))
                 else:
                     items.append(ExamQuestion(exam.pool_ref(module, e["pool"]), str(e["id"]), float(e["points"])))
             exam.set_flat(items)

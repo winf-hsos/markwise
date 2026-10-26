@@ -334,8 +334,8 @@ def _exam_report(exam) -> dict:
     return {"title": exam.title, "date": exam.date, "semester": exam.semester, "language": exam.language,
             "answers": exam.answers, "examiners": exam.examiners, "points": exam.total_points(),
             "questions": [{"pool": q.pool, "id": q.id, "points": q.points} for q in exam.questions],
-            "sections": [{"id": s.id, "title": s.title, "note": s.note, "before": s.before,
-                          "points": exam.section_points(s)} for s in exam.sections],
+            "sections": [{"id": s.id, "title": s.title, "note": s.note, "before": s.before, "pool": s.pool,
+                          "concept": s.concept, "points": exam.section_points(s)} for s in exam.sections],
             "findings": [f.to_dict() for f in exam.check(module)]}
 
 
@@ -351,7 +351,8 @@ def cmd_exam_show(args) -> int:
             starts.setdefault(s["before"], []).append(s)
         for i, q in enumerate(report["questions"]):
             for s in starts.pop(i, []):
-                print(f"  {s['title'] or '(no title)'}  [{s['id']}, {s['points']:g} points]")
+                about = f", concept {s['concept']}" if s["concept"] else ""
+                print(f"  {s['title'] or '(no title)'}  [{s['id']}{about}, {s['points']:g} points]")
             print(f"  {i + 1:>2}. {q['id']:<12} {q['points']:>5g} points  ({q['pool']})")
         for rest in starts.values():
             for s in rest:
@@ -392,7 +393,10 @@ def cmd_exam_section(args) -> int:
         return 0
     if not args.title:
         raise ValueError("a new section needs --title")
-    section = ExamSection(exam.new_section_id(), args.title, args.note or "")
+    module = Module.around(exam.root)
+    pool = exam.pool_ref(module, args.pool) if args.pool else (module.pools[0] if args.concept and module.pools else "")
+    section = ExamSection(exam.new_section_id(), args.title, args.note or "", pool=pool if args.concept else "",
+                          concept=args.concept or "")
     if args.before:
         at = next((n for n, i in enumerate(items) if isinstance(i, ExamQuestion) and i.id == args.before), None)
         if at is None:
@@ -650,6 +654,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--note", help="a few words for the students below the title")
     p.add_argument("--before", metavar="ID", help="the question the section starts with (default: at the end)")
     p.add_argument("--remove", metavar="SECTION", help="remove this section; its questions stay")
+    p.add_argument("--concept", help="the concept the section draws from (its questions are checked against it)")
+    p.add_argument("--pool", help="the pool of that concept, if the module has several (default: its first)")
     p.set_defaults(func=cmd_exam_section)
     p = exam.add_parser("rename", parents=[common], help="give an exam a new title or date; its folder follows")
     p.add_argument("exam")

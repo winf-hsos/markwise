@@ -60,6 +60,8 @@
     try {
       const [exam] = await Promise.all([call("get_exam", path), loadQuestions()]);
       current = exam;
+      closed = recall("exams", modulePath).closed?.[exam.path] ?? [];
+      fillingKey = null;
       remember("exams", modulePath, { open: path });
     } catch (err) {
       showToast(errorText(err));
@@ -88,9 +90,10 @@
   // counted straight through the sections.
   const entries = $derived.by(() => {
     let n = 0;
+    let within = null; // the section the questions belong to, from its heading to the next
     return (current?.entries ?? []).map((e) => (e.section != null
-      ? { ...e, kind: "section", k: `section:${e.section}` }
-      : { ...e, kind: "question", k: key(e.pool, e.id), row: rows.get(key(e.pool, e.id)), number: ++n }));
+      ? { ...e, kind: "section", k: (within = `section:${e.section}`) }
+      : { ...e, kind: "question", k: key(e.pool, e.id), row: rows.get(key(e.pool, e.id)), number: ++n, sectionK: within }));
   });
   const asked = $derived(entries.filter((e) => e.kind === "question"));
   const inExam = $derived(new Set(asked.map((e) => e.k)));
@@ -103,8 +106,9 @@
     const out = {};
     let open = null;
     for (const e of list) {
-      if (e.kind === "section" || e.section) out[(open = e.k)] = { points: 0, seconds: 0 };
+      if (e.kind === "section" || e.section) out[(open = e.k)] = { points: 0, seconds: 0, count: 0 };
       else if (open) {
+        out[open].count += 1;
         out[open].points += Number(e.points || 0);
         out[open].seconds += e.row?.time_seconds ?? e.seconds ?? 0;
       }
@@ -114,6 +118,8 @@
   const findingsFor = (id) => (current?.findings ?? []).filter((f) => f.question === id && f.severity !== "note");
   const sectionFindings = (id) => (current?.findings ?? []).filter((f) => f.params?.section === id);
   const examFindings = $derived((current?.findings ?? []).filter((f) => (!f.question || f.severity === "note") && !f.params?.section));
+  // A text for one line: without the marks of bold, italic and code.
+  const plain = (text) => text.replace(/\*\*|`/g, "").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1$2");
   const formatPoints = (value) => Number(value).toLocaleString(undefined, { maximumFractionDigits: 1 });
 
   let saving = null;
@@ -130,7 +136,7 @@
   }
 
   const plainEntries = (list) => list.map((e) => (e.section != null
-    ? { section: e.section, title: e.title ?? "", note: e.note ?? "" }
+    ? { section: e.section, title: e.title ?? "", note: e.note ?? "", pool: e.pool ?? "", concept: e.concept ?? "" }
     : { pool: e.pool, id: e.id, points: Number(e.points) }));
 
   // A new section: the first one opens the exam, so that every question belongs to it; any further one starts at
@@ -146,6 +152,42 @@
     save({ entries: plainEntries(list) });
   }
 
+  // --- what a section draws from, and which one is being filled ---------------------------------------
+  //
+  // A section may name a concept. The section being filled, chosen with the plus in its heading or by giving it a
+  // concept, decides where the plus on the left puts a question; with a concept, the list on the left shows only
+  // the questions about it.
+
+  let fillingKey = $state(null);
+  const filling = $derived(entries.find((e) => e.k === fillingKey && e.kind === "section") ?? null);
+  const fillingName = $derived(filling?.concept ? (concepts.find(([p, c]) => p === filling.pool && c === filling.concept)?.[2] ?? filling.concept) : "");
+  function fill(section) {
+    fillingKey = fillingKey === section.k ? null : section.k;
+  }
+
+  // Every concept of the module's pools, for the choice in a section: [pool, concept, name].
+  const concepts = $derived(
+    [...new Map(questions.map((q) => [`${q.pool}|${q.concept}`, [q.pool, q.concept, q.concept_name]])).values()]
+      .sort((a, b) => a[2].localeCompare(b[2])),
+  );
+
+  function setConcept(index, value) {
+    const [pool, concept] = value ? value.split("|") : ["", ""];
+    current.entries[index].pool = pool;
+    current.entries[index].concept = concept;
+    if (concept) fillingKey = entries[index].k;
+    save({ entries: plainEntries(current.entries) });
+  }
+
+  // --- sections folded away ------------------------------------------------------------------------
+
+  let closed = $state([]); // keys of the sections whose questions are folded away, per exam
+  function toggleClosed(k) {
+    closed = closed.includes(k) ? closed.filter((c) => c !== k) : [...closed, k];
+    const kept = recall("exams", modulePath).closed ?? {};
+    remember("exams", modulePath, { closed: { ...kept, [current.path]: closed } });
+  }
+
   // Title and note are saved when the field is left, so that a reply from the core cannot overwrite typing.
   function setSection(index, field, value) {
     current.entries[index][field] = value;
@@ -153,9 +195,15 @@
   }
   const suggest = (s) => (s ? Math.max(1, Math.round((s / 60) * 2) / 2) : 1);
 
+  // A new question goes to the end of the section being filled, or else to the end of the exam.
   function add(row) {
-    current.entries = [...current.entries, { pool: row.pool, id: row.id, points: suggest(row.time_seconds) }];
-    save({ entries: plainEntries(current.entries) });
+    const list = [...current.entries];
+    const entry = { pool: row.pool, id: row.id, points: suggest(row.time_seconds) };
+    const start = filling ? entries.findIndex((e) => e.k === filling.k) : -1;
+    const next = start < 0 ? -1 : entries.findIndex((e, i) => i > start && e.kind === "section");
+    list.splice(start < 0 || next < 0 ? list.length : next, 0, entry);
+    current.entries = list;
+    save({ entries: plainEntries(list) });
   }
 
   function removeRow(row) {
@@ -213,6 +261,11 @@
   }
   function pressLine(event, line) {
     if (event.button !== 0 || line.slot) return;
+    if (event.target.closest(".fold-toggle")) {
+      event.preventDefault();
+      toggleClosed(line.k);
+      return;
+    }
     event.preventDefault();
     press(event, { kind: "move", index: line.index, line });
   }
@@ -354,6 +407,8 @@
   const landed = (entry) => markLanded(entry.section != null ? `section:${entry.section}` : key(entry.pool, entry.id));
 
   async function markLanded(k) {
+    const within = entries.find((e) => e.k === k)?.sectionK;
+    if (within && closed.includes(within)) toggleClosed(within);
     landedKey = k;
     await tick();
     listEl?.querySelector(`[data-key="${CSS.escape(landedKey)}"]`)?.scrollIntoView({ block: "center" });
@@ -373,7 +428,7 @@
       .filter(({ index }) => !(drag?.kind === "move" && index === drag.index))
       .map(({ e, index }) => (e.kind === "section"
         ? { k: e.k, index, section: true, id: e.title, stem: e.note }
-        : { k: e.k, index, id: e.id, type: e.row?.type, stem: e.row?.stem ?? "", points: Number(e.points),
+        : { k: e.k, index, id: e.id, type: e.row?.type, stem: plain(e.row?.stem ?? ""), points: Number(e.points),
             seconds: e.row?.time_seconds ?? 0, timed: e.row?.time_seconds != null, severity: severity(e.id) }));
     if (drag && drag.target != null) {
       list.splice(drag.target, 0, drag.section
@@ -383,7 +438,11 @@
     let n = 0;
     const numbered = list.map((x) => (x.section ? x : { ...x, number: ++n }));
     const sums = sectionTotals(numbered);
-    return numbered.map((x) => (x.section ? { ...x, sum: sums[x.k] } : x));
+    // In the outline a folded section hides its lines; while something is held, everything is there to land in.
+    let hidden = false;
+    return numbered
+      .map((x) => (x.section ? { ...x, sum: sums[x.k], closed: !drag && closed.includes(x.k) } : x))
+      .filter((x) => (x.section ? ((hidden = x.closed), true) : !hidden));
   });
 
   // Up and down on a focused handle move the question without a mouse.
@@ -473,13 +532,14 @@
         q.status !== "retired" &&
         anyOf(filter.pool, (v) => q.pool === v) &&
         anyOf(filter.concept, (v) => q.concept === v) &&
+        (!filling?.concept || (q.pool === filling.pool && q.concept === filling.concept)) &&
         anyOf(filter.level, (v) => q.level === v) &&
         anyOf(filter.type, (v) => q.type === v) &&
         anyOf(filter.use, (v) => (v === "practice" ? q.public : q.exam)) &&
         words.every((w) => q.search.includes(w)),
     ),
   );
-  const concepts = $derived(
+  const pickerConcepts = $derived(
     [...new Map(questions.filter((q) => anyOf(filter.pool, (v) => q.pool === v)).map((q) => [q.concept, q.concept_name])).entries()]
       .sort((a, b) => a[1].localeCompare(b[1])),
   );
@@ -554,6 +614,13 @@
       <div class="exam-split">
         <section class="exam-picker" aria-label={t("exams.choose")}>
           <h3 class="pane-title">{t("exams.choose")}</h3>
+          {#if filling}
+            <div class="filling-note">
+              <span>{t("exams.filling", { title: filling.title || t("exams.sectionTitle") })}{#if fillingName}{" · "}<b>{fillingName}</b>{/if}</span>
+              <button class="icon-btn small-icon" title={t("exams.fillingEnd")} aria-label={t("exams.fillingEnd")} onclick={() => (fillingKey = null)}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke-width="1.8" stroke-linecap="round" /></svg></button>
+            </div>
+          {/if}
           <div class="q-tools">
             <div class="search">
               <Icon name="search" />
@@ -565,7 +632,7 @@
                   options={pools.map((p) => ({ value: p.path, label: p.name }))} />
               {/if}
               <MultiSelect bind:selected={filter.concept} label={t("q.meta.concept")} allLabel={t("q.all.concepts")}
-                options={concepts.map(([id, name]) => ({ value: id, label: name }))} />
+                options={pickerConcepts.map(([id, name]) => ({ value: id, label: name }))} />
               <MultiSelect bind:selected={filter.level} label={t("q.meta.level")} allLabel={t("q.all.levels")}
                 options={["remember", "understand", "apply"].map((v) => ({ value: v, label: t(`level.${v}`) }))} />
               <MultiSelect bind:selected={filter.type} label={t("stats.type")} allLabel={t("q.all.types")}
@@ -628,8 +695,9 @@
                   onpointerdown={(e) => outline && !drag && pressLine(e, x)}
                   onkeydown={(e) => outline && e.key === "Enter" && openLine(x)}>
                   {#if x.section}
+                    {#if outline && !drag}<span class="fold-toggle" class:shut={x.closed} title={t(x.closed ? "exams.openSection" : "exams.closeSection")}><Icon name="chevron" /></span>{/if}
                     <span class="compact-title">{x.id || t("exams.sectionTitle")}</span>
-                    <span class="compact-stem">{x.stem}</span>
+                    <span class="compact-stem">{x.closed && x.sum ? t(x.sum.count === 1 ? "exams.question1" : "exams.questionsN", { n: x.sum.count }) : x.stem}</span>
                     {#if x.sum && outline && x.sum.seconds}<span class="compact-time">{formatTotal(x.sum.seconds)}</span>{/if}
                     {#if x.sum}<span class="compact-points">{formatPoints(x.sum.points)} {t("exams.pointsShort")}</span>{/if}
                   {:else}
@@ -648,20 +716,35 @@
           <ol class="exam-entries">
             {#each entries as entry, i (entry.k)}
               {#if entry.kind === "section"}
-              <li class="exam-section" class:landed={landedKey === entry.k} data-key={entry.k}>
+              {@const sum = totals[entry.k]}
+              {@const shut = closed.includes(entry.k)}
+              <li class="exam-section" class:landed={landedKey === entry.k} class:filling={fillingKey === entry.k} class:shut data-key={entry.k}>
                 <div class="section-bar">
                   <button class="drag-handle" title={t("exams.dragHandle")} aria-label={t("exams.dragHandle")}
                     onpointerdown={(e) => pressHandle(e, i)} onkeydown={(e) => onHandleKey(e, i)}><Icon name="grip" /></button>
+                  <button class="fold-toggle" class:shut aria-expanded={!shut} title={t(shut ? "exams.openSection" : "exams.closeSection")}
+                    aria-label={t(shut ? "exams.openSection" : "exams.closeSection")} onclick={() => toggleClosed(entry.k)}><Icon name="chevron" /></button>
                   <input class="section-title" value={entry.title} placeholder={t("exams.sectionTitle")} aria-label={t("exams.sectionTitle")}
                     onchange={(e) => setSection(i, "title", e.currentTarget.value.trim())} />
-                  {#if totals[entry.k]}<span class="section-sum">{formatPoints(totals[entry.k].points)} {t("exams.points")}{#if totals[entry.k].seconds} · {formatTotal(totals[entry.k].seconds)}{/if}</span>{/if}
+                  {#if sum}<span class="section-sum">{t(sum.count === 1 ? "exams.question1" : "exams.questionsN", { n: sum.count })} · {formatPoints(sum.points)} {t("exams.points")}{#if sum.seconds} · {formatTotal(sum.seconds)}{/if}</span>{/if}
+                  <button class="icon-btn small-icon" class:on={fillingKey === entry.k} aria-pressed={fillingKey === entry.k}
+                    title={t("exams.fillHint")} aria-label={t("exams.fillHint")} onclick={() => fill(entry)}><Icon name="plus" /></button>
                   <button class="icon-btn small-icon danger" title={t("exams.removeSection")} aria-label={t("exams.removeSection")} onclick={() => removeAt(i)}><Icon name="remove" /></button>
                 </div>
-                <input class="section-note" value={entry.note} placeholder={t("exams.sectionNote")} aria-label={t("exams.sectionNote")}
-                  onchange={(e) => setSection(i, "note", e.currentTarget.value.trim())} />
+                {#if !shut}
+                  <div class="section-more">
+                    <input class="section-note" value={entry.note} placeholder={t("exams.sectionNote")} aria-label={t("exams.sectionNote")}
+                      onchange={(e) => setSection(i, "note", e.currentTarget.value.trim())} />
+                    <select class="select select-small section-concept" aria-label={t("exams.sectionConcept")} title={t("exams.sectionConceptHint")}
+                      value={entry.concept ? `${entry.pool}|${entry.concept}` : ""} onchange={(e) => setConcept(i, e.currentTarget.value)}>
+                      <option value="">{t("exams.noConcept")}</option>
+                      {#each concepts as [pool, id, name] (pool + id)}<option value={`${pool}|${id}`}>{name}</option>{/each}
+                    </select>
+                  </div>
+                {/if}
                 {#each sectionFindings(entry.section) as f}<span class="entry-finding {f.severity}">{findingText(f)}</span>{/each}
               </li>
-              {:else}
+              {:else if !closed.includes(entry.sectionK)}
               {@const item = rendered[entry.k]}
               <li class="exam-entry" class:landed={landedKey === entry.k} data-key={entry.k}>
                 <div class="entry-bar">

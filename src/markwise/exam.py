@@ -60,6 +60,8 @@ class ExamSection:
     title: str
     note: str = ""  # a few words for the students below the title
     before: int = 0  # the section starts before this question (0-based); len(questions) for one at the end
+    pool: str = ""  # optionally the concept the section draws from: its pool as the module refers to it …
+    concept: str = ""  # … and the concept's identifier in that pool
 
 
 @dataclass
@@ -97,7 +99,8 @@ class Exam:
             questions=[ExamQuestion(str(q["pool"]), str(q["id"]), float(q.get("points", 1)))
                        for q in raw.get("questions", [])],
             sections=[ExamSection(str(s.get("id") or f"s{i + 1}"), str(s.get("title", "")), str(s.get("note", "")),
-                                  int(s.get("before", 0))) for i, s in enumerate(raw.get("sections", []))],
+                                  int(s.get("before", 0)), str(s.get("pool", "")), str(s.get("concept", "")))
+                      for i, s in enumerate(raw.get("sections", []))],
             created_by=str(raw.get("created_by", "")),
             created_at=str(raw.get("created_at", "")),
         )
@@ -153,8 +156,9 @@ class Exam:
             "created_by": self.created_by,
             "created_at": self.created_at,
             "questions": [{"pool": q.pool, "id": q.id, "points": q.points} for q in self.questions],
-            "sections": [{k: v for k, v in (("id", s.id), ("title", s.title), ("note", s.note), ("before", s.before))
-                          if v != ""} for s in self.sections],
+            "sections": [{k: v for k, v in (("id", s.id), ("title", s.title), ("note", s.note), ("before", s.before),
+                                            ("pool", s.pool if s.concept else ""), ("concept", s.concept)) if v != ""}
+                         for s in self.sections],
         }
         self.file.write_text(tomli_w.dumps({k: v for k, v in data.items() if v not in ("", None, [])
                                             or k == "questions"}), encoding="utf-8")
@@ -237,7 +241,7 @@ class Exam:
         pools: dict[str, Pool | None] = {}
         parents: dict[str, list[str]] = {}
         seen = set()
-        for entry in self.questions:
+        for index, entry in enumerate(self.questions):
             if entry.pool not in pools:
                 root = module.pool_root(entry.pool)
                 pools[entry.pool] = Pool.open(root) if (root / "pool.toml").exists() else None
@@ -265,6 +269,10 @@ class Exam:
                 add(ERROR, entry.id, "exam_language", f"{entry.id} has no text in {self.language}", id=entry.id, lang=self.language)
             if not entry.points > 0 or math.isnan(entry.points):
                 add(ERROR, entry.id, "exam_points", f"{entry.id} needs more than 0 points", id=entry.id)
+            section = self.section_of(index)
+            if section and section.concept and (section.pool, section.concept) != (entry.pool, question.concept):
+                add(WARNING, entry.id, "exam_section_concept", f"{entry.id} is not about the concept of {section.title}",
+                    id=entry.id, title=section.title)
             family = question.variant_of or question.id
             parents.setdefault(f"{entry.pool}|{family}", []).append(entry.id)
         for section in self.sections:
