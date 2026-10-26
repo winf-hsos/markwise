@@ -31,6 +31,7 @@
   let newPreset = $state({});
   let listPane = $state(null);
   let restoredFor = $state(""); // the module whose remembered state this page shows
+  let collapsed = $state([]); // keys of the questions whose variants are folded away
 
   // Every filter but the search is a list: several values of one filter count as "or", the filters as "and".
   const blank = { search: "", pool: [], concept: [], level: [], status: [], type: [], use: [], findings: [], time: [] };
@@ -73,6 +74,7 @@
     editing = null;
     selected = kept.selected ?? null;
     filter = normalized(kept.filter);
+    collapsed = kept.collapsed ?? [];
     // Another page may have sent the person here for one concept, or to add a question to it.
     if (pending.questionsFilter) {
       filter = normalized(pending.questionsFilter);
@@ -121,6 +123,7 @@
     const state = {
       filter: $state.snapshot(filter),
       selected: $state.snapshot(selected),
+      collapsed: $state.snapshot(collapsed),
       editing: editing ? { pool: editing.pool, id: editing.id } : null,
     };
     if (restoredFor === modulePath) untrack(() => remember("questions", modulePath, state));
@@ -209,11 +212,26 @@
     const rows = [];
     for (const q of sorted) {
       if (q.variant_of && inList.has(key(q.pool, q.variant_of))) continue;
-      rows.push({ q, child: false, orphan: Boolean(q.variant_of) });
-      for (const v of (below.get(key(q.pool, q.id)) ?? []).sort(SORTS.id)) rows.push({ q: v, child: true, orphan: false });
+      const own = key(q.pool, q.id);
+      const kids = below.get(own) ?? [];
+      const folded = collapsed.includes(own);
+      rows.push({ q, child: false, orphan: Boolean(q.variant_of), kids: kids.length, folded });
+      if (!folded) for (const v of kids.sort(SORTS.id)) rows.push({ q: v, child: true, orphan: false, kids: 0, folded: false });
     }
     return rows;
   });
+
+  // Variants fold away below their question, one question at a time or all at once, and open again the same way.
+  const rowKey = (q) => `${q.pool}\n${q.id}`;
+  const withVariants = $derived(listed.filter((r) => r.kids).map((r) => rowKey(r.q)));
+  const allFolded = $derived(withVariants.length > 0 && withVariants.every((k) => collapsed.includes(k)));
+  function toggleVariants(q) {
+    const k = rowKey(q);
+    collapsed = collapsed.includes(k) ? collapsed.filter((c) => c !== k) : [...collapsed, k];
+  }
+  function toggleAllVariants() {
+    collapsed = allFolded ? collapsed.filter((k) => !withVariants.includes(k)) : [...new Set([...collapsed, ...withVariants])];
+  }
   const order = $derived(listed.map((r) => r.q));
 
   // Concepts for the filter, by name: [id, name], from the questions of the chosen pool.
@@ -393,6 +411,10 @@
         {#if filtered}
           <button class="icon-btn small-icon" title={t("q.reset")} aria-label={t("q.reset")} onclick={() => (filter = normalized({}))}><Icon name="filter-off" /></button>
         {/if}
+        {#if withVariants.length}
+          <button class="icon-btn small-icon" title={t(allFolded ? "q.unfoldAll" : "q.foldAll")} aria-label={t(allFolded ? "q.unfoldAll" : "q.foldAll")}
+            onclick={toggleAllVariants}><Icon name={allFolded ? "unfold" : "fold"} /></button>
+        {/if}
         <button class="icon-btn small-icon" class:on={statsOpen} aria-pressed={statsOpen} title={t(statsOpen ? "stats.hide" : "stats.show")}
           aria-label={t(statsOpen ? "stats.hide" : "stats.show")} onclick={() => (statsOpen = !statsOpen)}><Icon name="chart" /></button>
         <label class="sort">
@@ -413,7 +435,8 @@
         {:else if shown.length === 0}
           <p class="muted pad">{t("q.noMatch")}</p>
         {/if}
-        {#each listed as { q, child, orphan } (q.pool + q.id)}
+        {#each listed as { q, child, orphan, kids, folded } (q.pool + q.id)}
+          <div class="q-row-wrap">
           <button id={`q-${q.pool}-${q.id}`} class="q-row" class:variant-row={child} class:retired={q.status === "retired"} class:on={selectedRow === q} role="option" aria-selected={selectedRow === q} onclick={() => show(q)}>
             <span class="q-row-head">
               {#if child}<span class="variant-branch" aria-hidden="true"></span>{/if}
@@ -431,6 +454,11 @@
             </span>
             <span class="q-stem">{q.unreadable ? t("q.unreadable") : q.stem}</span>
           </button>
+          {#if kids}
+            <button class="variant-toggle" class:folded aria-expanded={!folded} title={t(folded ? "q.unfold" : "q.fold", { n: kids })}
+              aria-label={t(folded ? "q.unfold" : "q.fold", { n: kids })} onclick={() => toggleVariants(q)}><Icon name="chevron" /></button>
+          {/if}
+          </div>
         {/each}
       </div>
       <div class="q-preview-pane">
