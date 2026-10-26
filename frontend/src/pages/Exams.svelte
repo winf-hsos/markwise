@@ -1,5 +1,6 @@
 <script>
-  import { untrack } from "svelte";
+  import { tick, untrack } from "svelte";
+  import { flip } from "svelte/animate";
   import Icon from "../components/Icon.svelte";
   import MultiSelect from "../components/MultiSelect.svelte";
   import NewExamDialog from "../components/NewExamDialog.svelte";
@@ -137,6 +138,153 @@
   // `input` gets its saved value back when the change is refused, say a title another exam has on that date.
   async function saveSetting(name, value, input) {
     if (!(await save({ [name]: value })) && input) input.value = current[name];
+  }
+
+  // --- reordering by dragging ----------------------------------------------------------------------
+  //
+  // A question is grabbed by its handle on the right, or anywhere on its row in the list on the left. While it
+  // is held, the exam folds into one line per question, so that even a long exam fits on the screen; the others
+  // make room where it would land, and that place shows the number it will have. Letting go unfolds the exam
+  // with the question in view and marked for a moment. Escape, or letting go of a new question outside the
+  // exam, changes nothing.
+
+  let listEl = $state(null); // the exam column, which scrolls
+  let drag = $state(null); // { kind: "move" | "add", index, row, id, pool, type, stem, points, x, y, target }
+  let pressed = null; // a press that has not moved far enough yet to be a drag
+  let landedKey = $state(null); // the question that just landed, marked for a moment
+
+  function pressHandle(event, index) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    press(event, { kind: "move", index });
+  }
+
+  function pressRow(event, row) {
+    if (event.button !== 0 || event.target.closest("button, input, a")) return;
+    event.preventDefault();
+    const index = current.entries.findIndex((e) => e.pool === row.pool && e.id === row.id);
+    press(event, index >= 0 ? { kind: "move", index } : { kind: "add", row });
+  }
+
+  function press(event, what) {
+    pressed = { ...what, x0: event.clientX, y0: event.clientY };
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("keydown", onDragKey);
+  }
+
+  function release() {
+    pressed = null;
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerup", onPointerUp);
+    window.removeEventListener("keydown", onDragKey);
+    document.body.classList.remove("dragging");
+  }
+
+  function onPointerMove(event) {
+    if (!drag && pressed && Math.hypot(event.clientX - pressed.x0, event.clientY - pressed.y0) > 5) begin(event);
+    if (!drag) return;
+    drag.x = event.clientX;
+    drag.y = event.clientY;
+    drag.target = targetAt(drag.x, drag.y);
+  }
+
+  function begin(event) {
+    const entry = pressed.kind === "move" ? current.entries[pressed.index] : null;
+    const row = entry ? rows.get(key(entry.pool, entry.id)) : pressed.row;
+    drag = {
+      kind: pressed.kind, index: pressed.index ?? -1, row: pressed.row ?? null,
+      id: (entry ?? row).id, pool: (entry ?? row).pool, type: row?.type, stem: row?.stem ?? "",
+      points: entry ? Number(entry.points) : suggest(row?.time_seconds),
+      x: event.clientX, y: event.clientY, target: pressed.kind === "move" ? pressed.index : null,
+    };
+    document.body.classList.add("dragging");
+    // Once the exam has folded, the grabbed question sits under the pointer again.
+    tick().then(() => {
+      const slot = listEl?.querySelector(".drop-slot");
+      if (slot) listEl.scrollTop += slot.getBoundingClientRect().top - (event.clientY - 17);
+      if (drag) drag.target = targetAt(drag.x, drag.y);
+    });
+    requestAnimationFrame(scrollAtEdge);
+  }
+
+  // Where the question would land: the number of folded questions whose middle lies above the pointer.
+  function targetAt(x, y) {
+    if (!listEl) return null;
+    const box = listEl.getBoundingClientRect();
+    if (x < box.left || x > box.right || y < box.top || y > box.bottom) return drag.kind === "move" ? drag.target : null;
+    let n = 0;
+    for (const el of listEl.querySelectorAll(".entry-compact:not(.drop-slot)")) {
+      const r = el.getBoundingClientRect();
+      if (r.top + r.height / 2 < y) n += 1;
+    }
+    return n;
+  }
+
+  // Near the upper or lower edge of the exam, the exam scrolls by itself, the faster the closer.
+  function scrollAtEdge() {
+    if (!drag || !listEl) return;
+    const box = listEl.getBoundingClientRect();
+    const edge = 56;
+    if (drag.x >= box.left && drag.x <= box.right) {
+      const step = drag.y < box.top + edge ? -(box.top + edge - drag.y) / 4
+        : drag.y > box.bottom - edge ? (drag.y - box.bottom + edge) / 4 : 0;
+      if (step) {
+        listEl.scrollTop += Math.max(-24, Math.min(24, step));
+        drag.target = targetAt(drag.x, drag.y);
+      }
+    }
+    requestAnimationFrame(scrollAtEdge);
+  }
+
+  function onPointerUp() {
+    const done = drag;
+    drag = null;
+    release();
+    if (!done || done.target == null) return;
+    const list = [...current.entries];
+    const moved = done.kind === "move" ? list.splice(done.index, 1)[0]
+      : { pool: done.row.pool, id: done.row.id, points: done.points };
+    list.splice(done.target, 0, moved);
+    if (!(done.kind === "move" && done.target === done.index)) {
+      current.entries = list;
+      save({ entries: plainEntries(list) });
+    }
+    landed(moved);
+  }
+
+  function onDragKey(event) {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    drag = null;
+    release();
+  }
+
+  async function landed(entry) {
+    landedKey = key(entry.pool, entry.id);
+    await tick();
+    listEl?.querySelector(`[data-key="${CSS.escape(landedKey)}"]`)?.scrollIntoView({ block: "center" });
+    setTimeout(() => (landedKey = null), 1600);
+  }
+
+  // The folded exam while a question is held: the others in their order, and a place where it would land.
+  const folded = $derived.by(() => {
+    if (!drag) return [];
+    const list = entries
+      .filter((_, i) => !(drag.kind === "move" && i === drag.index))
+      .map((e) => ({ k: key(e.pool, e.id), id: e.id, type: e.row?.type, stem: e.row?.stem ?? "", points: Number(e.points) }));
+    if (drag.target != null) list.splice(drag.target, 0, { k: "slot", slot: true, id: drag.id, type: drag.type, stem: drag.stem, points: drag.points });
+    return list.map((x, i) => ({ ...x, number: i + 1 }));
+  });
+
+  // Up and down on a focused handle move the question without a mouse.
+  function onHandleKey(event, index) {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    const step = event.key === "ArrowUp" ? -1 : 1;
+    const entry = current.entries[index];
+    move(index, step);
+    tick().then(() => listEl?.querySelector(`[data-key="${CSS.escape(key(entry.pool, entry.id))}"] .drag-handle`)?.focus());
   }
 
   // --- the questions as the booklet shows them ----------------------------------------------------------
@@ -321,7 +469,8 @@
           <div class="picker-list">
             {#each candidates as q (q.pool + q.id)}
               {@const added = inExam.has(key(q.pool, q.id))}
-              <div class="picker-row" class:added title={added ? t("exams.inExam") : null}>
+              <div class="picker-row" class:added class:held={drag && drag.pool === q.pool && drag.id === q.id}
+                title={added ? t("exams.inExam") : t("exams.dragRow")} onpointerdown={(e) => pressRow(e, q)}>
                 <div class="entry-main">
                   <div class="q-row-head">
                     <span class="type-icon"><Icon name={TYPE_ICONS[q.type] ?? "questions"} /></span>
@@ -343,14 +492,29 @@
             {/each}
           </div>
         </section>
-        <section class="exam-list" aria-label={t("exams.content")}>
-          <h3 class="pane-title">{t("exams.content")}</h3>
-          {#if !entries.length}<p class="muted pad">{t("exams.emptyExam")}</p>{/if}
+        <section class="exam-list" class:drop-zone={drag?.kind === "add"} aria-label={t("exams.content")} bind:this={listEl}>
+          <h3 class="pane-title">{drag ? t("exams.dragHint") : t("exams.content")}</h3>
+          {#if !entries.length && !drag}<p class="muted pad">{t("exams.emptyExam")}</p>{/if}
+          {#if drag}
+            <ol class="exam-entries compact">
+              {#each folded as x (x.k)}
+                <li class="entry-compact" class:drop-slot={x.slot} animate:flip={{ duration: 160 }}>
+                  <span class="compact-no">{x.number}</span>
+                  <span class="type-icon"><Icon name={TYPE_ICONS[x.type] ?? "questions"} /></span>
+                  <span class="qid">{x.id}</span>
+                  <span class="compact-stem">{x.stem}</span>
+                  <span class="compact-points">{x.points.toLocaleString(undefined, { maximumFractionDigits: 1 })} {t("exams.pointsShort")}</span>
+                </li>
+              {/each}
+            </ol>
+          {:else}
           <ol class="exam-entries">
             {#each entries as entry, i (entry.pool + entry.id)}
               {@const item = rendered[key(entry.pool, entry.id)]}
-              <li class="exam-entry">
+              <li class="exam-entry" class:landed={landedKey === key(entry.pool, entry.id)} data-key={key(entry.pool, entry.id)}>
                 <div class="entry-bar">
+                  <button class="drag-handle" title={t("exams.dragHandle")} aria-label={t("exams.dragHandle")}
+                    onpointerdown={(e) => pressHandle(e, i)} onkeydown={(e) => onHandleKey(e, i)}><Icon name="grip" /></button>
                   <span class="type-icon"><Icon name={TYPE_ICONS[entry.row?.type] ?? "questions"} /></span>
                   <span class="qid">{entry.id}</span>
                   <span class="q-concept">{entry.row?.concept_name ?? ""}</span>
@@ -365,8 +529,6 @@
                   <span class="entry-tools">
                     <button class="icon-btn small-icon" title={t("exams.preview")} aria-label={t("exams.preview")} disabled={!entry.row} onclick={() => previewQuestion(entry.pool, entry.id)}><Icon name="eye" /></button>
                     <button class="icon-btn small-icon" title={t("exams.edit")} aria-label={t("exams.edit")} disabled={!entry.row} onclick={() => editQuestion(entry.pool, entry.id)}><Icon name="edit" /></button>
-                    <button class="icon-btn small-icon up" title={t("exams.up")} aria-label={t("exams.up")} disabled={i === 0} onclick={() => move(i, -1)}><Icon name="chevron" /></button>
-                    <button class="icon-btn small-icon" title={t("exams.down")} aria-label={t("exams.down")} disabled={i === entries.length - 1} onclick={() => move(i, 1)}><Icon name="chevron" /></button>
                     <button class="icon-btn small-icon danger" title={t("exams.remove")} aria-label={t("exams.remove")} onclick={() => removeAt(i)}><Icon name="remove" /></button>
                   </span>
                 </div>
@@ -381,9 +543,17 @@
               </li>
             {/each}
           </ol>
+          {/if}
         </section>
       </div>
     </div>
+    {#if drag}
+      <div class="drag-ghost" class:nowhere={drag.target == null} style:left="{drag.x + 14}px" style:top="{drag.y - 16}px">
+        <span class="type-icon"><Icon name={TYPE_ICONS[drag.type] ?? "questions"} /></span>
+        <span class="qid">{drag.id}</span>
+        <span class="compact-stem">{drag.stem}</span>
+      </div>
+    {/if}
   {:else}
     <div class="page-head">
       <div><h1>{t("exams.title")}</h1><p>{t("exams.lead")}</p></div>
