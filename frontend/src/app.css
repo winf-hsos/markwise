@@ -904,6 +904,14 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .booklet-strip { display: inline-flex; align-items: flex-end; gap: 6px; padding: 6px 10px; background: #ececec; border-radius: 3px; font-size: 11px; color: #555; }
 .booklet-strip > span:first-child { margin-right: 6px; align-self: center; }
 .booklet-strip .cell { display: grid; justify-items: center; gap: 1px; }
+/* a question without its answers: text only, figures and code small */
+.booklet-item.brief { padding: 10px 16px 10px; }
+.booklet-item.brief .booklet-hint { display: none; }
+.booklet-item.brief .booklet-stem { margin-bottom: 0; }
+.booklet-item.brief .booklet-figures { max-width: none; grid-template-columns: repeat(auto-fill, 96px); gap: 8px; margin: 6px 0 0; }
+.booklet-item.brief .booklet-figures img { max-height: 64px; }
+.booklet-item.brief .booklet-code { max-height: 5.2em; overflow: hidden; margin: 6px 0 0;
+  mask-image: linear-gradient(to bottom, #000 60%, transparent); }
 .booklet-strip .cell i { width: 14px; height: 14px; border: 1px solid #555; background: #fff; }
 .choice-cards { display: grid; gap: 8px; }
 .choice-card { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-m); cursor: pointer; }

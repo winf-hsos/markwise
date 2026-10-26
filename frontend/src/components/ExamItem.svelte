@@ -4,8 +4,9 @@
 
   // One question as the printed booklet shows it: number and points, what kind of answer is expected, the text,
   // code and figures, the options with empty boxes, or the lines and the point strip of a free-text question.
-  // `item` comes from exam_items, `words` are the booklet's words in the exam's language.
-  let { item, number, points, words } = $props();
+  // `item` comes from exam_items, `words` are the booklet's words in the exam's language. `brief` leaves out
+  // the answers and keeps figures and code small, so that a question takes little room.
+  let { item, number, points, words, brief = false } = $props();
 
   const unit = $derived(points === 1 ? words.point : words.points);
   const strip = $derived.by(() => {
@@ -15,7 +16,7 @@
   });
 </script>
 
-<div class="booklet-item">
+<div class="booklet-item" class:brief>
   <div class="booklet-head">
     <b>{words.question} {number}</b>
     <span>{points.toLocaleString(undefined, { maximumFractionDigits: 1 })} {unit}</span>
@@ -28,7 +29,9 @@
       {#each item.figures as f (f.name)}<img src={f.data} alt={f.name} />{/each}
     </div>
   {/if}
-  {#if item.type === "free_text"}
+  {#if brief}
+    <!-- answers left out -->
+  {:else if item.type === "free_text"}
     <div class="booklet-lines" style="--lines: {item.lines}"></div>
     <div class="booklet-strip">
       <span>{words.examiners_only}</span>

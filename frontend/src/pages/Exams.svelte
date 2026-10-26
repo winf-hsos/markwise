@@ -45,6 +45,7 @@
       exams = await call("list_exams", modulePath);
       const kept = recall("exams", modulePath);
       outline = kept.outline ?? false;
+      brief = kept.brief ?? false;
       if (kept.open && exams.some((e) => e.path === kept.open)) await openExam(kept.open);
     } catch (err) {
       showToast(errorText(err));
@@ -201,6 +202,11 @@
   // The outline: the exam folded for good, one line per question under its section, for an overview of the whole
   // exam; a click on a line opens the exam at that question, and the lines are dragged like the questions.
   let outline = $state(false);
+  let brief = $state(false); // the questions without their answers, to take less room
+  function showBrief(on) {
+    brief = on;
+    remember("exams", modulePath, { brief: on });
+  }
   function showOutline(on) {
     outline = on;
     remember("exams", modulePath, { outline: on });
@@ -601,6 +607,10 @@
             {#if !drag}
               <span class="pane-actions">
                 <button class="btn btn-small ghost" title={t("exams.addSectionHint")} onclick={addSection}><Icon name="plus" />{t("exams.addSection")}</button>
+                {#if !outline}
+                  <button class="icon-btn small-icon" class:on={brief} aria-pressed={brief} title={t(brief ? "exams.showAnswers" : "exams.hideAnswers")}
+                    aria-label={t(brief ? "exams.showAnswers" : "exams.hideAnswers")} onclick={() => showBrief(!brief)}><Icon name={brief ? "unfold" : "fold"} /></button>
+                {/if}
                 <span class="seg seg-small" role="group" aria-label={t("exams.view")}>
                   <button class:on={!outline} title={t("exams.fullHint")} onclick={() => showOutline(false)}>{t("exams.full")}</button>
                   <button class:on={outline} title={t("exams.outlineTitle")} onclick={() => showOutline(true)}>{t("exams.outline")}</button>
@@ -680,7 +690,7 @@
                 {:else if item.missing}
                   <div class="booklet-item waiting">{t("exams.missing")}</div>
                 {:else}
-                  <ExamItem {item} number={entry.number} points={Number(entry.points)} words={printWords} />
+                  <ExamItem {item} number={entry.number} points={Number(entry.points)} words={printWords} {brief} />
                 {/if}
               </li>
               {/if}
