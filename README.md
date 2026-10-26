@@ -114,7 +114,7 @@ A tick in the list marks reviewed questions.
 
 ### Concepts
 
-Questions are grouped by concept, and the **Concepts** page in the side menu is where you look after them. On the left it lists the concepts of the current module's pools with their names, short descriptions and number of questions; a search narrows the list, and if the module has several pools, a filter shows the concepts of one pool (**New concept** then adds to that pool). Click a concept to see it on the right:
+Questions are grouped by concept, and the **Concepts** page in the side menu is where you look after them. The German interface calls them *Themen* (topics); files and the command line keep the word `concept`. On the left it lists the concepts of the current module's pools with their names, short descriptions and number of questions; a search narrows the list, and if the module has several pools, a filter shows the concepts of one pool (**New concept** then adds to that pool). Click a concept to see it on the right:
 
 - its **name** and **short description**, which you can change and **Save** (the identifier below them, made from the name, names the folder of the questions and stays the same);
 - an overview of its questions: how many there are by level, type and status, how many are meant for practice and for exams, how many practice questions still lack an exam variant, and how many have errors or warnings;
