@@ -95,5 +95,13 @@ class Module:
         """Every folder below the module folder that holds an exam.toml."""
         return sorted(p.parent for p in self.root.rglob(EXAM_FILE))
 
+    @classmethod
+    def around(cls, path: Path | str) -> "Module":
+        """The module a folder below it belongs to, for example an exam folder."""
+        for folder in [Path(path).resolve(), *Path(path).resolve().parents]:
+            if (folder / MODULE_FILE).exists():
+                return cls.open(folder)
+        raise FileNotFoundError(f"no {MODULE_FILE} in {path} or above")
+
     def new_exam_folder(self, semester: str, date: str, title: str) -> Path:
         return self.root / self.exam_path.format(semester=semester, date=date, title=title)

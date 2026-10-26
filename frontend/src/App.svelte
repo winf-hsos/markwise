@@ -4,7 +4,7 @@
   import Modules from "./pages/Modules.svelte";
   import Questions from "./pages/Questions.svelte";
   import Concepts from "./pages/Concepts.svelte";
-  import Placeholder from "./pages/Placeholder.svelte";
+  import Exams from "./pages/Exams.svelte";
   import Settings from "./pages/Settings.svelte";
   import ConfirmDialog from "./components/ConfirmDialog.svelte";
   import { t } from "./lib/i18n.svelte.js";
@@ -49,7 +49,7 @@
     {:else if route.path === "/questions"}
       <Questions />
     {:else if route.path === "/exams"}
-      <Placeholder title="exams.title" lead="exams.lead" text="exams.empty" icon="exams" />
+      <Exams />
     {:else if route.path === "/settings"}
       <Settings />
     {/if}

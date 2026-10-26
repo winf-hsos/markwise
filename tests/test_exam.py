@@ -1,0 +1,91 @@
+"""Putting an exam together by hand, with invented questions only."""
+
+from __future__ import annotations
+
+import datetime
+import json
+
+import pytest
+
+from markwise import lifecycle
+from markwise.app.api import Api
+from markwise.exam import Exam, semester_of, suggest_points
+from markwise.importer import import_pool
+from markwise.module import Module
+from markwise.pool import Pool
+
+from test_core import write_legacy
+
+
+@pytest.fixture
+def module(tmp_path):
+    import_pool(write_legacy(tmp_path / "legacy"), tmp_path / "pool")
+    return Module.create(tmp_path / "module", "Invented Module", "IM", pools=[tmp_path / "pool"])
+
+
+def test_points_follow_the_time_and_the_semester_the_date():
+    assert [suggest_points(s) for s in (None, 15, 45, 60, 90, 120, 300)] == [1, 1, 1, 1, 1.5, 2, 5]
+    assert semester_of(datetime.date(2027, 2, 5)) == "2026-27 - WS"
+    assert semester_of(datetime.date(2026, 12, 10)) == "2026-27 - WS"
+    assert semester_of(datetime.date(2026, 6, 1)) == "2026 - SS"
+
+
+def test_an_exam_gets_its_folder_and_takes_questions_with_suggested_points(module):
+    exam = Exam.create(module, "Probe: Klausur?", "2026-12-10", "en", "inline", author="")
+    assert exam.root == module.root / "01 - Semester" / "2026-27 - WS" / "Exam" / "2026-12-10 - Probe Klausur"
+    pool = module.open_pools()[0]
+    q = pool.find("co-001")
+    q.data["time_seconds"] = 90
+    q.save()
+    entry = exam.add(module, pool.root, "co-001")
+    assert entry.points == 1.5 and entry.pool == module.pools[0]
+    with pytest.raises(ValueError):
+        exam.add(module, pool.root, "co-001")
+    exam.add(module, pool.root, "co-002", points=3)
+    exam.save()
+    again = Exam.open(exam.root)
+    assert [(q.id, q.points) for q in again.questions] == [("co-001", 1.5), ("co-002", 3.0)]
+    assert again.language == "en" and again.answers == "inline" and again.total_points() == 4.5
+    assert module.exams() == [exam.root]
+
+
+def test_the_check_names_what_keeps_an_exam_from_printing(module):
+    exam = Exam.create(module, "Check", "2027-01-21", "de", author="")
+    pool = module.open_pools()[0]
+    exam.add(module, pool.root, "co-001")  # practice question, parent of co-002
+    exam.add(module, pool.root, "co-002")  # its exam variant
+    codes = {f.code for f in exam.check(module)}
+    assert {"exam_practice_only", "exam_same_family", "exam_examiners"} <= codes
+    exam.language = "fr"
+    assert "exam_language" in {f.code for f in exam.check(module)}
+    lifecycle.retire(pool, "co-002")
+    exam.language = "de"
+    assert "exam_retired" in {f.code for f in exam.check(module)}
+
+
+def test_the_api_creates_lists_and_changes_exams(module):
+    api = Api()
+    assert api.create_exam(str(module.root), {"title": "", "date": "2026-12-10"})["code"] == "exam_title_missing"
+    detail = api.create_exam(str(module.root), {"title": "Probe", "date": "2026-12-10", "answers": "sheet"})["data"]
+    pool = str(module.open_pools()[0].root.resolve())
+    changed = api.update_exam(detail["path"], {"entries": [{"pool": pool, "id": "co-002", "points": 2},
+                                                           {"pool": pool, "id": "co-001", "points": 1}],
+                                               "examiners": ["Examiner A", " ", "Examiner B"]})["data"]
+    assert [e["id"] for e in changed["entries"]] == ["co-002", "co-001"] and changed["points"] == 3
+    assert changed["examiners"] == ["Examiner A", "Examiner B"]
+    assert "exam_examiners" not in {f["code"] for f in changed["findings"]}
+    assert api.list_exams(str(module.root))["data"][0]["questions"] == 2
+    assert api.create_exam(str(module.root), {"title": "Probe", "date": "2026-12-10"})["code"] == "exam_exists"
+
+
+def test_the_command_line_puts_an_exam_together(module, capsys):
+    from markwise.cli import main
+    assert main(["exam", "new", str(module.root), "--title", "Probe", "--date", "2026-12-10", "--json"]) == 0
+    folder = json.loads(capsys.readouterr().out)["exam"]
+    pool = str(module.open_pools()[0].root)
+    assert main(["exam", "add", folder, pool, "co-002", "--points", "2"]) == 0
+    capsys.readouterr()
+    assert main(["exam", "show", folder, "--json"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["points"] == 2 and report["questions"][0]["id"] == "co-002"
+    assert main(["exam", "remove", folder, "co-002"]) == 0

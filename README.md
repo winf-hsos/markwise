@@ -180,7 +180,18 @@ Markwise can ask a language model from OpenAI to check question texts and to pro
 
 The editor then shows **Check with AI** (see [Creating and editing questions](#creating-and-editing-questions)), and for a free-text exam variant **Propose other numbers**. Only the text, figures, code, options and feedback (or, for a free-text question, the expected answer and marking notes) of the question you are working on are sent, and only when you press one of the buttons; never names, participants, scans or grades, and never who wrote the question. The model's answer is a suggestion: nothing changes until you apply it and save.
 
-**Exams** shows what will be there and when.
+### Putting an exam together
+
+The **Exams** page lists the exams of the current module, newest first. **New exam** asks for the title, the date, the language the exam is set in (one per exam) and where the answers go:
+
+- **Answer sheet**: a separate sheet with the tick boxes of all questions; only the sheet is scanned.
+- **Below the questions**: the boxes stand right below each question in the booklet; the whole booklet is scanned.
+
+Markwise creates a folder for the exam in the module, in the semester the date falls in (`01 - Semester\2026-27 - WS\Klausur\2026-12-10 - Probeklausur` with a German interface), and writes the exam into `exam.toml` there.
+
+Clicking an exam opens it. At the top are its title, date, language, answer form and examiners (names separated by commas), below them the number of questions, the points and the total answering time. On the right, **Add questions** shows the questions of the module's pools with search and the usual filters, at first only those meant for exams; **Add** puts a question at the end of the exam. On the left the exam lists its questions in order: each has its points, suggested as one point per minute of answering time (rounded to half points, at least one) and changeable, buttons to move it up or down, and one to take it out. Every change is saved at once.
+
+The exam checks itself as you go and says what needs a look: a question meant for practice only, a question with errors or without a text in the exam's language, a retired one, two variants of the same practice question, points of zero, fewer than two examiners. Printing the booklets, freezing the exam and reading the scans come next (see [Not there yet](#not-there-yet)).
 
 ## The four things Markwise works with
 
@@ -386,6 +397,10 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise llm use [--model <model>] [--off]` | switch the language model on (and choose the model) or off |
 | `markwise assist review <pool> <id> [--lang de]` | let the model check the question with its answers and complete it; prints findings, proposed texts per field and language, and new wrong options if some are missing; changes nothing |
 | `markwise assist numbers <pool> <id>` | let the model propose other numbers for a free-text calculation, with its worked-out answer; changes nothing |
+| `markwise exam new <module> --title <title> --date <YYYY-MM-DD> [--lang de\|en] [--answers sheet\|inline]` | create an exam in its folder below the module |
+| `markwise exam add <exam> <pool> <id> [--points]` | add a question; its points follow from its time unless given |
+| `markwise exam remove <exam> <id>` | take a question out of the exam |
+| `markwise exam show <exam>` | show an exam with its questions, points and what the check finds |
 | `markwise app` | open the app window |
 | `markwise shortcut [--folder <folder>]` | create the Start menu entry (or put it into another folder) |
 | `markwise serve [--port 8765]` | serve the core on 127.0.0.1 for developing the interface in a browser |
@@ -413,7 +428,7 @@ prints for each sheet whether the QR code, the orientation, the student number a
 | What | Planned for |
 |---|---|
 | Installer for a second computer | 27 Nov 2026 |
-| Building exams: blueprint, variants, exam and answer booklets as PDF | 27 Nov 2026 |
+| Exams: booklets and answer sheets as PDF, freezing, participants, shuffling, drawing questions by a blueprint | 27 Nov 2026 |
 | Reading scans, deciding doubtful cases, grading multiple-choice exams | early December 2026 |
 | Item analysis, exports for the examinations office, inspection copies | 15 Jan 2027 |
 | Free-text questions in exams, marking on screen; more help from a language model (drafting expected answers, other providers and local models) | after the first exams in early 2027 |

@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 from .. import __version__, assist, catalog, editing, lifecycle, settings as user_settings
+from ..exam import ANSWER_MODES, Exam, ExamQuestion, exams_of
 from ..importer import import_pool
 from ..module import EXAM_PATHS, MODULE_FILE, Module
 from ..pool import LANGUAGES, POOL_FILE, Pool, PoolSettings
@@ -513,3 +514,63 @@ class Api:
         pool = Pool.open(pool_path)
         return self._assist(assist.vary_numbers, fields, pool.settings.languages, user_settings.load().language,
                             assist.figures_for_model(pool, fields))
+
+    # --- exams -------------------------------------------------------------------------
+
+    @staticmethod
+    def _exam_entry(exam: Exam) -> dict:
+        return {"path": str(exam.root), "title": exam.title, "date": exam.date, "semester": exam.semester,
+                "language": exam.language, "answers": exam.answers, "questions": len(exam.questions),
+                "points": exam.total_points()}
+
+    @_answer
+    def list_exams(self, module_path: str) -> list:
+        """The exams of a module, newest first."""
+        return [self._exam_entry(e) for e in sorted(exams_of(Module.open(module_path)), key=lambda e: e.date, reverse=True)]
+
+    @_answer
+    def create_exam(self, module_path: str, spec: dict) -> dict:
+        if not (spec.get("title") or "").strip():
+            raise Refusal("exam_title_missing", "the exam needs a title")
+        if not spec.get("date"):
+            raise Refusal("exam_date_missing", "the exam needs a date")
+        try:
+            exam = Exam.create(Module.open(module_path), spec["title"], spec["date"], spec.get("language") or "de",
+                               spec.get("answers") or "sheet")
+        except FileExistsError:
+            raise Refusal("exam_exists", "an exam with this date and title exists already") from None
+        return self._exam_detail(exam)
+
+    def _exam_detail(self, exam: Exam) -> dict:
+        module = Module.around(exam.root)
+        entries = [{"pool": str(module.pool_root(q.pool)), "id": q.id, "points": q.points} for q in exam.questions]
+        return {**self._exam_entry(exam), "examiners": exam.examiners, "entries": entries,
+                "findings": [f.to_dict() for f in exam.check(module)]}
+
+    @_answer
+    def get_exam(self, exam_path: str) -> dict:
+        return self._exam_detail(Exam.open(exam_path))
+
+    @_answer
+    def update_exam(self, exam_path: str, fields: dict) -> dict:
+        """Change an exam: its settings, examiners, and its questions as [{pool, id, points}] in their order."""
+        exam = Exam.open(exam_path)
+        module = Module.around(exam.root)
+        if "title" in fields:
+            if not str(fields["title"]).strip():
+                raise Refusal("exam_title_missing", "the exam needs a title")
+            exam.title = str(fields["title"]).strip()
+        if "date" in fields and fields["date"]:
+            exam.date = str(fields["date"])
+        if fields.get("language") in ("de", "en"):
+            exam.language = fields["language"]
+        if fields.get("answers") in ANSWER_MODES:
+            exam.answers = fields["answers"]
+        if "examiners" in fields:
+            exam.examiners = [str(e).strip() for e in fields["examiners"] if str(e).strip()]
+        if "entries" in fields:
+            exam.questions = [ExamQuestion(exam.pool_ref(module, e["pool"]), str(e["id"]), float(e["points"]))
+                              for e in fields["entries"]]
+        exam.save()
+        return self._exam_detail(exam)
+

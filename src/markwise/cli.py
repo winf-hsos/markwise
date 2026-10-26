@@ -322,6 +322,57 @@ def cmd_module_init(args) -> int:
     return 0
 
 
+def cmd_exam_new(args) -> int:
+    from .exam import Exam
+    exam = Exam.create(Module.open(args.module), args.title, args.date, args.lang, args.answers)
+    print(json.dumps({"exam": str(exam.root)}) if args.json else f"Exam created in {exam.root}")
+    return 0
+
+
+def _exam_report(exam) -> dict:
+    module = Module.around(exam.root)
+    return {"title": exam.title, "date": exam.date, "semester": exam.semester, "language": exam.language,
+            "answers": exam.answers, "examiners": exam.examiners, "points": exam.total_points(),
+            "questions": [{"pool": q.pool, "id": q.id, "points": q.points} for q in exam.questions],
+            "findings": [f.to_dict() for f in exam.check(module)]}
+
+
+def cmd_exam_show(args) -> int:
+    from .exam import Exam
+    report = _exam_report(Exam.open(args.exam))
+    if args.json:
+        _print_json(report)
+    else:
+        print(f"{report['title']}, {report['date']} ({report['semester']}), {report['language']}, answers: {report['answers']}")
+        for i, q in enumerate(report["questions"], 1):
+            print(f"  {i:>2}. {q['id']:<12} {q['points']:>5g} points  ({q['pool']})")
+        print(f"  {len(report['questions'])} questions, {report['points']:g} points")
+        for f in report["findings"]:
+            print(f"  {f['severity']:<8} {f['question'] or '-':<10} {f['message']}")
+    return 1 if any(f["severity"] == "error" for f in report["findings"]) else 0
+
+
+def cmd_exam_add(args) -> int:
+    from .exam import Exam
+    exam = Exam.open(args.exam)
+    entry = exam.add(Module.around(exam.root), args.pool, args.id, args.points)
+    exam.save()
+    print(json.dumps({"id": entry.id, "points": entry.points}) if args.json else f"{entry.id} added with {entry.points:g} points")
+    return 0
+
+
+def cmd_exam_remove(args) -> int:
+    from .exam import Exam
+    exam = Exam.open(args.exam)
+    before = len(exam.questions)
+    exam.questions = [q for q in exam.questions if q.id != args.id]
+    if len(exam.questions) == before:
+        raise KeyError(f"{args.id} is not in the exam")
+    exam.save()
+    print(json.dumps({"removed": args.id}) if args.json else f"{args.id} removed")
+    return 0
+
+
 def cmd_module_show(args) -> int:
     module = Module.open(args.folder)
     data = {
@@ -508,6 +559,29 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("pool")
     p.add_argument("id")
     p.set_defaults(func=cmd_assist_numbers)
+    exam = sub.add_parser("exam", help="put exams together by hand").add_subparsers(dest="action", required=True)
+    p = exam.add_parser("new", parents=[common], help="create an exam in its folder below the module")
+    p.add_argument("module")
+    p.add_argument("--title", required=True)
+    p.add_argument("--date", required=True, help="YYYY-MM-DD; the semester follows from it")
+    p.add_argument("--lang", default="de", choices=["de", "en"])
+    p.add_argument("--answers", default="sheet", choices=["sheet", "inline"],
+                   help="a separate answer sheet, or the boxes right below each question")
+    p.set_defaults(func=cmd_exam_new)
+    p = exam.add_parser("show", parents=[common], help="show an exam with its questions, points and findings")
+    p.add_argument("exam")
+    p.set_defaults(func=cmd_exam_show)
+    p = exam.add_parser("add", parents=[common], help="add a question; points follow from its time unless given")
+    p.add_argument("exam")
+    p.add_argument("pool")
+    p.add_argument("id")
+    p.add_argument("--points", type=float)
+    p.set_defaults(func=cmd_exam_add)
+    p = exam.add_parser("remove", parents=[common], help="take a question out of the exam")
+    p.add_argument("exam")
+    p.add_argument("id")
+    p.set_defaults(func=cmd_exam_remove)
+
     module = sub.add_parser("module", help="create and show modules").add_subparsers(dest="action", required=True)
     p = module.add_parser("init", parents=[common], help="create module.toml in the module folder")
     p.add_argument("folder")
