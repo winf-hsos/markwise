@@ -9,7 +9,9 @@
   // A read-only view of one question: text, options with the correct ones marked, findings and metadata.
   // `onaction(name)` runs a step of the question's life: release, withdraw, variant, retire, restore, delete.
   // `me` is the name Markwise notes on a release, to tell whether this examiner released the question already.
-  let { question, variants = [], compact = false, onopen, onedit, onaction, me = "" } = $props();
+  // `lifecycle` false leaves out release and the other steps, for a look from elsewhere, such as an exam;
+  // `language` is the language to show first.
+  let { question, variants = [], compact = false, onopen, onedit, onaction, me = "", lifecycle = true, language = null } = $props();
 
   // A variant shows the settings it inherits from its parent where it sets none of its own.
   const data = $derived.by(() => {
@@ -22,7 +24,8 @@
   const isInherited = (key) => key in (question.inherited ?? {}) && (question.data[key] == null || question.data[key] === "");
   const languages = $derived(question.languages);
   let lang = $state(null);
-  const shown = $derived(lang && languages.includes(lang) ? lang : languages.includes(ui.lang) ? ui.lang : languages[0]);
+  const shown = $derived(lang && languages.includes(lang) ? lang : languages.includes(language) ? language
+    : languages.includes(ui.lang) ? ui.lang : languages[0]);
 
   const pick = (value) => (value && typeof value === "object" ? value[shown] ?? "" : value ?? "");
   const severityClass = { error: "red", warning: "warn", note: "" };
@@ -61,7 +64,9 @@
         {/each}
       </div>
     {/if}
-    {#if !compact}
+    {#if !compact && !lifecycle}
+      {#if onedit}<button class="btn primary" onclick={() => onedit()}><Icon name="edit" />{t("edit.edit")}</button>{/if}
+    {:else if !compact}
       {#if !retired}
         {#if releasedByMe}
           <span class="released" title={t("life.releasedBy", { names: reviewers.join(", ") })}><Icon name="check" />{t("life.released")}</span>

@@ -12,6 +12,8 @@
   import { ensureQuestions, questionsOf, refreshQuestions } from "../lib/questions.svelte.js";
   import QuestionEditor from "../components/QuestionEditor.svelte";
   import ExamItem from "../components/ExamItem.svelte";
+  import Dialog from "../components/Dialog.svelte";
+  import QuestionPreview from "../components/QuestionPreview.svelte";
 
   // The exams of the current module, and putting one together by hand: its questions in order, with points.
   const modulePath = $derived(app.settings?.current_module || "");
@@ -177,6 +179,18 @@
     }
   }
 
+  // A look at a question in a dialog: answers, feedback, findings and details, without leaving the exam.
+  let previewing = $state(null);
+  let previewOpen = $state(false);
+  async function previewQuestion(pool, id) {
+    try {
+      previewing = await call("get_question", pool, id);
+      previewOpen = true;
+    } catch (err) {
+      showToast(errorText(err));
+    }
+  }
+
   // The practice questions of the pool being edited, for the choice "exam variant of".
   const practice = $derived(editing ? questions.filter((q) => q.pool === editing.pool && q.public && !q.variant_of) : []);
   const draftKey = (q) => `${q.pool}\n${q.id}`;
@@ -239,6 +253,12 @@
         <button class="btn primary" onclick={() => (printOpen = true)}><Icon name="print" />{t("exams.print")}</button>
       </header>
       <PrintExamDialog bind:open={printOpen} exam={current} onprinted={(exam) => (current = exam)} />
+      <Dialog bind:open={previewOpen} title={previewing ? t("exams.previewTitle", { id: previewing.data.id }) : ""} wide>
+        {#if previewing}
+          <QuestionPreview question={previewing} variants={rows.get(key(previewing.pool, previewing.data.id))?.variants ?? []}
+            lifecycle={false} language={current.language} onedit={() => { previewOpen = false; editing = previewing; }} />
+        {/if}
+      </Dialog>
 
       <div class="exam-settings">
         <label class="field" title={t("exams.renameHint")}><span>{t("exams.examTitle")}</span>
@@ -312,6 +332,7 @@
                   </div>
                   <span class="q-stem">{q.stem}</span>
                 </div>
+                <button class="icon-btn small-icon" title={t("exams.preview")} aria-label={t("exams.preview")} onclick={() => previewQuestion(q.pool, q.id)}><Icon name="eye" /></button>
                 <button class="icon-btn small-icon" title={t("exams.edit")} aria-label={t("exams.edit")} onclick={() => editQuestion(q.pool, q.id)}><Icon name="edit" /></button>
                 {#if added}
                   <button class="btn btn-small" onclick={() => removeRow(q)}><Icon name="remove" />{t("exams.take")}</button>
@@ -342,6 +363,7 @@
                     <span>{t("exams.pointsShort")}</span>
                   </label>
                   <span class="entry-tools">
+                    <button class="icon-btn small-icon" title={t("exams.preview")} aria-label={t("exams.preview")} disabled={!entry.row} onclick={() => previewQuestion(entry.pool, entry.id)}><Icon name="eye" /></button>
                     <button class="icon-btn small-icon" title={t("exams.edit")} aria-label={t("exams.edit")} disabled={!entry.row} onclick={() => editQuestion(entry.pool, entry.id)}><Icon name="edit" /></button>
                     <button class="icon-btn small-icon up" title={t("exams.up")} aria-label={t("exams.up")} disabled={i === 0} onclick={() => move(i, -1)}><Icon name="chevron" /></button>
                     <button class="icon-btn small-icon" title={t("exams.down")} aria-label={t("exams.down")} disabled={i === entries.length - 1} onclick={() => move(i, 1)}><Icon name="chevron" /></button>
