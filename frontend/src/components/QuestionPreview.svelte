@@ -196,7 +196,7 @@
             <InlineText value={pick(option.feedback)} placeholder={t("sheet.feedback")} onsave={(v) => setOption(i, "feedback", v)} />
           </div>
           <button type="button" class="icon-btn small-icon danger option-remove" title={t("sheet.removeOption")} aria-label={t("sheet.removeOption")}
-            onclick={() => removeOption(i)}><Icon name="remove" /></button>
+            onclick={() => removeOption(i)}><Icon name="trash" /></button>
         </li>
       {/each}
     </ol>
