@@ -282,6 +282,8 @@ def cmd_assist_review(args) -> int:
         _print_json(answer)
     else:
         _print_changes(answer)
+        if answer["level"]:
+            print(f"\nlevel: {answer['level']['before'] or '(none)'} -> {answer['level']['proposed']}")
         for i, option in enumerate(answer["new_options"], 1):
             print(f"\nnew option {i}:")
             for code in pool.settings.languages:

@@ -11,7 +11,7 @@
   const lang = $derived(ui.lang);
   const textIn = (texts) => texts?.[lang] || Object.values(texts ?? {}).find(Boolean) || "";
 
-  const missing = $derived(changes.filter((c) => !c.before?.trim()));
+  const missing = $derived(changes.filter((c) => c.lang && !c.before?.trim()));
   const count = $derived(changes.length + additions.length);
 
   function applyEverything() {
@@ -42,7 +42,7 @@
   {#each changes as change (change.field + change.lang)}
     <div class="assist-suggestion">
       <div class="assist-change-head">
-        <span class="hint">{label(change.field)}{#if showLang}<span class="lang-tag">{change.lang.toUpperCase()}</span>{/if}</span>
+        <span class="hint">{label(change.field)}{#if showLang && change.lang}<span class="lang-tag">{change.lang.toUpperCase()}</span>{/if}</span>
         <button type="button" class="btn primary btn-small" onclick={() => onapply([change])}>{t("attach.apply")}</button>
       </div>
       {#if change.before?.trim()}<div class="assist-before">{@html inline(change.before)}</div>{/if}

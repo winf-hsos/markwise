@@ -256,3 +256,21 @@ def test_a_model_without_eyes_gets_a_clear_message(monkeypatch):
     with pytest.raises(assist.AssistError) as caught:
         assist._request("POST", "/chat/completions", "sk-x", {})
     assert caught.value.code == "llm_no_vision"
+
+
+def test_the_level_is_judged_and_a_different_one_proposed(provider):
+    provider["store"]["key"] = "sk-good"
+    switch_on()
+    question = {**QUESTION, "level": "apply"}
+    provider["answers"]["question_review"] = {
+        "findings": [{"about": "level", "text": "Die Frage fragt nur eine Tatsache ab."}], "changes": [], "level": "remember"}
+    answer = assist.review(question, LANGS, "de", "de", min_options=2)
+    assert answer["level"] == {"before": "apply", "proposed": "remember"}
+    assert answer["findings"] == [{"about": "level", "text": "Die Frage fragt nur eine Tatsache ab."}]
+    body = provider["sent"][-1]["body"]
+    assert "Level: apply" in body["messages"][1]["content"] and "cognitive level" in body["messages"][0]["content"]
+    schema = body["response_format"]["json_schema"]["schema"]
+    assert schema["properties"]["level"]["enum"] == ["remember", "understand", "apply"] and "level" in schema["required"]
+
+    provider["answers"]["question_review"] = {"findings": [], "changes": [], "level": "apply"}
+    assert assist.review(question, LANGS, "de", "de", min_options=2)["level"] is None  # fits: nothing to propose

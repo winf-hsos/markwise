@@ -48,6 +48,15 @@ Rules for good multiple-choice questions in university exams:
 
 LANGUAGE_NAMES = {"de": "German", "en": "English"}
 
+LEVELS = ("remember", "understand", "apply")
+LEVEL_RULES = """The cognitive level of a question says what it asks of the student:
+- remember: recall a fact, term, definition or rule as it was taught; recognising the textbook wording suffices.
+- understand: explain, compare, classify, interpret or predict, in a situation close to the one taught; knowing
+  the words is not enough, the student has to grasp what they mean.
+- apply: use the concept in a new, concrete situation: compute, read or trace code, choose an approach, find a
+  mistake, decide a case; the situation has not been seen before as such.
+The level follows from what the question text and the options demand, not from how hard the topic is."""
+
 
 class AssistError(Exception):
     """Something the examiner can fix or should know; `code` names it for the interface."""
@@ -219,7 +228,10 @@ def _question_text(fields: dict, languages: list[str]) -> str:
         if not isinstance(value, dict):
             return f"{indent}{value or ''}"
         return "\n".join(f"{indent}[{lang}] {value.get(lang, '') or '(missing)'}" for lang in languages)
-    lines = [f"Question type: {fields.get('type', 'single')}", f"Question text:\n{texts(fields.get('stem'))}"]
+    lines = [f"Question type: {fields.get('type', 'single')}"]
+    if fields.get("level"):
+        lines.append(f"Level: {fields['level']}")
+    lines.append(f"Question text:\n{texts(fields.get('stem'))}")
     if figure_names(fields):
         lines.append(f"Figures below the text: {', '.join(figure_names(fields))}")
     if fields.get("code"):
@@ -312,7 +324,8 @@ def review(fields: dict, languages: list[str], lang: str, answer_lang: str, min_
     names = _changeable(fields)
     needed = _missing_options(fields, min_options)
     texts = _texts_schema(languages)
-    properties = {"findings": _findings_schema(names), "changes": _changes_schema(names, languages)}
+    properties = {"findings": _findings_schema(names + ["level"]), "changes": _changes_schema(names, languages),
+                  "level": {"type": "string", "enum": list(LEVELS)}}
     if needed:
         properties["new_options"] = {"type": "array", "items": {
             "type": "object", "additionalProperties": False, "required": ["text", "feedback", "misconception"],
@@ -351,18 +364,23 @@ def review(fields: dict, languages: list[str], lang: str, answer_lang: str, min_
         )
     system = (
         "You review questions for university exams and help the examiner improve and complete them.\n\n" +
-        WRITING_RULES + f"\n\n{LABELS}\n\n" + (FIGURES + "\n\n" if figures else "") + f"{task} The examiner is working on the "
+        WRITING_RULES + f"\n\n{LEVEL_RULES}\n\n{LABELS}\n\n" + (FIGURES + "\n\n" if figures else "") + f"{task} The examiner is working on the "
         f"{LANGUAGE_NAMES.get(lang, lang)} version.\n\n{complete}\n\n"
         f"List what you find, including any text written in the wrong language, each as one short sentence in "
         f"{LANGUAGE_NAMES.get(answer_lang, 'English')}, naming in `about` the field it concerns (`question` for the "
         f"question as a whole); an empty list if nothing needs changing. In `changes`, give the complete new text of every field that should change or be filled, in "
         f"every one of these languages: {_named(languages)}, keeping the meaning, the learning goal and the Markdown "
         f"(backticks for code); a language version that is already right is returned unchanged. Fields are named "
-        f"`stem`, `option.<id>.text`, `option.<id>.feedback`, `expected` and `marking_notes`."
+        f"`stem`, `option.<id>.text`, `option.<id>.feedback`, `expected` and `marking_notes`.\n\n"
+        f"Finally judge the level: give in `level` the level the question demands as it stands (after your proposed "
+        f"changes). If it differs from the level the question carries, explain why in one finding about `level`."
     )
     answer = _ask(system, _question_text(fields, languages), "question_review", schema, figures)
-    result = {"findings": _findings(answer, names), "changes": _flatten(fields, answer.get("changes", []), names, languages),
-              "new_options": []}
+    result = {"findings": _findings(answer, names + ["level"]),
+              "changes": _flatten(fields, answer.get("changes", []), names, languages), "new_options": [], "level": None}
+    judged = answer.get("level")
+    if judged in LEVELS and judged != fields.get("level"):
+        result["level"] = {"before": fields.get("level") or "", "proposed": judged}
     for option in (answer.get("new_options") or [])[:needed]:
         text = {code: str((option.get("text") or {}).get(code) or "") for code in languages}
         if any(text.values()):

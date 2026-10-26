@@ -200,7 +200,14 @@
   }
 
   async function reviewQuestion() {
-    review = await askModel("review", "assist_review", lang);
+    const answer = await askModel("review", "assist_review", lang);
+    if (answer?.level) {
+      // A different level appears among the proposals like a text, and applying it sets the question's own level.
+      const { before, proposed } = answer.level;
+      answer.changes.push({ field: "level", lang: "", value: proposed, text: t(`level.${proposed}`),
+        before: before ? t(`level.${before}`) : "" });
+    }
+    review = answer;
   }
 
   // For a free-text variant: the same calculation with other numbers, the answer worked out again.
@@ -213,6 +220,7 @@
 
   function fieldLabel(name) {
     if (name === "question") return t("assist.aboutQuestion");
+    if (name === "level") return t("edit.level");
     if (name === "stem") return t("edit.stem");
     if (name === "expected") return t("q.expected");
     if (name === "marking_notes") return t("q.markingNotes");
@@ -223,7 +231,9 @@
   // Put proposed texts into the form and take them off the list they came from.
   function applyTo(result, chosen) {
     for (const change of chosen) {
-      if (change.field.startsWith("option.")) {
+      if (change.field === "level") {
+        fields.level = change.value;
+      } else if (change.field.startsWith("option.")) {
         const [, id, part] = change.field.split(".");
         const option = fields.options.find((o) => o.id === id);
         if (option) option[part][change.lang] = change.text;
