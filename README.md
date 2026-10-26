@@ -141,8 +141,8 @@ The editor shows the form on the left and the question as it reads on paper on t
 
   What a question carries appears as a small card below the text, with **Edit** or **Change** and **Remove**.
 - Each **option** has a box on the left that marks it correct (for single choice, marking one unmarks the others), its text, and below it the feedback that explains why it is right or wrong. **Add option** adds one, **–** removes one.
-- With the language model switched on (see [Help from a language model](#help-from-a-language-model)), **Check with AI** next to the language tabs hands the whole question to the model, with all its options and feedback in every language of the pool, and does everything in one go:
-  - it checks the question as a whole: is the text clear without the options, does every option answer what the text asks, are the options clear and mutually exclusive, are exactly the marked options correct, does one stand out by length, detail or wording, are the wrong ones plausible, and does each feedback fit (for a free-text question: the question text, the expected answer and the marking notes);
+- With the language model switched on (see [Help from a language model](#help-from-a-language-model)), **Check with AI** next to the language tabs hands the whole question to the model, with all its options and feedback in every language of the pool and its figures as images, and does everything in one go:
+  - it checks the question as a whole: is the text clear without the options, does every option answer what the text asks, are the options clear and mutually exclusive, are exactly the marked options correct, does one stand out by length, detail or wording, are the wrong ones plausible, and does each feedback fit (for a free-text question: the question text, the expected answer and the marking notes); with figures, it also checks that text, options and figure fit together, for example that values and labels agree;
   - it reports a text written in the wrong language (German in the English field, say);
   - it proposes better wordings and fills in what is missing: texts in a language that is still empty, missing feedback, an empty wrong option;
   - if the question has fewer options than the pool requires, it proposes as many new wrong options as are missing, each with feedback and the misconception it plays on.
@@ -173,9 +173,9 @@ Markwise can ask a language model from OpenAI to check question texts and to pro
 2. Paste the key into **OpenAI API key** and click **Check and save**. Markwise asks OpenAI whether the key works and only then stores it, in the Windows credential store (Control Panel → Credential Manager → Windows Credentials, entry *Markwise*), never in a file. **Remove key** deletes it from there.
 
    If the environment variable `OPENAI_API_KEY` is set on your computer, Markwise offers that key first, showing only its beginning and end; **Use this one** checks it and stores it the same way.
-3. Under **Model**, choose one of the models your key may use. Markwise suggests a small, inexpensive one; a larger model checks more thoroughly but takes longer and costs more.
+3. Under **Model**, choose one of the models your key may use. Markwise suggests a small, inexpensive one; a larger model checks more thoroughly but takes longer and costs more. For questions with figures the model has to read images, as the models of the gpt-4o, gpt-4.1 and gpt-5 series do; Markwise sends figures as PNG images (SVG figures rendered first) of at most 1280 pixels, and says so if the chosen model cannot read them.
 
-The editor then shows **Check with AI** (see [Creating and editing questions](#creating-and-editing-questions)), and for a free-text exam variant **Propose other numbers**. Only the text, code, options and feedback (or, for a free-text question, the expected answer and marking notes) of the question you are working on are sent, and only when you press one of the buttons; never names, participants, scans or grades, and never who wrote the question. The model's answer is a suggestion: nothing changes until you apply it and save.
+The editor then shows **Check with AI** (see [Creating and editing questions](#creating-and-editing-questions)), and for a free-text exam variant **Propose other numbers**. Only the text, figures, code, options and feedback (or, for a free-text question, the expected answer and marking notes) of the question you are working on are sent, and only when you press one of the buttons; never names, participants, scans or grades, and never who wrote the question. The model's answer is a suggestion: nothing changes until you apply it and save.
 
 **Exams** shows what will be there and when.
 
@@ -416,7 +416,7 @@ prints for each sheet whether the QR code, the orientation, the student number a
 
 ## Privacy
 
-Markwise runs on your computer and sends nothing anywhere, unless you switch on the language model; then the text of the question you are working on goes to OpenAI when you press **Check with AI** or **Propose other numbers**, and nothing else. Question pools contain no personal data. Names, student numbers, scans and grades exist only in the exam folders below a module folder, which belongs where only authorised people have access, as exam documents do today.
+Markwise runs on your computer and sends nothing anywhere, unless you switch on the language model; then the text and figures of the question you are working on go to OpenAI when you press **Check with AI** or **Propose other numbers**, and nothing else. Question pools contain no personal data. Names, student numbers, scans and grades exist only in the exam folders below a module folder, which belongs where only authorised people have access, as exam documents do today.
 
 This repository holds code, documentation and invented test data only. Real exams, scans, participant lists and grades never go into it.
 

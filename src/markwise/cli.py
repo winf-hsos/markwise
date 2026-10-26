@@ -275,7 +275,9 @@ def _print_changes(answer: dict) -> None:
 def cmd_assist_review(args) -> int:
     pool = Pool.open(args.pool)
     lang = args.lang or pool.settings.languages[0]
-    answer = assist.review(_model_fields(pool, args.id), pool.settings.languages, lang, "de", pool.settings.min_options)
+    fields = _model_fields(pool, args.id)
+    answer = assist.review(fields, pool.settings.languages, lang, "de", pool.settings.min_options,
+                           assist.figures_for_model(pool, fields))
     if args.json:
         _print_json(answer)
     else:
@@ -290,7 +292,8 @@ def cmd_assist_review(args) -> int:
 
 def cmd_assist_numbers(args) -> int:
     pool = Pool.open(args.pool)
-    answer = assist.vary_numbers(_model_fields(pool, args.id), pool.settings.languages, "de")
+    fields = _model_fields(pool, args.id)
+    answer = assist.vary_numbers(fields, pool.settings.languages, "de", assist.figures_for_model(pool, fields))
     if args.json:
         _print_json(answer)
     else:

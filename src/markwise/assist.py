@@ -9,6 +9,7 @@ a person accepts or not.
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import urllib.error
@@ -21,6 +22,7 @@ KEYRING_SERVICE = "Markwise"
 KEYRING_USER = "openai"
 ENV_VAR = "OPENAI_API_KEY"  # offered for use when no key is stored yet
 TIMEOUT = 90
+FIGURE_MAX_PIXELS = 1280  # the longer side of a figure sent to the model
 
 # Models that do not write text in a chat (images, speech, embeddings and the like) stay out of the choice.
 NOT_FOR_TEXT = ("audio", "realtime", "transcribe", "tts", "image", "embedding", "search", "moderation", "dall-e",
@@ -106,6 +108,8 @@ def _request(method: str, path: str, key: str, body: dict | None = None) -> dict
             raise AssistError("llm_key_invalid", "the API key was not accepted") from None
         if err.code == 429:
             raise AssistError("llm_quota", detail or "the provider refuses for now (limit or quota)") from None
+        if err.code == 400 and "image" in detail.lower():
+            raise AssistError("llm_no_vision", detail or "the chosen model cannot read images") from None
         raise AssistError("llm_failed", detail or f"the provider answered with error {err.code}") from None
     except (urllib.error.URLError, TimeoutError) as err:
         raise AssistError("llm_network", f"the provider cannot be reached ({err})") from None
@@ -134,11 +138,14 @@ def _ready() -> tuple[str, str]:
     return key, current.llm_model
 
 
-def _ask(system: str, user: str, schema_name: str, schema: dict) -> dict:
+def _ask(system: str, user: str, schema_name: str, schema: dict, figures: list[str] = ()) -> dict:
+    """One request; `figures` are data URLs of the question's figures, sent as images after the text."""
     key, model = _ready()
+    content = user if not figures else [{"type": "text", "text": user}] + [
+        {"type": "image_url", "image_url": {"url": url, "detail": "auto"}} for url in figures]
     answer = _request("POST", "/chat/completions", key, {
         "model": model,
-        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+        "messages": [{"role": "system", "content": system}, {"role": "user", "content": content}],
         "response_format": {"type": "json_schema", "json_schema": {"name": schema_name, "strict": True, "schema": schema}},
     })
     try:
@@ -147,6 +154,50 @@ def _ask(system: str, user: str, schema_name: str, schema: dict) -> dict:
         raise AssistError("llm_failed", "the answer of the model could not be read") from None
 
 
+
+
+# --- figures ----------------------------------------------------------------------------
+
+
+def figure_names(fields: dict) -> list[str]:
+    """The figures below the question text: one in `image`, several in `images`."""
+    many = fields.get("images")
+    if isinstance(many, list) and many:
+        return [str(name) for name in many if name]
+    return [str(fields["image"])] if fields.get("image") else []
+
+
+def figure_for_model(path) -> str:
+    """A figure as a PNG data URL the provider accepts: an SVG is rendered, a large image scaled down."""
+    import pymupdf
+    with pymupdf.open(path) as doc:
+        page = doc[0]
+        longest = max(page.rect.width, page.rect.height) or 1
+        zoom = min(2.0, FIGURE_MAX_PIXELS / longest)
+        pixmap = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom), alpha=False)  # transparency on white
+        return "data:image/png;base64," + base64.b64encode(pixmap.tobytes("png")).decode()
+
+
+def figures_for_model(pool, fields: dict) -> list[str]:
+    """The question's figures from the pool's images folder, in their order; a missing or unreadable one is left out."""
+    urls = []
+    for name in figure_names(fields):
+        path = pool.image_file(name)
+        if path is None:
+            continue
+        try:
+            urls.append(figure_for_model(path))
+        except Exception:  # a broken file must not stop the check of the text
+            continue
+    return urls
+
+
+FIGURES = (
+    "The figures that belong to the question are attached as images, in the order listed. Take them into account: "
+    "does the question text fit the figure, are values, labels and units in the text, the options and the figure "
+    "consistent, does an option contradict the figure, and can the question be answered from what the figure "
+    "shows? A figure itself cannot be changed here; if it needs changing, say so as a finding about `question`."
+)
 
 
 def _named(languages: list[str]) -> str:
@@ -169,6 +220,8 @@ def _question_text(fields: dict, languages: list[str]) -> str:
             return f"{indent}{value or ''}"
         return "\n".join(f"{indent}[{lang}] {value.get(lang, '') or '(missing)'}" for lang in languages)
     lines = [f"Question type: {fields.get('type', 'single')}", f"Question text:\n{texts(fields.get('stem'))}"]
+    if figure_names(fields):
+        lines.append(f"Figures below the text: {', '.join(figure_names(fields))}")
     if fields.get("code"):
         lines.append(f"Code below the text (the same in every language):\n{fields['code']}")
     for option in fields.get("options") or []:
@@ -251,7 +304,8 @@ def _missing_options(fields: dict, min_options: int) -> int:
     return max(0, min_options - len(fields.get("options") or []))
 
 
-def review(fields: dict, languages: list[str], lang: str, answer_lang: str, min_options: int = 4) -> dict:
+def review(fields: dict, languages: list[str], lang: str, answer_lang: str, min_options: int = 4,
+           figures: list[str] = ()) -> dict:
     """Check the question as a whole and complete it, in one go: findings, improved texts per field and language
     (including texts in the wrong or a missing language and missing feedback), and for a choice question with too
     few options as many new wrong options as it lacks."""
@@ -297,7 +351,7 @@ def review(fields: dict, languages: list[str], lang: str, answer_lang: str, min_
         )
     system = (
         "You review questions for university exams and help the examiner improve and complete them.\n\n" +
-        WRITING_RULES + f"\n\n{LABELS}\n\n{task} The examiner is working on the "
+        WRITING_RULES + f"\n\n{LABELS}\n\n" + (FIGURES + "\n\n" if figures else "") + f"{task} The examiner is working on the "
         f"{LANGUAGE_NAMES.get(lang, lang)} version.\n\n{complete}\n\n"
         f"List what you find, including any text written in the wrong language, each as one short sentence in "
         f"{LANGUAGE_NAMES.get(answer_lang, 'English')}, naming in `about` the field it concerns (`question` for the "
@@ -306,7 +360,7 @@ def review(fields: dict, languages: list[str], lang: str, answer_lang: str, min_
         f"(backticks for code); a language version that is already right is returned unchanged. Fields are named "
         f"`stem`, `option.<id>.text`, `option.<id>.feedback`, `expected` and `marking_notes`."
     )
-    answer = _ask(system, _question_text(fields, languages), "question_review", schema)
+    answer = _ask(system, _question_text(fields, languages), "question_review", schema, figures)
     result = {"findings": _findings(answer, names), "changes": _flatten(fields, answer.get("changes", []), names, languages),
               "new_options": []}
     for option in (answer.get("new_options") or [])[:needed]:
@@ -317,7 +371,7 @@ def review(fields: dict, languages: list[str], lang: str, answer_lang: str, min_
     return result
 
 
-def vary_numbers(fields: dict, languages: list[str], answer_lang: str) -> dict:
+def vary_numbers(fields: dict, languages: list[str], answer_lang: str, figures: list[str] = ()) -> dict:
     """For a free-text calculation: other numbers in the task, with the expected answer and marking notes worked out
     again. Returns the proposed texts per field and language and the calculation, for the examiner to check."""
     if fields.get("type") != "free_text":
@@ -346,6 +400,9 @@ def vary_numbers(fields: dict, languages: list[str], answer_lang: str) -> dict:
         f"original. If the task has no numbers to vary, or a new result cannot be worked out reliably, say so as a "
         f"finding in one short sentence and propose no changes."
     )
-    answer = _ask(system, _question_text(fields, languages), "number_variant", schema)
+    if figures:
+        system += ("\n\nThe question's figures are attached as images. If a number to be changed also appears in a "
+                   "figure, the figure would no longer fit; say so as a finding and keep that number as it is.")
+    answer = _ask(system, _question_text(fields, languages), "number_variant", schema, figures)
     return {"calculation": str(answer.get("calculation") or "").strip(), "findings": _findings(answer, names),
             "changes": _flatten(fields, answer.get("changes", []), names, languages)}

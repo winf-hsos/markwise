@@ -503,11 +503,12 @@ class Api:
     @_answer
     def assist_review(self, pool_path: str, fields: dict, lang: str) -> dict:
         """Check a question with its answers and complete it: languages, feedback and missing wrong options."""
-        settings = Pool.open(pool_path).settings
-        return self._assist(assist.review, fields, settings.languages, lang, user_settings.load().language,
-                            settings.min_options)
+        pool = Pool.open(pool_path)
+        return self._assist(assist.review, fields, pool.settings.languages, lang, user_settings.load().language,
+                            pool.settings.min_options, assist.figures_for_model(pool, fields))
 
     @_answer
     def assist_vary_numbers(self, pool_path: str, fields: dict) -> dict:
-        languages = Pool.open(pool_path).settings.languages
-        return self._assist(assist.vary_numbers, fields, languages, user_settings.load().language)
+        pool = Pool.open(pool_path)
+        return self._assist(assist.vary_numbers, fields, pool.settings.languages, user_settings.load().language,
+                            assist.figures_for_model(pool, fields))

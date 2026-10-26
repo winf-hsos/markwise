@@ -209,3 +209,50 @@ def test_the_command_line_shows_the_model_a_variant_with_its_inherited_settings(
     variant = lifecycle.create_variant(pool, task.id, "")
     fields = _model_fields(pool, variant.id)
     assert "type" not in variant.data and fields["type"] == "free_text" and fields["lines"] == 8
+
+
+def _pool_with_figures(tmp_path):
+    import pymupdf
+    pool = Pool.create(tmp_path / "pool", PoolSettings(name="P", languages=["de"]))
+    (pool.images_dir / "curve.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100"><path d="M0 100 L200 0" stroke="black"/></svg>',
+        encoding="utf-8")
+    pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 3000, 1500), 0).save(str(pool.images_dir / "photo.png"))
+    return pool
+
+
+def test_figures_go_to_the_model_as_png_images_after_the_text(provider, tmp_path):
+    import base64
+    import pymupdf
+    pool = _pool_with_figures(tmp_path)
+    provider["store"]["key"] = "sk-good"
+    switch_on()
+    provider["answers"]["question_review"] = {"findings": [], "changes": []}
+    fields = {**QUESTION, "images": ["curve", "photo", "missing"]}
+    figures = assist.figures_for_model(pool, fields)
+    assert len(figures) == 2 and all(url.startswith("data:image/png;base64,") for url in figures)  # the missing one is left out
+    photo = pymupdf.Pixmap(base64.b64decode(figures[1].split(",", 1)[1]))
+    assert max(photo.width, photo.height) <= assist.FIGURE_MAX_PIXELS  # scaled down
+    Api().assist_review(str(pool.root), fields, "de")
+    content = provider["sent"][-1]["body"]["messages"][1]["content"]
+    assert content[0]["type"] == "text" and "Figures below the text: curve, photo, missing" in content[0]["text"]
+    assert [part["type"] for part in content[1:]] == ["image_url", "image_url"]
+    assert "figures that belong to the question are attached" in provider["sent"][-1]["body"]["messages"][0]["content"]
+
+
+def test_without_figures_the_question_goes_as_plain_text(provider):
+    provider["store"]["key"] = "sk-good"
+    switch_on()
+    provider["answers"]["question_review"] = {"findings": [], "changes": []}
+    assist.review(QUESTION, LANGS, "de", "de", min_options=2)
+    assert isinstance(provider["sent"][-1]["body"]["messages"][1]["content"], str)
+
+
+def test_a_model_without_eyes_gets_a_clear_message(monkeypatch):
+    def urlopen(request, timeout):
+        raise urllib.error.HTTPError(request.full_url, 400, "error", {}, io.BytesIO(
+            json.dumps({"error": {"message": "Invalid content type. image_url is only supported by certain models."}}).encode()))
+    monkeypatch.setattr(assist.urllib.request, "urlopen", urlopen)
+    with pytest.raises(assist.AssistError) as caught:
+        assist._request("POST", "/chat/completions", "sk-x", {})
+    assert caught.value.code == "llm_no_vision"
