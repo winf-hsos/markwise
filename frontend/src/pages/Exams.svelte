@@ -88,9 +88,12 @@
   async function save(fields) {
     try {
       const answer = await call("update_exam", current.path, fields);
+      if (answer.path !== current.path) remember("exams", modulePath, { open: answer.path }); // the folder moved
       current = answer;
+      return true;
     } catch (err) {
       showToast(errorText(err));
+      return false;
     }
   }
 
@@ -122,8 +125,9 @@
     saving = setTimeout(() => save({ entries: plainEntries(current.entries) }), 400);
   }
 
-  function saveSetting(name, value) {
-    save({ [name]: value });
+  // `input` gets its saved value back when the change is refused, say a title another exam has on that date.
+  async function saveSetting(name, value, input) {
+    if (!(await save({ [name]: value })) && input) input.value = current[name];
   }
 
   // --- choosing questions ---------------------------------------------------------------------
@@ -169,10 +173,10 @@
       <PrintExamDialog bind:open={printOpen} exam={current} onprinted={(exam) => (current = exam)} />
 
       <div class="exam-settings">
-        <label class="field"><span>{t("exams.examTitle")}</span>
-          <input class="input" value={current.title} onchange={(e) => saveSetting("title", e.currentTarget.value)} /></label>
-        <label class="field"><span>{t("exams.date")}</span>
-          <input class="input" type="date" value={current.date} onchange={(e) => saveSetting("date", e.currentTarget.value)} /></label>
+        <label class="field" title={t("exams.renameHint")}><span>{t("exams.examTitle")}</span>
+          <input class="input" value={current.title} onchange={(e) => saveSetting("title", e.currentTarget.value, e.currentTarget)} /></label>
+        <label class="field" title={t("exams.renameHint")}><span>{t("exams.date")}</span>
+          <input class="input" type="date" value={current.date} onchange={(e) => saveSetting("date", e.currentTarget.value, e.currentTarget)} /></label>
         {#if languages.length > 1}
           <div class="field">
             <span>{t("exams.language")}</span>

@@ -111,6 +111,25 @@ class Exam:
         exam.save()
         return exam
 
+    def rename(self, module: Module, title: str, date: str) -> None:
+        """Give the exam a new title or date; its folder follows, into another semester if the date says so.
+        Printed booklets and everything else in the folder move with it."""
+        title = title.strip()
+        if not title:
+            raise ValueError("an exam needs a title")
+        day = datetime.date.fromisoformat(date)
+        semester = semester_of(day)
+        target = module.new_exam_folder(semester, day.isoformat(), folder_title(title))
+        same = target.exists() and target.samefile(self.root)  # also a change of case only, on Windows
+        if target.exists() and not same:
+            raise FileExistsError(f"{target} exists already")
+        if target != self.root:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            self.root.rename(target)
+            self.root = target
+        self.title, self.date, self.semester = title, day.isoformat(), semester
+        self.save()
+
     def save(self) -> None:
         data = {
             "title": self.title,

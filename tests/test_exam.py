@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import json
+from pathlib import Path
 
 import pytest
 
@@ -89,3 +90,26 @@ def test_the_command_line_puts_an_exam_together(module, capsys):
     report = json.loads(capsys.readouterr().out)
     assert report["points"] == 2 and report["questions"][0]["id"] == "co-002"
     assert main(["exam", "remove", folder, "co-002"]) == 0
+
+
+def test_a_new_title_or_date_moves_the_folder_along(module):
+    exam = Exam.create(module, "Mock", "2026-12-10", "en", author="")
+    pool = module.open_pools()[0]
+    exam.add(module, pool.root, "co-002")
+    exam.save()
+    (exam.root / "Print").mkdir()
+    (exam.root / "Print" / "layout.json").write_text("{}", encoding="utf-8")
+    api = Api()
+    answer = api.update_exam(str(exam.root), {"title": "Mock exam: second try"})["data"]
+    moved = module.root / "01 - Semester" / "2026-27 - WS" / "Exam" / "2026-12-10 - Mock exam second try"
+    assert answer["path"] == str(moved) and answer["title"] == "Mock exam: second try"
+    assert not exam.root.exists() and (moved / "Print" / "layout.json").exists()
+    answer = api.update_exam(answer["path"], {"date": "2027-05-04"})["data"]
+    assert answer["semester"] == "2027 - SS" and "2027 - SS" in answer["path"]
+    again = Exam.open(answer["path"])
+    assert again.title == "Mock exam: second try" and [q.id for q in again.questions] == ["co-002"]
+    assert again.check(module) and not any(f.code == "exam_pool_missing" for f in again.check(module))
+    Exam.create(module, "Other", "2027-05-04", "en", author="")
+    refused = api.update_exam(answer["path"], {"title": "Other"})
+    assert refused["code"] == "exam_exists" and Path(answer["path"]).exists()
+    assert api.update_exam(answer["path"], {"title": "  "})["code"] == "exam_title_missing"

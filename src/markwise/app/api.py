@@ -556,12 +556,18 @@ class Api:
         """Change an exam: its settings, examiners, and its questions as [{pool, id, points}] in their order."""
         exam = Exam.open(exam_path)
         module = Module.around(exam.root)
-        if "title" in fields:
-            if not str(fields["title"]).strip():
+        if "title" in fields or "date" in fields:
+            title = str(fields.get("title", exam.title)).strip()
+            if not title:
                 raise Refusal("exam_title_missing", "the exam needs a title")
-            exam.title = str(fields["title"]).strip()
-        if "date" in fields and fields["date"]:
-            exam.date = str(fields["date"])
+            if not fields.get("date", exam.date):
+                raise Refusal("exam_date_missing", "the exam needs a date")
+            try:
+                exam.rename(module, title, str(fields.get("date") or exam.date))
+            except FileExistsError:
+                raise Refusal("exam_exists", "an exam with this date and title exists already") from None
+            except PermissionError:
+                raise Refusal("exam_folder_busy", "a file in the exam folder is open in another program") from None
         if fields.get("language") in ("de", "en"):
             exam.language = fields["language"]
         if fields.get("answers") in ANSWER_MODES:

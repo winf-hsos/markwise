@@ -361,6 +361,14 @@ def cmd_exam_add(args) -> int:
     return 0
 
 
+def cmd_exam_rename(args) -> int:
+    from .exam import Exam
+    exam = Exam.open(args.exam)
+    exam.rename(Module.around(exam.root), args.title or exam.title, args.date or exam.date)
+    print(json.dumps({"exam": str(exam.root)}) if args.json else f"Exam now in {exam.root}")
+    return 0
+
+
 def cmd_exam_remove(args) -> int:
     from .exam import Exam
     exam = Exam.open(args.exam)
@@ -598,6 +606,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("exam")
     p.add_argument("id")
     p.set_defaults(func=cmd_exam_remove)
+    p = exam.add_parser("rename", parents=[common], help="give an exam a new title or date; its folder follows")
+    p.add_argument("exam")
+    p.add_argument("--title")
+    p.add_argument("--date", help="YYYY-MM-DD; the exam moves to the semester it falls in")
+    p.set_defaults(func=cmd_exam_rename)
     p = exam.add_parser("print", parents=[common],
                         help="typeset the booklets, the answer sheet and the answer key as PDF into the exam folder")
     p.add_argument("exam")

@@ -189,7 +189,7 @@ The **Exams** page lists the exams of the current module, newest first. **New ex
 
 Markwise creates a folder for the exam in the module, in the semester the date falls in (`01 - Semester\2026-27 - WS\Klausur\2026-12-10 - Probeklausur` with a German interface), and writes the exam into `exam.toml` there.
 
-Clicking an exam opens it. At the top are its title, date, language, answer form and examiners (names separated by commas), below them the number of questions, the points and the total answering time. On the right, **Add questions** shows the questions of the module's pools with search and the usual filters, at first only those meant for exams; **Add** puts a question at the end of the exam. On the left the exam lists its questions in order: each has its points, suggested as one point per minute of answering time (rounded to half points, at least one) and changeable, buttons to move it up or down, and one to take it out. Every change is saved at once.
+Clicking an exam opens it. At the top are its title, date, language, answer form and examiners (names separated by commas), all changeable; a new title or date renames the exam's folder, and a date in another semester moves it there, with everything printed so far. Below them are the number of questions, the points and the total answering time. On the right, **Add questions** shows the questions of the module's pools with search and the usual filters, at first only those meant for exams; **Add** puts a question at the end of the exam. On the left the exam lists its questions in order: each has its points, suggested as one point per minute of answering time (rounded to half points, at least one) and changeable, buttons to move it up or down, and one to take it out. Every change is saved at once.
 
 The exam checks itself as you go and says what needs a look: a question meant for practice only, a question with errors or without a text in the exam's language, a retired one, two variants of the same practice question, points of zero, fewer than two examiners. An exam with errors cannot be printed.
 
@@ -411,6 +411,7 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise exam new <module> --title <title> --date <YYYY-MM-DD> [--lang de\|en] [--answers sheet\|inline]` | create an exam in its folder below the module |
 | `markwise exam add <exam> <pool> <id> [--points]` | add a question; its points follow from its time unless given |
 | `markwise exam remove <exam> <id>` | take a question out of the exam |
+| `markwise exam rename <exam> [--title <title>] [--date <YYYY-MM-DD>]` | give an exam a new title or date; its folder follows |
 | `markwise exam show <exam>` | show an exam with its questions, points and what the check finds |
 | `markwise exam print <exam> [--booklets N]` | typeset N numbered copies, the answer key and `layout.json` into the exam's print folder |
 | `markwise app` | open the app window |
