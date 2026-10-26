@@ -813,7 +813,12 @@ button.heritage:hover { text-decoration: underline; }
 .exam-list .pane-title { background: var(--surface); }
 .pane-title { position: sticky; top: 0; z-index: 1; margin: 0; padding: 12px 18px 8px; background: var(--paper); font: 600 13px/1.2 var(--ui-display); color: var(--muted); }
 .exam-entries { list-style: none; margin: 0; padding: 0 18px 24px; display: grid; gap: 14px; }
-.exam-entry { display: grid; gap: 6px; }
+/* one question of the exam: a white card with its details and tools at the top, the question as printed below */
+.exam-entry { display: grid; background: #fff; border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+  box-shadow: 0 1px 2px rgba(23, 32, 43, 0.05); }
+.exam-entry > .entry-bar { padding: 6px 10px 6px 4px; border-bottom: 1px solid var(--line-soft); background: #fbfbfc; }
+.exam-entry > .entry-finding { padding: 6px 22px 0; }
+.exam-entry > .booklet-item { border: 0; border-radius: 0; box-shadow: none; }
 .entry-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
 .entry-bar .q-concept { flex: 1 1 60px; }
 .entry-bar .qid { white-space: nowrap; }
@@ -853,7 +858,7 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
   padding: 7px 12px; background: var(--paper); border: 1px solid var(--accent); border-radius: 6px; font-size: 13px;
   box-shadow: 0 10px 28px -10px rgba(23, 32, 43, 0.35); transform: rotate(-1.5deg); }
 .drag-ghost.nowhere { border-color: var(--line); opacity: 0.75; }
-.exam-entry.landed .booklet-item { box-shadow: 0 0 0 3px var(--accent); transition: box-shadow 0.4s; }
+.exam-entry.landed { box-shadow: 0 0 0 3px var(--accent); transition: box-shadow 0.4s; }
 .exam-entries.compact.held { padding-bottom: 60vh; } /* room to scroll the grabbed line under the pointer */
 .pane-actions { display: inline-flex; align-items: center; gap: 8px; }
 .entry-compact.line { cursor: pointer; }
