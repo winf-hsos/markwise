@@ -60,6 +60,17 @@ def cmd_pool_init(args) -> int:
     return 0
 
 
+def cmd_pool_unwrap(args) -> int:
+    from .importer import unwrap_pool
+    report = unwrap_pool(Pool.open(args.pool), write=args.yes)
+    if args.json:
+        print(json.dumps(report))
+    else:
+        print(f"{len(report['questions'])} questions with {report['texts']} texts wrapped by hand"
+              + (f"; {report['files']} files rewritten" if args.yes else "; nothing changed (add --yes to rewrite)"))
+    return 0
+
+
 def cmd_pool_languages(args) -> int:
     pool = Pool.open(args.pool)
     if args.languages:
@@ -389,6 +400,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--name", required=True)
     p.add_argument("--languages", default="de,en")
     p.set_defaults(func=cmd_pool_init)
+    p = pool.add_parser("unwrap", parents=[common],
+                        help="join text lines wrapped by hand into paragraphs, as Markdown reads them")
+    p.add_argument("pool")
+    p.add_argument("--yes", action="store_true", help="rewrite the files (without it, only count)")
+    p.set_defaults(func=cmd_pool_unwrap)
     p = pool.add_parser("languages", parents=[common], help="show or change the languages of a pool")
     p.add_argument("pool")
     p.add_argument("languages", nargs="?", help="comma-separated, for example de,en; without it the languages are shown")

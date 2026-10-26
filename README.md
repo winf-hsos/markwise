@@ -135,7 +135,7 @@ The editor shows the form on the left and the question as it reads on paper on t
 
 - **Type** switches between single and multiple choice (a free-text question stays free text). **Level** is a choice of three. **Time to answer** offers 15 s, 30 s, 45 s, 1 min, 2 min and 5 min, and **Other …** for any time in minutes and seconds; points are not set here but when an exam is built. **Use** has two switches, **Practice** and **Exam**, which can both be on; one of them always stays on. A question meant only for exams can name the practice question it is a **variant of**; an exam variant is never a practice question itself, because students would then know it.
 - The tabs above the question text show the pool's languages (**Deutsch**, **English** or just one of them) and switch the language of all texts. A yellow dot on a language means a text is still missing there. **Change the pool's languages** on the right leads to the Modules page, where they are set.
-- The **question text** grows with what you type. Below it, **Add** opens a menu of what a question can carry under its text, each added in a dialog of its own:
+- The **question text** grows with what you type. Texts are read as Markdown, as on the course websites: `**bold**`, `*italic*` and `` `code` `` work, a single line break is only a space, and a blank line starts a new paragraph; list items, code blocks and a line ending in two spaces keep their line breaks. Below it, **Add** opens a menu of what a question can carry under its text, each added in a dialog of its own:
   - **Code**: a code block with syntax highlighting. Choose the language (Python, JavaScript, Java, C, C++, C#, SQL, R, Shell, JSON) or let Markwise detect it; **Tab** indents by four spaces.
   - **Figures**: the pool's images as small previews. Click one or several; the numbers on them show the order. With two or more, choose the **layout**: one below the other, side by side, or in 2 or 3 columns. **Add image from file …** copies a PNG, SVG or JPEG file into the pool's `images` folder, under a name made from the file name, and selects it.
   - **Formula** is listed as coming.
@@ -331,7 +331,7 @@ Question banks in the earlier YAML format (a `pool.toml` with German keys such a
 markwise import "D:\Teaching\Statistics\pool.toml" "D:\Teaching\Statistics\markwise-pool"
 ```
 
-The import creates the pool if it does not exist yet, converts every question, copies the images and keeps fields it does not know. Concepts get their names and short descriptions from the website's concept pages, where the earlier `pool.toml` points to them. The import reports how many questions it **created** and which concepts it **named**.
+The import creates the pool if it does not exist yet, converts every question, copies the images and keeps fields it does not know. Texts wrapped by hand in the earlier files, so that they read well in an editor, become one line per paragraph; a pool imported before that can be tidied with `markwise pool unwrap <pool>` (it first counts, `--yes` rewrites), which keeps questions the import wrote and nobody changed counting as untouched. Concepts get their names and short descriptions from the website's concept pages, where the earlier `pool.toml` points to them. The import reports how many questions it **created** and which concepts it **named**.
 
 The import can be run again at any time, for example while the old question bank is still being edited. It never overwrites a question silently, and sorts every question into one of these groups:
 
@@ -361,6 +361,7 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 |---|---|
 | `markwise pool init <folder> --name <name> [--languages de,en]` | create an empty pool |
 | `markwise pool languages <pool> [de,en]` | show the languages of a pool, or change them |
+| `markwise pool unwrap <pool> [--yes]` | count, and with `--yes` join, text lines that were wrapped by hand into paragraphs |
 | `markwise question new <pool> --concept <concept> [--type single\|multiple\|free_text]` | create a question from the template of its type |
 | `markwise question list <pool or module> [--search] [--concept] [--status] [--type] [--level] [--use practice\|exam] [--public yes\|no] [--findings errors\|warnings\|none]` | list questions, searched and filtered; a module folder lists all its pools |
 | `markwise question show <pool> <id>` | print a question file |

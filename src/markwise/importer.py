@@ -19,6 +19,7 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
 from . import yamlio
+from .text import unwrap_question
 from .pool import POOL_FILE, Pool, PoolSettings
 from .question import ordered
 
@@ -91,6 +92,7 @@ def convert(old: CommentedMap) -> CommentedMap:
     fields["options"] = options
     new = ordered(fields)
     _carry_comments(old, new, KEYS)
+    unwrap_question(new)  # texts wrapped by hand for the earlier files become one line per paragraph
     return new
 
 
@@ -147,6 +149,38 @@ def _name_concepts(pool: Pool, pages: dict[str, dict]) -> list[str]:
 def read_legacy_settings(legacy_toml: Path) -> dict:
     with open(legacy_toml, "rb") as f:
         return tomllib.load(f)
+
+
+def unwrap_pool(pool: Pool, write: bool = False) -> dict:
+    """Join the lines of texts wrapped by hand into paragraphs, in every question of a pool. Without `write`, only
+    counts. A question that the import wrote and nobody changed since keeps counting as untouched, so that a later
+    `import --update` can still bring changes from the source."""
+    state_path = pool.root / STATE_FILE
+    state = tomllib.loads(state_path.read_text(encoding="utf-8")) if state_path.exists() else {}
+    known = state.get("questions", {})
+    report = {"questions": [], "texts": 0, "files": 0}
+    for path in pool.question_files():
+        try:
+            data = yamlio.load(path)
+        except Exception:
+            continue
+        before = _sha(path)
+        joined = unwrap_question(data)
+        if joined:
+            report["questions"].append(str(data.get("id") or path.stem))
+            report["texts"] += joined
+        if not write:
+            continue
+        yamlio.dump(data, path)
+        if _sha(path) == before:
+            continue
+        report["files"] += 1
+        record = known.get(str(data.get("id") or path.stem))
+        if record and record.get("written") == before:
+            record["written"] = _sha(path)
+    if write and known:
+        state_path.write_text(tomli_w.dumps(state), encoding="utf-8")
+    return report
 
 
 def import_pool(legacy_toml: Path | str, target: Path | str, update: bool = False) -> ImportReport:
