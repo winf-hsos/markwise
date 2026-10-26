@@ -11,6 +11,20 @@ export function formatTime(seconds) {
   return s ? `${m} min ${s} s` : `${m} min`;
 }
 
+// The answering times the filter and the statistics tell apart: the usual steps, any other time, none.
+export const TIME_BUCKETS = ["15", "30", "45", "60", "120", "300", "other", "none"];
+
+export function timeBucket(seconds) {
+  if (seconds == null) return "none";
+  return TIME_BUCKETS.includes(String(seconds)) ? String(seconds) : "other";
+}
+
+export function bucketLabel(bucket, t) {
+  if (bucket === "none") return t("time.none");
+  if (bucket === "other") return t("time.other");
+  return formatTime(Number(bucket));
+}
+
 // A total of answering times: 2730 → "45 min 30 s", 7500 → "2 h 5 min", 0 → "0 min".
 export function formatTotal(seconds) {
   if (!seconds) return "0 min";

@@ -34,5 +34,7 @@ export const ICONS = {
   undo: '<path d="M9 7 5 11l4 4" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 11h9a5 5 0 0 1 0 10h-2" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
   archive: '<rect x="3.5" y="4.5" width="17" height="4.5" rx="1.2" fill="none" stroke-width="1.7"/><path d="M5 9v9.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V9M10 13h4" fill="none" stroke-width="1.7" stroke-linecap="round"/>',
   back: '<path d="m14.5 6-6 6 6 6" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  "filter-off": '<path d="M4 5h16l-6 7.5V18l-4 2v-7.5z" fill="none" stroke-width="1.8" stroke-linejoin="round"/><path d="M16.5 15.5l4 4M20.5 15.5l-4 4" fill="none" stroke-width="1.8" stroke-linecap="round"/>',
+  chart: '<path d="M4 20h16" fill="none" stroke-width="1.8" stroke-linecap="round"/><path d="M7 16V11M12 16V6M17 16v-3" fill="none" stroke-width="2.6" stroke-linecap="round"/>',
   edit: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><path d="m13.5 6.5 4 4" fill="none" stroke-width="1.7"/>',
 };

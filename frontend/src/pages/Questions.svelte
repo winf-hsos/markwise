@@ -4,6 +4,8 @@
   import QuestionPreview from "../components/QuestionPreview.svelte";
   import QuestionEditor from "../components/QuestionEditor.svelte";
   import QuestionStats from "../components/QuestionStats.svelte";
+  import MultiSelect from "../components/MultiSelect.svelte";
+  import { TIME_BUCKETS, bucketLabel, timeBucket } from "../lib/time.js";
   import NewQuestionDialog from "../components/NewQuestionDialog.svelte";
   import { ask } from "../lib/confirm.svelte.js";
   import { call } from "../lib/api.js";
@@ -26,8 +28,19 @@
   let listPane = $state(null);
   let restoredFor = $state(""); // the module whose remembered state this page shows
 
-  const blank = { search: "", pool: "", concept: "", level: "", status: "", type: "", use: "", findings: "" };
-  let filter = $state({ ...blank });
+  // Every filter but the search is a list: several values of one filter count as "or", the filters as "and".
+  const blank = { search: "", pool: [], concept: [], level: [], status: [], type: [], use: [], findings: [], time: [] };
+  let filter = $state(normalized({}));
+
+  // Filters remembered or handed over as single values, from before they took several, become lists.
+  function normalized(given) {
+    const result = { ...blank };
+    for (const [key, value] of Object.entries(given ?? {})) {
+      if (!(key in blank)) continue;
+      result[key] = key === "search" ? String(value ?? "") : Array.isArray(value) ? value : value ? [value] : [];
+    }
+    return result;
+  }
 
   async function load() {
     if (!modulePath) return;
@@ -58,10 +71,10 @@
     detail = null;
     editing = null;
     selected = kept.selected ?? null;
-    filter = { ...blank, ...(kept.filter ?? {}) };
+    filter = normalized(kept.filter);
     // Another page may have sent the person here for one concept, or to add a question to it.
     if (pending.questionsFilter) {
-      filter = { ...blank, ...pending.questionsFilter };
+      filter = normalized(pending.questionsFilter);
       pending.questionsFilter = null;
     }
     const wanted = pending.newQuestion;
@@ -100,19 +113,18 @@
   const draftKey = (q) => `${q.pool}\n${q.id}`;
 
   const words = $derived(filter.search.toLowerCase().split(/\s+/).filter(Boolean));
+  const any = (chosen, test) => !chosen.length || chosen.some(test);
   const shown = $derived(
     questions.filter(
       (q) =>
-        (!filter.pool || q.pool === filter.pool) &&
-        (!filter.concept || q.concept === filter.concept) &&
-        (!filter.level || q.level === filter.level) &&
-        (!filter.status || q.status === filter.status) &&
-        (!filter.type || q.type === filter.type) &&
-        (!filter.use || (filter.use === "practice" ? q.public : q.exam)) &&
-        (!filter.findings ||
-          (filter.findings === "errors" && q.errors > 0) ||
-          (filter.findings === "warnings" && q.warnings > 0) ||
-          (filter.findings === "none" && q.errors === 0 && q.warnings === 0)) &&
+        any(filter.pool, (v) => q.pool === v) &&
+        any(filter.concept, (v) => q.concept === v) &&
+        any(filter.level, (v) => q.level === v) &&
+        any(filter.status, (v) => q.status === v) &&
+        any(filter.type, (v) => q.type === v) &&
+        any(filter.use, (v) => (v === "practice" ? q.public : q.exam)) &&
+        any(filter.findings, (v) => (v === "errors" ? q.errors > 0 : v === "warnings" ? q.warnings > 0 : !q.errors && !q.warnings)) &&
+        any(filter.time, (v) => timeBucket(q.time_seconds) === v) &&
         words.every((w) => q.search.includes(w)),
     ),
   );
@@ -186,10 +198,10 @@
 
   // Concepts for the filter, by name: [id, name], from the questions of the chosen pool.
   const concepts = $derived(
-    [...new Map(questions.filter((q) => !filter.pool || q.pool === filter.pool).map((q) => [q.concept, q.concept_name])).entries()]
+    [...new Map(questions.filter((q) => any(filter.pool, (v) => q.pool === v)).map((q) => [q.concept, q.concept_name])).entries()]
       .sort((a, b) => a[1].localeCompare(b[1])),
   );
-  const filtered = $derived(Object.entries(filter).some(([, v]) => v));
+  const filtered = $derived(Object.entries(filter).some(([, v]) => v.length > 0));
   // The selection counts only while the question is in the list: a filter or search that drops it empties the
   // preview, and undoing the filter brings it back.
   const selectedRow = $derived(selected ? (shown.find((q) => q.id === selected.id && q.pool === selected.pool) ?? null) : null);
@@ -309,7 +321,7 @@
       <div class="actions">
         <button class="btn" onclick={load} disabled={loading}><Icon name="refresh" />{t("q.reload")}</button>
         {#if pools.some((p) => p.exists)}
-          <button class="btn primary" onclick={() => { newPreset = { pool: filter.pool, concept: filter.concept }; newOpen = true; }}><Icon name="plus" />{t("q.new")}</button>
+          <button class="btn primary" onclick={() => { newPreset = { pool: filter.pool.length === 1 ? filter.pool[0] : "", concept: filter.concept.length === 1 ? filter.concept[0] : "" }; newOpen = true; }}><Icon name="plus" />{t("q.new")}</button>
         {/if}
       </div>
     {/if}
@@ -340,43 +352,31 @@
       </div>
       <div class="q-filters">
         {#if pools.length > 1}
-          <select class="select" bind:value={filter.pool} aria-label={t("q.meta.pool")}>
-            <option value="">{t("q.all.pools")}</option>
-            {#each pools as p}<option value={p.path}>{p.name}</option>{/each}
-          </select>
+          <MultiSelect bind:selected={filter.pool} label={t("q.meta.pool")} allLabel={t("q.all.pools")}
+            options={pools.map((p) => ({ value: p.path, label: p.name }))} />
         {/if}
-        <select class="select" bind:value={filter.concept} aria-label={t("q.meta.concept")}>
-          <option value="">{t("q.all.concepts")}</option>
-          {#each concepts as [id, name]}<option value={id}>{name}</option>{/each}
-        </select>
-        <select class="select" bind:value={filter.level} aria-label={t("q.meta.level")}>
-          <option value="">{t("q.all.levels")}</option>
-          {#each ["remember", "understand", "apply"] as v}<option value={v}>{t(`level.${v}`)}</option>{/each}
-        </select>
-        <select class="select" bind:value={filter.status} aria-label={t("q.meta.status")}>
-          <option value="">{t("q.all.status")}</option>
-          {#each ["draft", "reviewed", "piloted", "retired"] as v}<option value={v}>{t(`status.${v}`)}</option>{/each}
-        </select>
-        <select class="select" bind:value={filter.type} aria-label="Typ">
-          <option value="">{t("q.all.types")}</option>
-          {#each ["single", "multiple", "free_text"] as v}<option value={v}>{t(`type.${v}`)}</option>{/each}
-        </select>
-        <select class="select" bind:value={filter.use} aria-label={t("q.meta.use")}>
-          <option value="">{t("q.all.use")}</option>
-          <option value="practice">{t("use.practice")}</option>
-          <option value="exam">{t("use.exam")}</option>
-        </select>
-        <select class="select" bind:value={filter.findings} aria-label={t("q.findings")}>
-          <option value="">{t("q.all.findings")}</option>
-          <option value="errors">{t("q.findings.errors")}</option>
-          <option value="warnings">{t("q.findings.warnings")}</option>
-          <option value="none">{t("q.findings.none")}</option>
-        </select>
+        <MultiSelect bind:selected={filter.concept} label={t("q.meta.concept")} allLabel={t("q.all.concepts")}
+          options={concepts.map(([id, name]) => ({ value: id, label: name }))} />
+        <MultiSelect bind:selected={filter.level} label={t("q.meta.level")} allLabel={t("q.all.levels")}
+          options={["remember", "understand", "apply"].map((v) => ({ value: v, label: t(`level.${v}`) }))} />
+        <MultiSelect bind:selected={filter.status} label={t("q.meta.status")} allLabel={t("q.all.status")}
+          options={["draft", "reviewed", "piloted", "retired"].map((v) => ({ value: v, label: t(`status.${v}`) }))} />
+        <MultiSelect bind:selected={filter.type} label={t("stats.type")} allLabel={t("q.all.types")}
+          options={["single", "multiple", "free_text"].map((v) => ({ value: v, label: t(`type.${v}`) }))} />
+        <MultiSelect bind:selected={filter.use} label={t("q.meta.use")} allLabel={t("q.all.use")}
+          options={[{ value: "practice", label: t("use.practice") }, { value: "exam", label: t("use.exam") }]} />
+        <MultiSelect bind:selected={filter.findings} label={t("q.findings")} allLabel={t("q.all.findings")}
+          options={[{ value: "errors", label: t("q.findings.errors") }, { value: "warnings", label: t("q.findings.warnings") }, { value: "none", label: t("q.findings.none") }]} />
+        <MultiSelect bind:selected={filter.time} label={t("edit.time")} allLabel={t("q.all.times")}
+          options={TIME_BUCKETS.map((v) => ({ value: v, label: bucketLabel(v, t) }))} />
       </div>
       <div class="q-count">
         <span>{t("q.count", { shown: shown.length, total: questions.length })}</span>
-        {#if filtered}<button class="link-btn" onclick={() => (filter = { ...blank })}>{t("q.reset")}</button>{/if}
-        <button class="link-btn" aria-expanded={statsOpen} onclick={() => (statsOpen = !statsOpen)}>{t(statsOpen ? "stats.hide" : "stats.show")}</button>
+        {#if filtered}
+          <button class="icon-btn small-icon" title={t("q.reset")} aria-label={t("q.reset")} onclick={() => (filter = normalized({}))}><Icon name="filter-off" /></button>
+        {/if}
+        <button class="icon-btn small-icon" class:on={statsOpen} aria-pressed={statsOpen} title={t(statsOpen ? "stats.hide" : "stats.show")}
+          aria-label={t(statsOpen ? "stats.hide" : "stats.show")} onclick={() => (statsOpen = !statsOpen)}><Icon name="chart" /></button>
         <label class="sort">
           <span>{t("sort.label")}</span>
           <select class="select select-small" bind:value={sort}>
