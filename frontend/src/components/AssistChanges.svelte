@@ -35,7 +35,7 @@
     <div class="assist-note"><span class="hint">{note.title}</span><p>{note.text}</p></div>
   {/if}
   {#if findings.length}
-    <ul>{#each findings as f}<li>{#if f.about}<b>{label(f.about)}:</b> {/if}{f.text}</li>{/each}</ul>
+    <ul>{#each findings as f}<li>{#if f.about}<b>{label(f.about)}:</b>{" "}{/if}{f.text}</li>{/each}</ul>
   {:else if !changes.length && !additions.length && !note?.text}
     <p class="check-ok"><Icon name="check" />{t("assist.nothing")}</p>
   {/if}
