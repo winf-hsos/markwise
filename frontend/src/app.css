@@ -494,8 +494,14 @@ button.bar-row:hover { background: var(--surface); }
 .icon-btn.small-icon svg { width: 16px; height: 16px; }
 .icon-btn.on { background: var(--accent-soft); color: var(--accent-strong); }
 
-.q-split { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr); gap: 0;
+.q-split { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 0;
   border: 1px solid var(--line); border-radius: var(--radius-l); overflow: hidden; }
+/* the edge between list and question, dragged to set the list's width */
+.pane-edge { position: absolute; top: 0; bottom: 0; z-index: 3; width: 7px; cursor: col-resize; touch-action: none; }
+.pane-edge::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 1px; background: transparent; transition: background 0.1s; }
+.pane-edge:hover::after, .pane-edge:focus-visible::after, body.resizing .pane-edge::after { left: 2px; width: 3px; background: var(--accent); }
+.pane-edge:focus-visible { outline: none; }
+body.resizing, body.resizing * { cursor: col-resize !important; user-select: none; }
 .q-list-pane { overflow: auto; border-right: 1px solid var(--line); }
 .q-preview-pane { overflow: auto; }
 .q-split.solo { grid-template-columns: minmax(0, 1fr); }

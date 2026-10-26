@@ -294,6 +294,55 @@
   }
 
   // The list beside the question, shown or hidden as it was left on this computer.
+  // The width of the list, dragged at its edge and kept on this computer; a double click gives the default back.
+  const LIST_WIDTH = 340;
+  let listWidth = $state(readListWidth());
+  let split = $state(null);
+  function readListWidth() {
+    try {
+      const saved = Number(localStorage.getItem("markwise-question-list-width"));
+      return saved >= 240 ? saved : LIST_WIDTH;
+    } catch {
+      return LIST_WIDTH;
+    }
+  }
+  function keepListWidth(width) {
+    const most = split ? Math.max(240, split.getBoundingClientRect().width - 380) : 900;
+    listWidth = Math.round(Math.max(240, Math.min(most, width)));
+    try {
+      localStorage.setItem("markwise-question-list-width", String(listWidth));
+    } catch {
+      /* no storage: the width is simply not kept */
+    }
+  }
+  function dragEdge(event) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const start = event.clientX;
+    const from = listWidth;
+    const edge = event.currentTarget;
+    try {
+      edge.setPointerCapture(event.pointerId); // the drag goes on when the pointer leaves the narrow edge
+    } catch {
+      /* no pointer to capture: moves over the edge still count */
+    }
+    document.body.classList.add("resizing");
+    const move = (e) => keepListWidth(from + e.clientX - start);
+    const stop = () => {
+      edge.removeEventListener("pointermove", move);
+      edge.removeEventListener("pointerup", stop);
+      document.body.classList.remove("resizing");
+    };
+    edge.addEventListener("pointermove", move);
+    edge.addEventListener("pointerup", stop);
+  }
+  function edgeKey(event) {
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      keepListWidth(listWidth + (event.key === "ArrowLeft" ? -24 : 24));
+    }
+  }
+
   let listOpen = $state(readListOpen());
   function readListOpen() {
     try {
@@ -497,7 +546,13 @@
 
     {#if statsOpen && questions.length}<QuestionStats rows={shown} bind:filter />{/if}
 
-    <div class="q-split" class:solo={!listOpen}>
+    <div class="q-split" class:solo={!listOpen} bind:this={split}
+      style:grid-template-columns={listOpen ? `${listWidth}px minmax(0, 1fr)` : null}>
+      {#if listOpen}
+        <div class="pane-edge" role="separator" aria-orientation="vertical" aria-label={t("q.listWidth")} title={t("q.listWidth")}
+          aria-valuenow={listWidth} tabindex="0" style:left="{listWidth - 3}px"
+          onpointerdown={dragEdge} ondblclick={() => keepListWidth(LIST_WIDTH)} onkeydown={edgeKey}></div>
+      {/if}
       <div class="q-list-pane" role="listbox" hidden={!listOpen} aria-label={t("questions.title")} bind:this={listPane} onscroll={onListScroll}>
         {#if loading && questions.length === 0}
           <p class="muted pad">{t("q.loading")}</p>
