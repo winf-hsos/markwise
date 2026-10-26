@@ -265,20 +265,6 @@ def _model_fields(pool: Pool, qid: str) -> dict:
     return {**plain(question.data), **plain(question.inherited())}
 
 
-def cmd_assist_check(args) -> int:
-    pool = Pool.open(args.pool)
-    lang = args.lang or pool.settings.languages[0]
-    answer = assist.check_stem(_model_fields(pool, args.id), pool.settings.languages, lang, "de")
-    if args.json:
-        _print_json(answer)
-    else:
-        for finding in answer["findings"] or ["(nothing to change)"]:
-            print(f"- {finding}")
-        for code, text in answer["suggestion"].items():
-            print(f"\nSuggestion ({code}):\n{text}")
-    return 0
-
-
 def _print_changes(answer: dict) -> None:
     for finding in answer["findings"] or [{"about": "question", "text": "(nothing to report)"}]:
         print(f"- [{finding['about']}] {finding['text']}")
@@ -289,11 +275,16 @@ def _print_changes(answer: dict) -> None:
 def cmd_assist_review(args) -> int:
     pool = Pool.open(args.pool)
     lang = args.lang or pool.settings.languages[0]
-    answer = assist.review_question(_model_fields(pool, args.id), pool.settings.languages, lang, "de")
+    answer = assist.review(_model_fields(pool, args.id), pool.settings.languages, lang, "de", pool.settings.min_options)
     if args.json:
         _print_json(answer)
     else:
         _print_changes(answer)
+        for i, option in enumerate(answer["new_options"], 1):
+            print(f"\nnew option {i}:")
+            for code in pool.settings.languages:
+                print(f"  [{code}] {option['text'].get(code, '')}\n       {option['feedback'].get(code, '')}")
+            print(f"  misconception: {option['misconception']}")
     return 0
 
 
@@ -305,30 +296,6 @@ def cmd_assist_numbers(args) -> int:
     else:
         print(f"Calculation:\n{answer['calculation']}\n")
         _print_changes(answer)
-    return 0
-
-
-def cmd_assist_translate(args) -> int:
-    pool = Pool.open(args.pool)
-    source = args.source or pool.settings.languages[0]
-    answer = assist.translate(_model_fields(pool, args.id), pool.settings.languages, source, "de")
-    if args.json:
-        _print_json(answer)
-    else:
-        _print_changes(answer)
-    return 0
-
-
-def cmd_assist_distractors(args) -> int:
-    pool = Pool.open(args.pool)
-    proposals = assist.distractors(_model_fields(pool, args.id), pool.settings.languages, args.count, "de")
-    if args.json:
-        _print_json(proposals)
-    else:
-        for i, d in enumerate(proposals, 1):
-            for lang in pool.settings.languages:
-                print(f"{i}. [{lang}] {d['text'].get(lang, '')}\n   {d['feedback'].get(lang, '')}")
-            print(f"   misconception: {d['misconception']}")
     return 0
 
 
@@ -507,12 +474,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     helper = sub.add_parser("assist", help="suggestions from the language model; nothing is changed").add_subparsers(
         dest="action", required=True)
-    p = helper.add_parser("check", parents=[common], help="check a question text and propose a better one")
-    p.add_argument("pool")
-    p.add_argument("id")
-    p.add_argument("--lang", help="language of the question text to check (default: the pool's first)")
-    p.set_defaults(func=cmd_assist_check)
-    p = helper.add_parser("review", parents=[common], help="check the question with its answers and propose changes per field")
+    p = helper.add_parser("review", parents=[common],
+                          help="check the question with its answers and complete it: changes per field and language, "
+                               "missing translations and feedback, missing wrong options")
     p.add_argument("pool")
     p.add_argument("id")
     p.add_argument("--lang", help="language to check (default: the pool's first)")
@@ -522,17 +486,6 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("pool")
     p.add_argument("id")
     p.set_defaults(func=cmd_assist_numbers)
-    p = helper.add_parser("translate", parents=[common], help="translate a question into the pool's other languages")
-    p.add_argument("pool")
-    p.add_argument("id")
-    p.add_argument("--from", dest="source", help="language to translate from (default: the pool's first)")
-    p.set_defaults(func=cmd_assist_translate)
-    p = helper.add_parser("distractors", parents=[common], help="propose wrong options with feedback")
-    p.add_argument("pool")
-    p.add_argument("id")
-    p.add_argument("--count", type=int, default=3)
-    p.set_defaults(func=cmd_assist_distractors)
-
     module = sub.add_parser("module", help="create and show modules").add_subparsers(dest="action", required=True)
     p = module.add_parser("init", parents=[common], help="create module.toml in the module folder")
     p.add_argument("folder")

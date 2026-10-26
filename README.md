@@ -4,7 +4,7 @@ A desktop app for paper exams: keep a bank of questions, build exams from it, re
 
 Markwise runs natively on Windows, needs neither Linux nor LaTeX, and is meant to be used by examiners without any technical background. Agents (for example an AI assistant that drafts questions) work with the same data through a command-line interface, and later through a local HTTP interface.
 
-> **Status (October 2026): phase 1 of the [plan](docs/concept.md#plan).** What works today is managing question pools from the command line (creating, listing, checking, importing and deleting questions, setting up modules) and the app window for setting up modules (creating a module with its question pool, opening module folders, adding pools, switching between modules) and for working with questions (search, filters, a preview with the check's findings, creating and editing questions with a live preview and checks while typing). Releasing and retiring questions, building exams, printing, scanning and grading follow; [what is not there yet](#not-there-yet) lists them with their dates. This guide grows with every step, so it always describes what Markwise can do at the time.
+> **Status (October 2026): phase 1 of the [plan](docs/concept.md#plan).** What works today is managing question pools from the command line (creating, listing, checking, importing and deleting questions, setting up modules) and the app window for setting up modules (creating a module with its question pool, opening module folders, adding pools, switching between modules) and for working with questions (search, filters, a preview with the check's findings, creating and editing questions with a live preview and checks while typing). Releasing and retiring questions, exam variants that inherit the settings of their parent, the languages of a pool, and an optional check by a language model are there as well. Building exams, printing, scanning and grading follow; [what is not there yet](#not-there-yet) lists them with their dates. This guide grows with every step, so it always describes what Markwise can do at the time.
 
 ## Contents
 
@@ -141,12 +141,13 @@ The editor shows the form on the left and the question as it reads on paper on t
 
   What a question carries appears as a small card below the text, with **Edit** or **Change** and **Remove**.
 - Each **option** has a box on the left that marks it correct (for single choice, marking one unmarks the others), its text, and below it the feedback that explains why it is right or wrong. **Add option** adds one, **–** removes one.
-- With the language model switched on (see [Help from a language model](#help-from-a-language-model)), **Check** next to the label of the question text sends the text to the model. Its findings appear below the field, with a corrected wording if it has one; **Apply** puts the wording into the field, **Dismiss** leaves the text as it is. Nothing is saved until you save.
+- With the language model switched on (see [Help from a language model](#help-from-a-language-model)), **Check with AI** next to the language tabs hands the whole question to the model, with all its options and feedback in every language of the pool, and does everything in one go:
+  - it checks the question as a whole: is the text clear without the options, does every option answer what the text asks, are the options clear and mutually exclusive, are exactly the marked options correct, does one stand out by length, detail or wording, are the wrong ones plausible, and does each feedback fit (for a free-text question: the question text, the expected answer and the marking notes);
+  - it reports a text written in the wrong language (German in the English field, say);
+  - it proposes better wordings and fills in what is missing: texts in a language that is still empty, missing feedback, an empty wrong option;
+  - if the question has fewer options than the pool requires, it proposes as many new wrong options as are missing, each with feedback and the misconception it plays on.
 
-  The model always sees the question in every language of the pool, each text marked with the language it belongs to. So it also reports a text written in the wrong language (German in the English field, say), and in a pool with several languages every proposal comes with its translation: each language appears as a change of its own, marked **DE** or **EN**, to apply on its own or with **Apply all**.
-- Likewise, **Propose wrong answers** below the options (once at least one option is marked correct) asks the model for plausible but wrong options, each with feedback in every language of the pool (the dialog shows the other languages below each proposal) and the misconception it plays on. Choose how many, tick the ones you want and **Add selected**; they are added as wrong options, which you can then edit like any other. **New proposals** asks again.
-- **Translate question** next to the language tabs (in a pool with two or more languages) translates every text of the question, the question text, the options and their feedback or the expected answer and marking notes, from the language of the open tab into the others. Each translation is shown next to the text it would replace; **Apply all** takes all of them, **Apply missing only** fills only the texts that are still empty and leaves existing translations as they are. The model also says if the text to be translated is itself in the wrong language.
-- **Check question and answers** below the options looks at the question as a whole: does every option answer what the text asks, are the options clear and mutually exclusive, are exactly the marked options correct, does one stand out by length, detail or wording, are the wrong ones plausible, and does each feedback fit. The findings name the part they concern; below them, each proposed new text shows the old one struck through, with **Apply** for that part alone or **Apply all**. The model never changes which options are correct; if a mark looks wrong, it says so. For a free-text question the button reads **Check question and expected answer** and looks at the question text, the expected answer and the marking notes.
+  The findings come first, naming the part they concern. Below them each proposed text shows the old one struck through, marked **DE** or **EN** in a pool with several languages, with **Apply** for that part alone; a new wrong option has **Add**. **Apply all** takes everything, **Apply missing only** fills only the texts that are still empty. The model never changes which options are correct; if a mark looks wrong, it says so. Nothing is saved until you save.
 - **More details** holds where the material is taught and the misconception the question targets.
 - The **check** runs while you type; its findings appear under the preview in the language of the interface.
 
@@ -174,7 +175,7 @@ Markwise can ask a language model from OpenAI to check question texts and to pro
    If the environment variable `OPENAI_API_KEY` is set on your computer, Markwise offers that key first, showing only its beginning and end; **Use this one** checks it and stores it the same way.
 3. Under **Model**, choose one of the models your key may use. Markwise suggests a small, inexpensive one; a larger model checks more thoroughly but takes longer and costs more.
 
-The editor then shows **Check** and **Propose wrong answers** (see [Creating and editing questions](#creating-and-editing-questions)). Only the text, code, options and feedback (or, for a free-text question, the expected answer) of the question you are working on are sent, and only when you press one of the buttons; never names, participants, scans or grades, and never who wrote the question. The model's answer is a suggestion: nothing changes until you apply it and save.
+The editor then shows **Check with AI** (see [Creating and editing questions](#creating-and-editing-questions)), and for a free-text exam variant **Propose other numbers**. Only the text, code, options and feedback (or, for a free-text question, the expected answer and marking notes) of the question you are working on are sent, and only when you press one of the buttons; never names, participants, scans or grades, and never who wrote the question. The model's answer is a suggestion: nothing changes until you apply it and save.
 
 **Exams** shows what will be there and when.
 
@@ -379,11 +380,8 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise llm key [--key <key>] [--from-env]` | check an OpenAI API key and store it in the Windows credential store; `--from-env` takes it from `OPENAI_API_KEY`, without either it is asked for without showing it |
 | `markwise llm models` | list the models the stored key may use |
 | `markwise llm use [--model <model>] [--off]` | switch the language model on (and choose the model) or off |
-| `markwise assist check <pool> <id> [--lang de]` | let the model check a question text; prints findings and a suggestion in every language of the pool, changes nothing |
-| `markwise assist review <pool> <id> [--lang de]` | let the model check the question with its answers; prints findings and proposed texts per field, changes nothing |
+| `markwise assist review <pool> <id> [--lang de]` | let the model check the question with its answers and complete it; prints findings, proposed texts per field and language, and new wrong options if some are missing; changes nothing |
 | `markwise assist numbers <pool> <id>` | let the model propose other numbers for a free-text calculation, with its worked-out answer; changes nothing |
-| `markwise assist translate <pool> <id> [--from de]` | let the model translate a question into the pool's other languages; prints the proposed texts, changes nothing |
-| `markwise assist distractors <pool> <id> [--count 3]` | let the model propose wrong options with feedback; changes nothing |
 | `markwise app` | open the app window |
 | `markwise shortcut [--folder <folder>]` | create the Start menu entry (or put it into another folder) |
 | `markwise serve [--port 8765]` | serve the core on 127.0.0.1 for developing the interface in a browser |
@@ -418,7 +416,7 @@ prints for each sheet whether the QR code, the orientation, the student number a
 
 ## Privacy
 
-Markwise runs on your computer and sends nothing anywhere, unless you switch on the language model; then the text of the question you are working on goes to OpenAI when you press **Check** or **Propose wrong answers**, and nothing else. Question pools contain no personal data. Names, student numbers, scans and grades exist only in the exam folders below a module folder, which belongs where only authorised people have access, as exam documents do today.
+Markwise runs on your computer and sends nothing anywhere, unless you switch on the language model; then the text of the question you are working on goes to OpenAI when you press **Check with AI** or **Propose other numbers**, and nothing else. Question pools contain no personal data. Names, student numbers, scans and grades exist only in the exam folders below a module folder, which belongs where only authorised people have access, as exam documents do today.
 
 This repository holds code, documentation and invented test data only. Real exams, scans, participant lists and grades never go into it.
 

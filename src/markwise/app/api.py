@@ -501,27 +501,13 @@ class Api:
         return self._assist(assist.list_models)
 
     @_answer
-    def assist_review_question(self, pool_path: str, fields: dict, lang: str) -> dict:
-        languages = Pool.open(pool_path).settings.languages
-        return self._assist(assist.review_question, fields, languages, lang, user_settings.load().language)
-
-    @_answer
-    def assist_check_stem(self, pool_path: str, fields: dict, lang: str) -> dict:
-        languages = Pool.open(pool_path).settings.languages
-        return self._assist(assist.check_stem, fields, languages, lang, user_settings.load().language)
+    def assist_review(self, pool_path: str, fields: dict, lang: str) -> dict:
+        """Check a question with its answers and complete it: languages, feedback and missing wrong options."""
+        settings = Pool.open(pool_path).settings
+        return self._assist(assist.review, fields, settings.languages, lang, user_settings.load().language,
+                            settings.min_options)
 
     @_answer
     def assist_vary_numbers(self, pool_path: str, fields: dict) -> dict:
         languages = Pool.open(pool_path).settings.languages
         return self._assist(assist.vary_numbers, fields, languages, user_settings.load().language)
-
-    @_answer
-    def assist_translate(self, pool_path: str, fields: dict, source: str) -> dict:
-        languages = Pool.open(pool_path).settings.languages
-        return self._assist(assist.translate, fields, languages, source, user_settings.load().language)
-
-    @_answer
-    def assist_distractors(self, pool_path: str, fields: dict, count: int) -> list:
-        pool = Pool.open(pool_path)
-        answer_lang = user_settings.load().language
-        return self._assist(assist.distractors, fields, pool.settings.languages, max(1, min(int(count), 6)), answer_lang)

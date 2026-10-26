@@ -1,5 +1,5 @@
-"""Optional help from a language model while writing questions: checking a question text or the whole question,
-translating it into the other languages of the pool, proposing distractors and new numbers for a calculation.
+"""Optional help from a language model while writing questions: checking a question as a whole and completing it
+(missing languages, feedback and wrong options), and proposing new numbers for a calculation.
 
 Off unless the examiner switches it on in the settings and enters an API key, which lives in the Windows
 credential store, never in a file. Only the question's own texts are sent: question text, options and their
@@ -244,91 +244,77 @@ def _findings(answer: dict, names: list[str]) -> list[dict]:
 # --- the kinds of help -----------------------------------------------------------------
 
 
-def check_stem(fields: dict, languages: list[str], lang: str, answer_lang: str) -> dict:
-    """Check the question text against the writing rules; returns findings and the improved text in every language
-    of the pool, so that the versions stay alike."""
-    schema = {
-        "type": "object", "additionalProperties": False, "required": ["findings", "suggestion"],
-        "properties": {"findings": {"type": "array", "items": {"type": "string"}}, "suggestion": _texts_schema(languages)},
-    }
-    system = (
-        "You review questions for university exams and help the examiner improve them.\n\n" + WRITING_RULES +
-        f"\n\n{LABELS}\n\nReview only the question text, using the options as context; the examiner is working on "
-        f"the {LANGUAGE_NAMES.get(lang, lang)} version. List what breaks a rule, could be misunderstood or is written "
-        f"in the wrong language, each finding as one short sentence in {LANGUAGE_NAMES.get(answer_lang, 'English')}; "
-        f"an empty list if nothing needs changing. Then give the improved question text in each of these languages: "
-        f"{_named(languages)}, keeping its meaning, its learning goal and its Markdown (backticks for code). A "
-        f"version that needs no change is returned unchanged."
-    )
-    answer = _ask(system, _question_text(fields, languages), "stem_review", schema)
-    suggestion = {code: str((answer.get("suggestion") or {}).get(code) or "") for code in languages}
-    return {"findings": [str(f) for f in answer.get("findings", []) if str(f).strip()], "suggestion": suggestion}
+def _missing_options(fields: dict, min_options: int) -> int:
+    """How many options a choice question lacks to reach the pool's minimum."""
+    if fields.get("type") == "free_text":
+        return 0
+    return max(0, min_options - len(fields.get("options") or []))
 
 
-def review_question(fields: dict, languages: list[str], lang: str, answer_lang: str) -> dict:
-    """Check the question as a whole, text and answers together; returns findings and proposed new texts per field
-    and language."""
+def review(fields: dict, languages: list[str], lang: str, answer_lang: str, min_options: int = 4) -> dict:
+    """Check the question as a whole and complete it, in one go: findings, improved texts per field and language
+    (including texts in the wrong or a missing language and missing feedback), and for a choice question with too
+    few options as many new wrong options as it lacks."""
     names = _changeable(fields)
-    schema = {
-        "type": "object", "additionalProperties": False, "required": ["findings", "changes"],
-        "properties": {"findings": _findings_schema(names), "changes": _changes_schema(names, languages)},
-    }
+    needed = _missing_options(fields, min_options)
+    texts = _texts_schema(languages)
+    properties = {"findings": _findings_schema(names), "changes": _changes_schema(names, languages)}
+    if needed:
+        properties["new_options"] = {"type": "array", "items": {
+            "type": "object", "additionalProperties": False, "required": ["text", "feedback", "misconception"],
+            "properties": {"text": texts, "feedback": texts, "misconception": {"type": "string"}},
+        }}
+    schema = {"type": "object", "additionalProperties": False, "required": list(properties), "properties": properties}
+
     if fields.get("type") == "free_text":
         task = (
-            "Review the question as a whole: does the question text ask exactly what the expected answer answers, is "
+            "Check the question as a whole: does the question text ask exactly what the expected answer answers, is "
             "it clear what and how much is expected, is the expected answer correct and complete, and do the marking "
             "notes let a second examiner award points the same way?"
         )
     else:
         task = (
-            "Review the question as a whole: does every option answer the question that the text asks; is every "
-            "option clear and unambiguous; are the options mutually exclusive (for single choice exactly one can be "
-            "right); are exactly the options marked correct actually correct; does any option stand out by length, "
-            "detail, wording, grammar or caution, so that it can be guessed without knowing the matter; are the "
-            "distractors plausible; and does each feedback fit its option and whether it is right or wrong? Never "
-            "change which options are correct; if a mark seems wrong, say so as a finding."
+            "Check the question as a whole: is the question text clear without the options; does every option "
+            "answer the question that the text asks; is every option clear and unambiguous; are the options mutually "
+            "exclusive (for single choice exactly one can be right); are exactly the options marked correct actually "
+            "correct; does any option stand out by length, detail, wording, grammar or caution, so that it can be "
+            "guessed without knowing the matter; are the distractors plausible; and does each feedback fit its "
+            "option and whether it is right or wrong? Never change which options are correct; if a mark seems "
+            "wrong, say so as a finding."
+        )
+    complete = (
+        "Then complete the question: write every text that is missing in one of the languages, write the feedback "
+        "an option lacks (why it is right or wrong), and fill an option whose text is empty with a plausible wrong "
+        "answer if it is marked wrong."
+    )
+    if needed:
+        complete += (
+            f" The question has fewer options than the {min_options} it needs: propose exactly {needed} new wrong "
+            f"options in `new_options`, each clearly wrong for someone who understood the matter yet plausible for "
+            f"someone with a typical misconception, different from the existing options and like them in length and "
+            f"register, with a one-sentence feedback, and name the misconception behind each in a few words in "
+            f"{LANGUAGE_NAMES.get(answer_lang, 'English')}."
         )
     system = (
-        "You review questions for university exams and help the examiner improve them.\n\n" + WRITING_RULES +
-        f"\n\n{LABELS}\n\n{task} The examiner is working on the {LANGUAGE_NAMES.get(lang, lang)} version.\n\n"
-        f"List what you find, each as one short sentence in {LANGUAGE_NAMES.get(answer_lang, 'English')}, naming in "
-        f"`about` the field it concerns (`question` for the question as a whole); an empty list if nothing needs "
-        f"changing. Then propose new texts only for the fields that should change, each with its complete new text "
-        f"in every one of these languages: {_named(languages)}, keeping the meaning, the learning goal and the "
-        f"Markdown (backticks for code). Fields are named `stem`, `option.<id>.text`, `option.<id>.feedback`, "
-        f"`expected` and `marking_notes`."
+        "You review questions for university exams and help the examiner improve and complete them.\n\n" +
+        WRITING_RULES + f"\n\n{LABELS}\n\n{task} The examiner is working on the "
+        f"{LANGUAGE_NAMES.get(lang, lang)} version.\n\n{complete}\n\n"
+        f"List what you find, including any text written in the wrong language, each as one short sentence in "
+        f"{LANGUAGE_NAMES.get(answer_lang, 'English')}, naming in `about` the field it concerns (`question` for the "
+        f"question as a whole); an empty list if nothing needs changing. In `changes`, give the complete new text of every field that should change or be filled, in "
+        f"every one of these languages: {_named(languages)}, keeping the meaning, the learning goal and the Markdown "
+        f"(backticks for code); a language version that is already right is returned unchanged. Fields are named "
+        f"`stem`, `option.<id>.text`, `option.<id>.feedback`, `expected` and `marking_notes`."
     )
     answer = _ask(system, _question_text(fields, languages), "question_review", schema)
-    return {"findings": _findings(answer, names), "changes": _flatten(fields, answer.get("changes", []), names, languages)}
-
-
-def translate(fields: dict, languages: list[str], source: str, answer_lang: str) -> dict:
-    """Translate the question from one language of the pool into the others; returns proposed texts per field and
-    language, and findings such as a source text written in the wrong language."""
-    targets = [lang for lang in languages if lang != source]
-    if not targets:
-        raise AssistError("llm_one_language", "the pool has only one language")
-    names = [name for name in _changeable(fields) if _current(fields, name, source).strip()]
-    if not names:
-        raise AssistError("llm_nothing_to_translate", f"the question has no text in {source} yet")
-    schema = {
-        "type": "object", "additionalProperties": False, "required": ["findings", "translations"],
-        "properties": {"findings": _findings_schema(names), "translations": _changes_schema(names, targets)},
-    }
-    system = (
-        "You translate questions for university exams.\n\n" + LABELS + "\n\n"
-        f"Translate every text of the question from {LANGUAGE_NAMES.get(source, source)} into {_named(targets)}: "
-        f"each of these fields: {', '.join(f'`{n}`' for n in names)}. Translate faithfully, in the register of a "
-        f"university exam and with the usual technical terms of the subject in the target language; keep the "
-        f"Markdown and leave code, identifiers in backticks, numbers and units as they are. The translation must not "
-        f"make an option easier or harder to recognise than in the original, for example by length or by a word "
-        f"that echoes the question text. Where an existing translation is already right, return it unchanged. "
-        f"If a {LANGUAGE_NAMES.get(source, source)} text is itself in another language, or something cannot be "
-        f"translated faithfully, say so as a finding in one short sentence in "
-        f"{LANGUAGE_NAMES.get(answer_lang, 'English')}; otherwise the list of findings is empty."
-    )
-    answer = _ask(system, _question_text(fields, languages), "translation", schema)
-    return {"findings": _findings(answer, names), "changes": _flatten(fields, answer.get("translations", []), names, targets)}
+    result = {"findings": _findings(answer, names), "changes": _flatten(fields, answer.get("changes", []), names, languages),
+              "new_options": []}
+    for option in (answer.get("new_options") or [])[:needed]:
+        text = {code: str((option.get("text") or {}).get(code) or "") for code in languages}
+        if any(text.values()):
+            result["new_options"].append({"text": text, "misconception": str(option.get("misconception") or ""),
+                                          "feedback": {code: str((option.get("feedback") or {}).get(code) or "") for code in languages}})
+    return result
 
 
 def vary_numbers(fields: dict, languages: list[str], answer_lang: str) -> dict:
@@ -363,28 +349,3 @@ def vary_numbers(fields: dict, languages: list[str], answer_lang: str) -> dict:
     answer = _ask(system, _question_text(fields, languages), "number_variant", schema)
     return {"calculation": str(answer.get("calculation") or "").strip(), "findings": _findings(answer, names),
             "changes": _flatten(fields, answer.get("changes", []), names, languages)}
-
-
-def distractors(fields: dict, languages: list[str], count: int, answer_lang: str) -> list[dict]:
-    """Propose wrong options, with feedback, in every language of the pool."""
-    texts = _texts_schema(languages)
-    schema = {
-        "type": "object", "additionalProperties": False, "required": ["distractors"],
-        "properties": {"distractors": {"type": "array", "items": {
-            "type": "object", "additionalProperties": False, "required": ["text", "feedback", "misconception"],
-            "properties": {"text": texts, "feedback": texts, "misconception": {"type": "string"}},
-        }}},
-    }
-    system = (
-        "You write wrong answer options (distractors) for multiple-choice questions in university exams.\n\n" +
-        WRITING_RULES +
-        f"\n\nThe question below shows each text in every language of the pool, labelled with its language.\n\n"
-        f"Propose exactly {count} new distractors for the question. Each must be clearly wrong for someone who "
-        f"understood the matter, yet plausible for someone with a typical misconception, and different from the "
-        f"existing options. Match the existing options in length and register. Give the text and a one-sentence "
-        f"feedback (why it is wrong) in each of these languages: {_named(languages)}; each version is written in "
-        f"its own language, even where the question itself still lacks it, and the versions say the same. Name the "
-        f"misconception behind each in a few words in {LANGUAGE_NAMES.get(answer_lang, 'English')}."
-    )
-    answer = _ask(system, _question_text(fields, languages), "distractors", schema)
-    return answer.get("distractors", [])[:count]

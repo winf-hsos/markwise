@@ -54,7 +54,7 @@ def switch_on(model="gpt-test-mini"):
 def test_off_by_default_and_nothing_is_sent(provider):
     assert settings.load().llm_enabled is False
     with pytest.raises(assist.AssistError) as caught:
-        assist.check_stem(QUESTION, LANGS, "de", "de")
+        assist.review(QUESTION, LANGS, "de", "de")
     assert caught.value.code == "llm_off" and provider["sent"] == []
 
 
@@ -81,36 +81,7 @@ def test_a_key_in_the_environment_is_offered_but_never_shown(provider, monkeypat
     assert api.use_env_llm_key()["code"] == "llm_key_invalid" and "key" not in provider["store"]
 
 
-def test_check_stem_sends_only_the_question_and_returns_the_suggestion_in_every_language(provider):
-    provider["store"]["key"] = "sk-good"
-    switch_on()
-    provider["answers"]["stem_review"] = {"findings": ["Zu kurz."], "suggestion": {
-        "de": "Welche Farbe hat ein klarer Taghimmel?", "en": "What colour is a clear daytime sky?"}}
-    answer = assist.check_stem(QUESTION, LANGS, "de", "de")
-    assert answer["suggestion"] == {"de": "Welche Farbe hat ein klarer Taghimmel?", "en": "What colour is a clear daytime sky?"}
-    body = provider["sent"][-1]["body"]
-    sent_text = json.dumps(body["messages"], ensure_ascii=False)
-    assert body["model"] == "gpt-test-mini" and "[de] Welche Farbe hat der Himmel?" in sent_text
-    assert "[en] What colour is the sky?" in sent_text  # every language, labelled, so that a wrong one shows
-    assert "Examiner A" not in sent_text and "Deck 3" not in sent_text  # no names, no other fields
-    assert body["response_format"]["json_schema"]["strict"] is True
-    assert body["response_format"]["json_schema"]["schema"]["properties"]["suggestion"]["required"] == LANGS
-
-
-def test_a_text_in_the_wrong_language_is_shown_to_the_model_with_its_label(provider):
-    provider["store"]["key"] = "sk-good"
-    switch_on()
-    provider["answers"]["stem_review"] = {"findings": ["Der englische Text ist auf Deutsch."], "suggestion": {"en": "How many?"}}
-    question = {"type": "free_text", "created_by": "Examiner A", "stem": {"en": "Wie viele Symbole hat das Binärsystem?"},
-                "expected": {"en": "Zwei"}, "marking_notes": {"en": ""}}
-    answer = assist.check_stem(question, ["en"], "en", "de")
-    assert answer["findings"] == ["Der englische Text ist auf Deutsch."]
-    sent_text = json.dumps(provider["sent"][-1]["body"]["messages"], ensure_ascii=False)
-    assert "[en] Wie viele Symbole" in sent_text and "[en] Zwei" in sent_text and "wrong language" in sent_text
-    assert "Examiner A" not in sent_text
-
-
-def test_review_of_the_whole_question_proposes_only_real_changes_per_language(provider):
+def test_review_sends_only_the_question_in_every_language_and_proposes_real_changes(provider):
     provider["store"]["key"] = "sk-good"
     switch_on()
     provider["answers"]["question_review"] = {
@@ -121,77 +92,75 @@ def test_review_of_the_whole_question_proposes_only_real_changes_per_language(pr
                     {"field": "option.b.text", "texts": {"de": "Grün", "en": "Green"}},  # unchanged: dropped
                     {"field": "option.a.text", "texts": {"de": "noch einmal", "en": "again"}}],  # twice: first counts
     }
-    answer = assist.review_question(QUESTION, LANGS, "de", "de")
+    answer = assist.review(QUESTION, LANGS, "de", "de", min_options=2)
     assert [f["about"] for f in answer["findings"]] == ["option.a.text", "question"]
     assert answer["changes"] == [{"field": "option.a.text", "lang": "de",
                                   "text": "Blau, weil kurzwelliges Licht stärker gestreut wird", "before": "Blau"}]
-    schema = provider["sent"][-1]["body"]["response_format"]["json_schema"]["schema"]
+    assert answer["new_options"] == []
+    body = provider["sent"][-1]["body"]
+    schema = body["response_format"]["json_schema"]["schema"]
+    assert "new_options" not in schema["properties"]  # enough options: nothing to add
     item = schema["properties"]["changes"]["items"]["properties"]
     assert item["field"]["enum"] == ["stem", "option.a.text", "option.a.feedback", "option.b.text", "option.b.feedback"]
     assert item["texts"]["required"] == LANGS
-    sent_text = json.dumps(provider["sent"][-1]["body"]["messages"], ensure_ascii=False)
-    assert "Never change which options are correct" in sent_text and "Examiner A" not in sent_text
+    sent_text = json.dumps(body["messages"], ensure_ascii=False)
+    assert "[de] Welche Farbe hat der Himmel?" in sent_text and "[en] What colour is the sky?" in sent_text
+    assert "Never change which options are correct" in sent_text and "wrong language" in sent_text
+    assert "Examiner A" not in sent_text and "Deck 3" not in sent_text  # no names, no other fields
+    assert body["model"] == "gpt-test-mini" and body["response_format"]["json_schema"]["strict"] is True
+
+
+def test_review_fills_missing_languages_and_adds_the_wrong_options_that_are_missing(provider):
+    provider["store"]["key"] = "sk-good"
+    switch_on()
+    question = {"type": "single", "stem": {"de": "Welche Farbe hat der Himmel?", "en": ""},
+                "options": [{"id": "a", "correct": True, "text": {"de": "Blau", "en": ""}, "feedback": {"de": "", "en": ""}},
+                            {"id": "b", "correct": False, "text": {"de": "Grün", "en": ""}, "feedback": {"de": "", "en": ""}}]}
+    texts = lambda de, en: {"de": de, "en": en}  # noqa: E731
+    provider["answers"]["question_review"] = {
+        "findings": [],
+        "changes": [{"field": "stem", "texts": texts("Welche Farbe hat der Himmel?", "What colour is the sky?")},
+                    {"field": "option.a.feedback", "texts": texts("Ja, Streuung.", "Yes, scattering.")}],
+        "new_options": [{"text": texts("Rot", "Red"), "feedback": texts("Nein.", "No."), "misconception": "Abendrot"},
+                        {"text": texts("Weiß", "White"), "feedback": texts("Nein.", "No."), "misconception": "Wolken"},
+                        {"text": texts("Gelb", "Yellow"), "feedback": texts("Nein.", "No."), "misconception": "Sonne"}],
+    }
+    answer = assist.review(question, LANGS, "de", "de", min_options=4)
+    assert [(c["field"], c["lang"], c["before"]) for c in answer["changes"]] == [
+        ("stem", "en", ""), ("option.a.feedback", "de", ""), ("option.a.feedback", "en", "")]
+    assert [o["text"]["en"] for o in answer["new_options"]] == ["Red", "White"]  # two missing, no more
+    body = provider["sent"][-1]["body"]
+    assert "propose exactly 2 new wrong options" in json.dumps(body["messages"])
+    new = body["response_format"]["json_schema"]["schema"]["properties"]["new_options"]["items"]["properties"]
+    assert new["text"]["required"] == LANGS
 
 
 def test_review_of_a_free_text_question_covers_the_expected_answer(provider):
     provider["store"]["key"] = "sk-good"
     switch_on()
     provider["answers"]["question_review"] = {"findings": [], "changes": [{"field": "expected", "texts": {"de": "Zwei: 0 und 1"}}]}
-    question = {"type": "free_text", "stem": {"de": "Wie viele Ziffern hat das Binärsystem?"}, "expected": {"de": "Zwei"}}
-    assert assist.review_question(question, ["de"], "de", "de")["changes"] == [
-        {"field": "expected", "lang": "de", "text": "Zwei: 0 und 1", "before": "Zwei"}]
-    schema = provider["sent"][-1]["body"]["response_format"]["json_schema"]["schema"]
+    question = {"type": "free_text", "created_by": "Examiner A", "stem": {"de": "Wie viele Ziffern hat das Binärsystem?"},
+                "expected": {"de": "Zwei"}, "marking_notes": {"de": ""}}
+    answer = assist.review(question, ["de"], "de", "de")
+    assert answer["changes"] == [{"field": "expected", "lang": "de", "text": "Zwei: 0 und 1", "before": "Zwei"}]
+    body = provider["sent"][-1]["body"]
+    schema = body["response_format"]["json_schema"]["schema"]
     assert schema["properties"]["changes"]["items"]["properties"]["field"]["enum"] == ["stem", "expected", "marking_notes"]
-
-
-def test_translation_fills_the_other_languages_and_keeps_what_is_right(provider):
-    provider["store"]["key"] = "sk-good"
-    switch_on()
-    question = {"type": "single", "stem": {"de": "Welche Farbe hat der Himmel?", "en": ""},
-                "options": [{"id": "a", "correct": True, "text": {"de": "Blau", "en": "Blue"}, "feedback": {"de": "Ja.", "en": ""}},
-                            {"id": "b", "correct": False, "text": {"de": "Grün", "en": ""}, "feedback": {"de": "", "en": ""}}]}
-    provider["answers"]["translation"] = {"findings": [], "translations": [
-        {"field": "stem", "texts": {"en": "What colour is the sky?"}},
-        {"field": "option.a.text", "texts": {"en": "Blue"}},  # already right: dropped
-        {"field": "option.a.feedback", "texts": {"en": "Yes."}},
-        {"field": "option.b.text", "texts": {"en": "Green"}}]}
-    answer = assist.translate(question, LANGS, "de", "de")
-    assert [(c["field"], c["lang"], c["text"]) for c in answer["changes"]] == [
-        ("stem", "en", "What colour is the sky?"), ("option.a.feedback", "en", "Yes."), ("option.b.text", "en", "Green")]
-    schema = provider["sent"][-1]["body"]["response_format"]["json_schema"]["schema"]
-    item = schema["properties"]["translations"]["items"]["properties"]
-    assert item["texts"]["required"] == ["en"]  # only the target languages
-    assert "option.b.feedback" not in item["field"]["enum"]  # nothing to translate where the source is empty
-    with pytest.raises(assist.AssistError) as caught:
-        assist.translate(question, ["de"], "de", "de")
-    assert caught.value.code == "llm_one_language"
-
-
-def test_distractors_come_in_every_language_and_no_more_than_asked(provider):
-    provider["store"]["key"] = "sk-good"
-    switch_on()
-    texts = lambda de, en: {"de": de, "en": en}  # noqa: E731
-    provider["answers"]["distractors"] = {"distractors": [
-        {"text": texts("Rot", "Red"), "feedback": texts("Nein.", "No."), "misconception": "Abendrot"},
-        {"text": texts("Weiß", "White"), "feedback": texts("Nein.", "No."), "misconception": "Wolken"},
-        {"text": texts("Gelb", "Yellow"), "feedback": texts("Nein.", "No."), "misconception": "Sonne"},
-    ]}
-    proposals = assist.distractors(QUESTION, LANGS, 2, "de")
-    assert [p["text"]["en"] for p in proposals] == ["Red", "White"]
-    schema = provider["sent"][-1]["body"]["response_format"]["json_schema"]["schema"]
-    assert schema["properties"]["distractors"]["items"]["properties"]["text"]["required"] == ["de", "en"]
+    assert "new_options" not in schema["properties"]
+    sent_text = json.dumps(body["messages"], ensure_ascii=False)
+    assert "Expected answer:\\n  [de] Zwei" in sent_text and "Examiner A" not in sent_text
 
 
 def test_the_api_names_what_is_missing(provider, tmp_path):
     pool = str(Pool.create(tmp_path / "pool", PoolSettings(name="P")).root)
     api = Api()
-    assert api.assist_check_stem(pool, QUESTION, "de")["code"] == "llm_off"
+    assert api.assist_review(pool, QUESTION, "de")["code"] == "llm_off"
     current = settings.load()
     current.update({"llm_enabled": True})
     settings.save(current)
-    assert api.assist_check_stem(pool, QUESTION, "de")["code"] == "llm_no_key"
+    assert api.assist_review(pool, QUESTION, "de")["code"] == "llm_no_key"
     provider["store"]["key"] = "sk-good"
-    assert api.assist_translate(pool, QUESTION, "de")["code"] == "llm_no_model"
+    assert api.assist_vary_numbers(pool, {"type": "free_text", "stem": {"de": "1 + 1?"}})["code"] == "llm_no_model"
 
 
 def test_http_errors_become_readable_codes(monkeypatch):

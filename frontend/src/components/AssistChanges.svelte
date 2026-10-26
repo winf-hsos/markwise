@@ -1,12 +1,15 @@
 <script>
   import Icon from "./Icon.svelte";
   import { inline } from "../lib/inline.js";
-  import { t } from "../lib/i18n.svelte.js";
+  import { t, ui } from "../lib/i18n.svelte.js";
 
   // What the language model found and proposes, per field and language, each change to apply on its own or
   // all at once. `label(field)` names a field, `showLang` adds the language to each change, and `note`
-  // ({ title, text }) shows something to check first, such as the model's calculation.
-  let { findings = [], changes = [], label, showLang = false, note = null, onapply, onclose } = $props();
+  // ({ title, text }) shows something to check first, such as the model's calculation. `additions` are new wrong
+  // options, each added on its own with `onadd`.
+  let { findings = [], changes = [], additions = [], label, showLang = false, note = null, onapply, onadd, onclose } = $props();
+  const lang = $derived(ui.lang);
+  const textIn = (texts) => texts?.[lang] || Object.values(texts ?? {}).find(Boolean) || "";
 
   const missing = $derived(changes.filter((c) => !c.before?.trim()));
 </script>
@@ -17,7 +20,7 @@
   {/if}
   {#if findings.length}
     <ul>{#each findings as f}<li>{#if f.about}<b>{label(f.about)}:</b> {/if}{f.text}</li>{/each}</ul>
-  {:else if !changes.length && !note?.text}
+  {:else if !changes.length && !additions.length && !note?.text}
     <p class="check-ok"><Icon name="check" />{t("assist.nothing")}</p>
   {/if}
   {#each changes as change (change.field + change.lang)}
@@ -30,11 +33,29 @@
       <div class="assist-after">{@html inline(change.text)}</div>
     </div>
   {/each}
+  {#each additions as option}
+    <div class="assist-suggestion">
+      <div class="assist-change-head">
+        <span class="hint">{t("assist.newOption")}</span>
+        <button type="button" class="btn primary btn-small" onclick={() => onadd([option])}>{t("assist.add")}</button>
+      </div>
+      <div class="assist-after">{@html inline(textIn(option.text))}</div>
+      <span class="option-feedback">{@html inline(textIn(option.feedback))}</span>
+      {#if showLang}
+        {#each Object.entries(option.text).filter(([l]) => l !== lang && option.text[l]) as [l, text]}
+          <span class="proposal-other"><span class="lang-tag">{l.toUpperCase()}</span>{@html inline(text)}</span>
+        {/each}
+      {/if}
+      {#if option.misconception}<span class="proposal-why">{t("assist.misconception")}: {option.misconception}</span>{/if}
+    </div>
+  {/each}
   <div class="assist-actions">
-    {#if changes.length > 1}<button type="button" class="btn primary btn-small" onclick={() => onapply([...changes])}>{t("assist.applyAll")}</button>{/if}
+    {#if changes.length + additions.length > 1}
+      <button type="button" class="btn primary btn-small" onclick={() => { onapply([...changes]); if (additions.length) onadd([...additions]); }}>{t("assist.applyAll")}</button>
+    {/if}
     {#if missing.length && missing.length < changes.length}
       <button type="button" class="btn btn-small" onclick={() => onapply([...missing])}>{t("assist.applyMissing", { n: missing.length })}</button>
     {/if}
-    <button type="button" class="btn ghost btn-small" onclick={onclose}>{changes.length ? t("assist.dismiss") : t("dialog.close")}</button>
+    <button type="button" class="btn ghost btn-small" onclick={onclose}>{changes.length || additions.length ? t("assist.dismiss") : t("dialog.close")}</button>
   </div>
 </div>

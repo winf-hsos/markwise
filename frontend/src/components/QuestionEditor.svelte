@@ -4,7 +4,6 @@
   import QuestionPreview from "./QuestionPreview.svelte";
   import Menu from "./Menu.svelte";
   import TimeChoice from "./TimeChoice.svelte";
-  import DistractorDialog from "./DistractorDialog.svelte";
   import AssistChanges from "./AssistChanges.svelte";
   import { inline } from "../lib/inline.js";
   import CodeDialog from "./CodeDialog.svelte";
@@ -173,15 +172,11 @@
     if (fields.public) fields.variant_of = "";
   }
 
-  // Help from the language model, only when it is switched on in the settings. Every answer arrives as
-  // findings and proposed texts per field and language: { findings: [{about, text}], changes: [{field, lang, text, before}] }.
-  // The model sees the question in every language of the pool, so it also notices a text in the wrong language,
-  // and its proposals come with their translations.
-  let review = $state(null); // the question text
-  let whole = $state(null); // the question with its answers
-  let translation = $state(null); // the question in the pool's other languages
-  let asking = $state(""); // which of them is being asked for
-  let distractorsOpen = $state(false);
+  // Help from the language model, only when it is switched on in the settings. One check looks at the whole question
+  // in every language of the pool and completes it; its answer: { findings: [{about, text}],
+  // changes: [{field, lang, text, before}], new_options: [{text, feedback, misconception}] }.
+  let review = $state(null);
+  let asking = $state(""); // "review" or "numbers" while the model works
 
   // The question as the model has to see it: a variant with the settings it inherits filled in.
   function effectiveFields() {
@@ -204,17 +199,8 @@
     }
   }
 
-  async function checkStem() {
-    const answer = await askModel("stem", "assist_check_stem", lang);
-    if (!answer) return;
-    const changes = languages
-      .map((l) => ({ field: "stem", lang: l, text: (answer.suggestion[l] ?? "").trim(), before: fields.stem[l] ?? "" }))
-      .filter((c) => c.text && c.text !== c.before.trim());
-    review = { findings: answer.findings.map((text) => ({ about: null, text })), changes };
-  }
-
-  async function reviewWhole() {
-    whole = await askModel("whole", "assist_review_question", lang);
+  async function reviewQuestion() {
+    review = await askModel("review", "assist_review", lang);
   }
 
   // For a free-text variant: the same calculation with other numbers, the answer worked out again.
@@ -224,12 +210,6 @@
     numbers = await askModel("numbers", "assist_vary_numbers");
   }
 
-  async function translate() {
-    translation = await askModel("translate", "assist_translate", lang);
-  }
-
-  const otherLanguages = $derived(languages.filter((l) => l !== lang));
-  const languageLabel = (l) => (l === "de" ? "Deutsch" : "English");
 
   function fieldLabel(name) {
     if (name === "question") return t("assist.aboutQuestion");
@@ -254,13 +234,15 @@
     result.changes = result.changes.filter((c) => !chosen.some((x) => x.field === c.field && x.lang === c.lang));
   }
 
-  function addDistractors(chosen) {
-    for (const d of chosen) {
+  // New wrong options the check proposed because the question had too few.
+  function addOptions(result, chosen) {
+    for (const option of chosen) {
       const used = new Set(fields.options.map((o) => o.id));
       const id = "abcdefghij".split("").find((c) => !used.has(c));
       if (!id) break;
-      fields.options.push({ id, correct: false, text: { ...blankTexts(), ...d.text }, feedback: { ...blankTexts(), ...d.feedback } });
+      fields.options.push({ id, correct: false, text: { ...blankTexts(), ...option.text }, feedback: { ...blankTexts(), ...option.feedback } });
     }
+    result.new_options = result.new_options.filter((o) => !chosen.includes(o));
   }
 
   function removeCode() {
@@ -411,33 +393,25 @@
             </button>
           {/each}
         </div>
-        {#if llmReady() && languages.length > 1}
-          <button type="button" class="btn ghost btn-small translate-btn" onclick={translate} disabled={asking === "translate"}
-            title={t("assist.translateHint", { from: languageLabel(lang), to: otherLanguages.map(languageLabel).join(", ") })}>
-            <Icon name="wand" />{asking === "translate" ? t("assist.working") : t("assist.translate")}
+        {#if llmReady()}
+          <button type="button" class="btn ghost btn-small review-btn" onclick={reviewQuestion}
+            disabled={asking === "review" || languages.every((l) => !fields.stem[l]?.trim())}
+            title={t(isChoice ? "assist.reviewHint" : "assist.reviewHintFree")}>
+            <Icon name="wand" />{asking === "review" ? t("assist.working") : t("assist.review")}
           </button>
         {/if}
         <a class="lang-hint" href="#/modules" title={t("edit.languagesHint")}>{t(languages.length > 1 ? "edit.languagesPool" : "edit.languagePool")}</a>
       </div>
-      {#if translation}
-        <AssistChanges findings={translation.findings} changes={translation.changes} label={fieldLabel} showLang
-          onapply={(chosen) => applyTo(translation, chosen)} onclose={() => (translation = null)} />
+      {#if review}
+        <AssistChanges findings={review.findings} changes={review.changes} additions={review.new_options}
+          label={fieldLabel} showLang={languages.length > 1}
+          onapply={(chosen) => applyTo(review, chosen)} onadd={(chosen) => addOptions(review, chosen)} onclose={() => (review = null)} />
       {/if}
 
-      <div class="field">
-        <div class="field-head">
-          <label for="stem-input">{t("edit.stem")}</label>
-          {#if llmReady()}
-            <button type="button" class="btn ghost btn-small" onclick={checkStem} disabled={asking === "stem" || !fields.stem[lang]?.trim()}
-              title={t("assist.checkHint")}><Icon name="wand" />{asking === "stem" ? t("assist.working") : t("assist.check")}</button>
-          {/if}
-        </div>
+      <label class="field">
+        <span>{t("edit.stem")}</span>
         <textarea id="stem-input" class="input grow-text" rows="3" bind:value={fields.stem[lang]}></textarea>
-        {#if review}
-          <AssistChanges findings={review.findings} changes={review.changes} label={fieldLabel} showLang={languages.length > 1}
-            onapply={(chosen) => applyTo(review, chosen)} onclose={() => (review = null)} />
-        {/if}
-      </div>
+      </label>
 
       <div class="attachments">
         {#if fields.code}
@@ -489,14 +463,9 @@
             </li>
           {/each}
         </ol>
-        <div class="option-tools">
-          {#if fields.options.length < 10}
-            <button type="button" class="btn ghost" onclick={addOption}><Icon name="plus" />{t("edit.addOption")}</button>
-          {/if}
-          {#if llmReady() && fields.options.some((o) => o.correct) && fields.options.length < 10}
-            <button type="button" class="btn ghost" onclick={() => (distractorsOpen = true)}><Icon name="wand" />{t("assist.distractors")}</button>
-          {/if}
-        </div>
+        {#if fields.options.length < 10}
+          <button type="button" class="btn ghost" onclick={addOption}><Icon name="plus" />{t("edit.addOption")}</button>
+        {/if}
       {:else}
         <div class="form-row">
           <label class="field"><span class="field-label">{t("edit.lines")}{@render heritage("lines")}</span>
@@ -511,26 +480,16 @@
           <textarea class="input grow-text" rows="2" bind:value={fields.marking_notes[lang]}></textarea></label>
       {/if}
 
-      {#if llmReady()}
+      {#if llmReady() && isVariant && qtype === "free_text"}
         <div class="assist-whole">
-          <button type="button" class="btn ghost" onclick={reviewWhole} disabled={asking === "whole" || !fields.stem[lang]?.trim()}
-            title={t(isChoice ? "assist.wholeHint" : "assist.wholeHintFree")}>
-            <Icon name="wand" />{asking === "whole" ? t("assist.working") : t(isChoice ? "assist.whole" : "assist.wholeFree")}
+          <button type="button" class="btn ghost" onclick={varyNumbers} disabled={asking === "numbers" || !fields.stem[lang]?.trim()}
+            title={t("assist.numbersHint")}>
+            <Icon name="wand" />{asking === "numbers" ? t("assist.working") : t("assist.numbers")}
           </button>
-          {#if whole}
-            <AssistChanges findings={whole.findings} changes={whole.changes} label={fieldLabel} showLang={languages.length > 1}
-              onapply={(chosen) => applyTo(whole, chosen)} onclose={() => (whole = null)} />
-          {/if}
-          {#if isVariant && qtype === "free_text"}
-            <button type="button" class="btn ghost" onclick={varyNumbers} disabled={asking === "numbers" || !fields.stem[lang]?.trim()}
-              title={t("assist.numbersHint")}>
-              <Icon name="wand" />{asking === "numbers" ? t("assist.working") : t("assist.numbers")}
-            </button>
-            {#if numbers}
-              <AssistChanges findings={numbers.findings} changes={numbers.changes} label={fieldLabel} showLang={languages.length > 1}
-                note={{ title: t("assist.calculation"), text: numbers.calculation }}
-                onapply={(chosen) => applyTo(numbers, chosen)} onclose={() => (numbers = null)} />
-            {/if}
+          {#if numbers}
+            <AssistChanges findings={numbers.findings} changes={numbers.changes} label={fieldLabel} showLang={languages.length > 1}
+              note={{ title: t("assist.calculation"), text: numbers.calculation }}
+              onapply={(chosen) => applyTo(numbers, chosen)} onclose={() => (numbers = null)} />
           {/if}
         </div>
       {/if}
@@ -544,10 +503,6 @@
       </details>
     </form>
 
-    {#if isChoice}
-      <DistractorDialog bind:open={distractorsOpen} pool={base.pool} fields={effectiveFields()} {lang}
-        room={Math.max(1, 5 - fields.options.filter((o) => o.text?.[lang]?.trim()).length)} onapply={addDistractors} />
-    {/if}
     <CodeDialog bind:open={codeOpen} code={fields.code} language={fields.code_language} onapply={applyCode} />
     <ImageDialog bind:open={imageOpen} pool={base.pool} current={fields.images} columns={fields.image_columns} onapply={applyImages} />
 
