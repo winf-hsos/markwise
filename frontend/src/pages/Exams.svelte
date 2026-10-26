@@ -335,9 +335,9 @@
                 <button class="icon-btn small-icon" title={t("exams.preview")} aria-label={t("exams.preview")} onclick={() => previewQuestion(q.pool, q.id)}><Icon name="eye" /></button>
                 <button class="icon-btn small-icon" title={t("exams.edit")} aria-label={t("exams.edit")} onclick={() => editQuestion(q.pool, q.id)}><Icon name="edit" /></button>
                 {#if added}
-                  <button class="btn btn-small" onclick={() => removeRow(q)}><Icon name="remove" />{t("exams.take")}</button>
+                  <button class="icon-btn small-icon picker-take" title={t("exams.remove")} aria-label={t("exams.remove")} onclick={() => removeRow(q)}><Icon name="remove" /></button>
                 {:else}
-                  <button class="btn btn-small" onclick={() => add(q)}><Icon name="plus" />{t("exams.add")}</button>
+                  <button class="icon-btn small-icon picker-add" title={t("exams.add")} aria-label={t("exams.add")} onclick={() => add(q)}><Icon name="plus" /></button>
                 {/if}
               </div>
             {/each}
