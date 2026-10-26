@@ -3,6 +3,7 @@
   import Icon from "../components/Icon.svelte";
   import QuestionPreview from "../components/QuestionPreview.svelte";
   import QuestionEditor from "../components/QuestionEditor.svelte";
+  import QuestionStats from "../components/QuestionStats.svelte";
   import NewQuestionDialog from "../components/NewQuestionDialog.svelte";
   import { ask } from "../lib/confirm.svelte.js";
   import { call } from "../lib/api.js";
@@ -144,6 +145,23 @@
     }
   });
   const sorted = $derived([...shown].sort(SORTS[sort]));
+
+  // The overview above the list, shown or hidden as it was left on this computer.
+  let statsOpen = $state(readStatsOpen());
+  function readStatsOpen() {
+    try {
+      return localStorage.getItem("markwise-question-stats") === "open";
+    } catch {
+      return false;
+    }
+  }
+  $effect(() => {
+    try {
+      localStorage.setItem("markwise-question-stats", statsOpen ? "open" : "closed");
+    } catch {
+      /* no storage: the choice is simply not kept */
+    }
+  });
   // Variants stand right below the question they vary, in the order of their identifiers. A variant whose
   // parent is filtered out stands on its own, with a note which question it varies.
   const listed = $derived.by(() => {
@@ -358,6 +376,7 @@
       <div class="q-count">
         <span>{t("q.count", { shown: shown.length, total: questions.length })}</span>
         {#if filtered}<button class="link-btn" onclick={() => (filter = { ...blank })}>{t("q.reset")}</button>{/if}
+        <button class="link-btn" aria-expanded={statsOpen} onclick={() => (statsOpen = !statsOpen)}>{t(statsOpen ? "stats.hide" : "stats.show")}</button>
         <label class="sort">
           <span>{t("sort.label")}</span>
           <select class="select select-small" bind:value={sort}>
@@ -366,6 +385,8 @@
         </label>
       </div>
     </div>
+
+    {#if statsOpen && questions.length}<QuestionStats rows={shown} bind:filter />{/if}
 
     <div class="q-split">
       <div class="q-list-pane" role="listbox" aria-label={t("questions.title")} bind:this={listPane} onscroll={onListScroll}>
