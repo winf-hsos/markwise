@@ -97,6 +97,12 @@ The **Questions** page lists every question in the pools of the current module. 
 
 **New question** on the Questions page asks for the pool (if the module has several), the concept and the type; with a concept filter set, that concept is already chosen. **New concept …** in the concept list asks for a name and a short description in plain words; Markwise makes the concept's identifier from the name (shown below the field). Markwise creates the question with the next free identifier and opens it in the editor.
 
+### Editing a question in place
+
+The question chosen on the Questions page is shown as it reads, and most of it can be changed right there. A click on the question text, an answer or its rationale, the expected answer or the marking notes of a free-text question, or on program code turns it into a field with its Markdown (`**bold**`, `*italic*`, `` `code` ``). The tick, **Ctrl+Enter** or a click elsewhere renders it again and saves it at once; **Escape** keeps the old text. A click on an answer's box marks it as correct (for single choice, instead of the one before). The plus below the answers adds one and opens it for typing, the minus beside an answer, shown on pointing at it, removes it. In the heading, single and multiple choice and the use for practice or exams are switched directly; level and answering time are chosen in the details below. Texts are changed in the language shown, which the DE/EN switch selects. Each change is saved on its own, and a released question becomes a draft again, as in the editor. **All fields** opens the editor for everything else: figures, the code language, variants, the check with a language model.
+
+The arrows above the question page through the questions in the order of the list, with its filters and search; **Alt+←/→** or **Page Up/Down** do the same from anywhere but a text field. The list itself can be hidden with the button beside the statistics; the question then takes the whole width, and Markwise remembers the choice.
+
 ### Releasing, exam variants, retiring
 
 A question is written as a **draft**. When an examiner has read it and agrees, **Release** in the head of the preview notes their name in `reviewed_by` and makes the question **reviewed**; a second examiner can **Release as well**, so that both names stand there, as § 5 (3) c of the general examination regulations asks for two examiners. A question with errors cannot be released. Changing the content of a reviewed question makes it a draft again.

@@ -498,6 +498,41 @@ button.bar-row:hover { background: var(--surface); }
   border: 1px solid var(--line); border-radius: var(--radius-l); overflow: hidden; }
 .q-list-pane { overflow: auto; border-right: 1px solid var(--line); }
 .q-preview-pane { overflow: auto; }
+.q-split.solo { grid-template-columns: minmax(0, 1fr); }
+.q-split.solo .q-preview-pane > * { max-width: 860px; margin-left: auto; margin-right: auto; }
+.q-list-pane[hidden] { display: none; }
+
+/* paging through the questions above the one shown */
+.sheet-nav { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 8px 16px;
+  background: var(--paper); border-bottom: 1px solid var(--line-soft); font-size: 12.5px; color: var(--muted); }
+.sheet-nav .flip svg { transform: rotate(180deg); }
+.sheet-nav .hint { margin-left: auto; }
+
+/* texts that turn into a field for their Markdown */
+.inline-view.editable { cursor: text; border-radius: 5px; margin: -3px -6px; padding: 3px 6px; transition: background 0.1s; }
+.inline-view.editable:hover { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.inline-view.editable:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+.inline-placeholder { color: var(--faint); font-style: italic; }
+div.inline-view { white-space: pre-wrap; }
+.inline-edit { display: grid; gap: 4px; margin: 0 0 10px; }
+.inline-edit.stem { white-space: normal; font: inherit; }
+.inline-edit textarea { width: 100%; min-height: 60px; resize: vertical; font: 14px/1.5 var(--code); padding: 8px 10px; }
+.inline-edit.code textarea { font-size: 13px; }
+.inline-tools { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
+.inline-tools .hint { margin-right: auto; font-size: 11.5px; color: var(--faint); }
+.inline-tools .inline-ok { color: var(--green-strong); }
+.code-block.inline-view.editable { margin: 0 0 14px; padding: 12px 14px; }
+.sheet-options li { grid-template-columns: 22px 1fr auto; }
+.sheet-options .box { padding: 0; background: var(--paper); cursor: pointer; }
+.sheet-options .box:hover { border-color: var(--green); }
+.sheet-option { display: grid; gap: 2px; min-width: 0; }
+.sheet-option .option-feedback, .sheet-option > .inline-view { font-size: 13px; color: var(--muted); }
+.option-remove { opacity: 0; transition: opacity 0.1s; }
+.sheet-options li:hover .option-remove, .option-remove:focus-visible { opacity: 1; }
+.add-option { margin: 8px 0 4px 32px; }
+.tag-select { width: auto; height: 24px; padding: 0 22px 0 8px; font-size: 12px; }
+.preview-title .chips { display: inline-flex; gap: 4px; }
+.preview-title .chip { height: 24px; padding: 0 9px; font-size: 12px; }
 .pad { padding: 16px 18px; margin: 0; }
 
 .q-row { display: grid; gap: 4px; width: 100%; padding: 11px 18px; border: 0; border-bottom: 1px solid var(--line-soft);

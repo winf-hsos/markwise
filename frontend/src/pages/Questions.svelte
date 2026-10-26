@@ -254,8 +254,75 @@
     }
   }
 
-  // Up and down move through the list while the search field or the list has the focus.
+  // --- changes made in the preview, saved one by one, in the order they were made ---------------------
+  let queue = Promise.resolve();
+  let refreshLater = null;
+  let saving = $state(0);
+  function saveFields(fields) {
+    const { pool, id } = detail;
+    const since = detail.mtime_ns;
+    saving += 1;
+    queue = queue.then(async () => {
+      try {
+        // The file's time from the last save of this question, so that saves in a row do not take each other for edits elsewhere.
+        const mtime = detail?.pool === pool && detail?.id === id ? detail.mtime_ns : since;
+        const result = await call("save_question", pool, id, fields, mtime, false);
+        const wasReviewed = detail?.data?.status === "reviewed";
+        if (detail?.pool === pool && detail?.id === id) detail = result.question;
+        if (result.changed) {
+          showToast(wasReviewed && result.question.data.status === "draft" ? t("edit.savedDraft") : t("edit.saved"));
+          // The list is read again once the edits pause, so that it does not hold up the next save.
+          clearTimeout(refreshLater);
+          refreshLater = setTimeout(load, 900);
+        }
+      } catch (err) {
+        showToast(err.code === "conflict" ? t("sheet.conflict") : errorText(err));
+        if (detail?.pool === pool && detail?.id === id) show({ pool, id });
+      } finally {
+        saving -= 1;
+      }
+    });
+  }
+
+  // Paging through the questions as the list shows them, also while the list is hidden.
+  const position = $derived(selectedRow ? order.indexOf(selectedRow) : -1);
+  function step(by) {
+    const next = order[Math.max(0, Math.min(order.length - 1, position + by))];
+    if (!next || next === selectedRow) return;
+    show(next);
+    document.getElementById(`q-${next.pool}-${next.id}`)?.scrollIntoView({ block: "nearest" });
+  }
+
+  // The list beside the question, shown or hidden as it was left on this computer.
+  let listOpen = $state(readListOpen());
+  function readListOpen() {
+    try {
+      return localStorage.getItem("markwise-question-list") !== "closed";
+    } catch {
+      return true;
+    }
+  }
+  $effect(() => {
+    try {
+      localStorage.setItem("markwise-question-list", listOpen ? "open" : "closed");
+    } catch {
+      /* no storage: the choice is simply not kept */
+    }
+  });
+  // Without the list there is always a question to see.
+  $effect(() => {
+    if (!listOpen && !selectedRow && order.length) untrack(() => show(order[0]));
+  });
+
+  // Up and down move through the list while the search field or the list has the focus; Alt with left and right,
+  // or Page Up and Down, page through the questions from anywhere but a text field.
   function onkeydown(event) {
+    if (route.path === "/questions" && !editing && !event.target.closest?.("textarea, input, select")
+      && ((event.altKey && ["ArrowLeft", "ArrowRight"].includes(event.key)) || ["PageUp", "PageDown"].includes(event.key))) {
+      event.preventDefault();
+      step(event.key === "ArrowLeft" || event.key === "PageUp" ? -1 : 1);
+      return;
+    }
     if (route.path !== "/questions" || editing || !["ArrowDown", "ArrowUp"].includes(event.key) || event.target.closest?.("select, .preview")) return;
     if (!shown.length) return;
     event.preventDefault();
@@ -415,6 +482,8 @@
           <button class="icon-btn small-icon" title={t(allFolded ? "q.unfoldAll" : "q.foldAll")} aria-label={t(allFolded ? "q.unfoldAll" : "q.foldAll")}
             onclick={toggleAllVariants}><Icon name={allFolded ? "unfold" : "fold"} /></button>
         {/if}
+        <button class="icon-btn small-icon" class:on={listOpen} aria-pressed={listOpen} title={t(listOpen ? "q.listHide" : "q.listShow")}
+          aria-label={t(listOpen ? "q.listHide" : "q.listShow")} onclick={() => (listOpen = !listOpen)}><Icon name="panel" /></button>
         <button class="icon-btn small-icon" class:on={statsOpen} aria-pressed={statsOpen} title={t(statsOpen ? "stats.hide" : "stats.show")}
           aria-label={t(statsOpen ? "stats.hide" : "stats.show")} onclick={() => (statsOpen = !statsOpen)}><Icon name="chart" /></button>
         <label class="sort">
@@ -428,8 +497,8 @@
 
     {#if statsOpen && questions.length}<QuestionStats rows={shown} bind:filter />{/if}
 
-    <div class="q-split">
-      <div class="q-list-pane" role="listbox" aria-label={t("questions.title")} bind:this={listPane} onscroll={onListScroll}>
+    <div class="q-split" class:solo={!listOpen}>
+      <div class="q-list-pane" role="listbox" hidden={!listOpen} aria-label={t("questions.title")} bind:this={listPane} onscroll={onListScroll}>
         {#if loading && questions.length === 0}
           <p class="muted pad">{t("q.loading")}</p>
         {:else if shown.length === 0}
@@ -463,7 +532,14 @@
       </div>
       <div class="q-preview-pane">
         {#if detail && selectedRow}
-          <QuestionPreview question={detail} variants={selectedRow.variants} onopen={openFile} onedit={edit} onaction={act} {me} />
+          <div class="sheet-nav">
+            <button class="icon-btn small-icon" title={t("sheet.prev")} aria-label={t("sheet.prev")} disabled={position <= 0} onclick={() => step(-1)}><Icon name="back" /></button>
+            <span>{t("sheet.position", { n: position + 1, total: order.length })}</span>
+            <button class="icon-btn small-icon flip" title={t("sheet.next")} aria-label={t("sheet.next")} disabled={position >= order.length - 1} onclick={() => step(1)}><Icon name="back" /></button>
+            {#if saving}<span class="hint">{t("sheet.saving")}</span>{/if}
+          </div>
+          <QuestionPreview question={detail} variants={selectedRow.variants} onopen={openFile} onedit={edit} onaction={act} {me}
+            editable onchange={saveFields} />
         {:else}
           <div class="empty quiet"><p>{t("q.select")}</p></div>
         {/if}
