@@ -850,11 +850,25 @@ button.heritage:hover { text-decoration: underline; }
 .pane-title { position: sticky; top: 0; z-index: 1; margin: 0; padding: 12px 18px 8px; background: var(--paper); font: 600 13px/1.2 var(--ui-display); color: var(--muted); }
 .exam-entries { list-style: none; margin: 0; padding: 0 18px 24px; display: grid; gap: 14px; }
 /* one question of the exam: a white card with its details and tools at the top, the question as printed below */
-.exam-entry { display: grid; background: #fff; border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+.exam-entry { display: grid; background: #fff; border: 1px solid var(--line); border-radius: 6px;
   box-shadow: 0 1px 2px rgba(23, 32, 43, 0.05); }
-.exam-entry > .entry-bar { padding: 6px 10px 6px 4px; border-bottom: 1px solid var(--line-soft); background: #fbfbfc; }
+.exam-entry > .entry-bar { padding: 6px 10px 6px 4px; border-bottom: 1px solid var(--line-soft); background: #fbfbfc; border-radius: 6px 6px 0 0; }
 .exam-entry > .entry-finding { padding: 6px 22px 0; }
-.exam-entry > .booklet-item { border: 0; border-radius: 0; box-shadow: none; }
+.exam-entry > .booklet-item { border: 0; border-radius: 0 0 6px 6px; box-shadow: none; }
+
+/* the answering time as a label that opens a small choice */
+.time-pick { position: relative; display: inline-flex; }
+.tag-button { border: 0; cursor: pointer; font: inherit; }
+.tag-button:hover { box-shadow: inset 0 0 0 1px var(--line); }
+.tag-button.warn:hover { box-shadow: inset 0 0 0 1px #d9a21b; }
+.time-pop { position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; width: 300px; display: grid; gap: 10px; padding: 12px 14px;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-l); box-shadow: 0 16px 40px -16px rgba(27, 31, 39, 0.28);
+  font-size: 13px; }
+.time-pop-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.time-pop-other { display: flex; align-items: center; gap: 6px; }
+.time-pop-other .input { width: 58px; height: 30px; padding: 0 6px; text-align: right; }
+.time-pop-other .btn { margin-left: auto; }
+.time-pop .hint { font-size: 11.5px; color: var(--faint); }
 .entry-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
 .entry-bar .q-concept { flex: 1 1 60px; }
 .entry-bar .qid { white-space: nowrap; }

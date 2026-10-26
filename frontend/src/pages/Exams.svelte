@@ -13,6 +13,7 @@
   import { ensureQuestions, questionsOf, refreshQuestions } from "../lib/questions.svelte.js";
   import QuestionEditor from "../components/QuestionEditor.svelte";
   import ExamItem from "../components/ExamItem.svelte";
+  import TimePick from "../components/TimePick.svelte";
   import Dialog from "../components/Dialog.svelte";
   import QuestionPreview from "../components/QuestionPreview.svelte";
 
@@ -488,6 +489,34 @@
     });
   });
 
+  // --- the answering time of a question, set from the exam ----------------------------------------
+  //
+  // The time is saved in the question in its pool. Points that are still what Markwise suggested for the old time
+  // (one point per minute, one point without a time) follow the new one; points set by hand stay.
+
+  async function setTime(index, seconds) {
+    const entry = entries[index];
+    const row = entry.row;
+    const before = row?.time_seconds ?? null;
+    try {
+      const detail = await call("get_question", entry.pool, entry.id);
+      await call("save_question", entry.pool, entry.id, { time_seconds: seconds }, detail.mtime_ns, false);
+      if (row) row.time_seconds = seconds; // shown at once; the pools are read again below
+      const time = formatTime(seconds);
+      const points = suggest(seconds);
+      if (Number(entry.points) === suggest(before) && points !== Number(entry.points)) {
+        current.entries[index].points = points;
+        await save({ entries: plainEntries(current.entries) });
+        showToast(t("timePick.donePoints", { id: entry.id, time, points: formatPoints(points) }));
+      } else {
+        showToast(t("timePick.done", { id: entry.id, time }));
+      }
+      refreshQuestions(modulePath);
+    } catch (err) {
+      showToast(errorText(err));
+    }
+  }
+
   // --- editing a question without leaving the exam ----------------------------------------------------
 
   async function editQuestion(pool, id) {
@@ -758,8 +787,7 @@
                   <span class="qid">{entry.id}</span>
                   <span class="q-concept">{entry.row?.concept_name ?? ""}</span>
                   {#if entry.row?.level}<span class="tag">{t(`level.${entry.row.level}`)}</span>{/if}
-                  {#if entry.row?.time_seconds}<span class="tag">{formatTime(entry.row.time_seconds)}</span>
-                  {:else if entry.row}<span class="tag warn">{t("exams.noTime")}</span>{/if}
+                  {#if entry.row}<TimePick seconds={entry.row.time_seconds} title={entry.id} onchoose={(s) => setTime(i, s)} />{/if}
                   <label class="entry-points" title={t("exams.pointsHint")}>
                     <input class="input" type="number" min="0.5" step="0.5" value={entry.points}
                       oninput={(e) => setPoints(i, Number(e.currentTarget.value))} aria-label={t("exams.points")} />
