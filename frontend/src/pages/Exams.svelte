@@ -44,6 +44,7 @@
     try {
       exams = await call("list_exams", modulePath);
       const kept = recall("exams", modulePath);
+      outline = kept.outline ?? false;
       if (kept.open && exams.some((e) => e.path === kept.open)) await openExam(kept.open);
     } catch (err) {
       showToast(errorText(err));
@@ -197,6 +198,22 @@
   let drag = $state(null); // { kind: "move" | "add", index, row, id, pool, type, stem, points, x, y, target }
   let pressed = null; // a press that has not moved far enough yet to be a drag
   let landedKey = $state(null); // the question that just landed, marked for a moment
+  // The outline: the exam folded for good, one line per question under its section, for an overview of the whole
+  // exam; a click on a line opens the exam at that question, and the lines are dragged like the questions.
+  let outline = $state(false);
+  function showOutline(on) {
+    outline = on;
+    remember("exams", modulePath, { outline: on });
+  }
+  function pressLine(event, line) {
+    if (event.button !== 0 || line.slot) return;
+    event.preventDefault();
+    press(event, { kind: "move", index: line.index, line });
+  }
+  function openLine(line) {
+    showOutline(false);
+    markLanded(line.k);
+  }
   let anchor = $state(0); // space above the folded exam, so that the grabbed line stays under the pointer
 
   function pressHandle(event, index) {
@@ -303,8 +320,10 @@
 
   function onPointerUp() {
     const done = drag;
+    const clicked = !done && pressed?.line; // a line of the outline pressed and let go without moving
     drag = null;
     release();
+    if (clicked) openLine(clicked);
     if (!done || done.target == null) return;
     const list = [...current.entries];
     anchor = 0;
@@ -326,8 +345,10 @@
     release();
   }
 
-  async function landed(entry) {
-    landedKey = entry.section != null ? `section:${entry.section}` : key(entry.pool, entry.id);
+  const landed = (entry) => markLanded(entry.section != null ? `section:${entry.section}` : key(entry.pool, entry.id));
+
+  async function markLanded(k) {
+    landedKey = k;
     await tick();
     listEl?.querySelector(`[data-key="${CSS.escape(landedKey)}"]`)?.scrollIntoView({ block: "center" });
     setTimeout(() => (landedKey = null), 1600);
@@ -336,13 +357,19 @@
   // The folded exam while something is held: the rest in its order, and a place where it would land. Numbers and
   // the points of the sections are those after letting go, so that they change while the question travels.
   const folded = $derived.by(() => {
-    if (!drag) return [];
+    if (!drag && !outline) return [];
+    const severity = (id) => {
+      const found = findingsFor(id);
+      return found.some((f) => f.severity === "error") ? "error" : found.length ? "warning" : "";
+    };
     const list = entries
-      .filter((_, i) => !(drag.kind === "move" && i === drag.index))
-      .map((e) => (e.kind === "section"
-        ? { k: e.k, section: true, id: e.title, stem: e.note }
-        : { k: e.k, id: e.id, type: e.row?.type, stem: e.row?.stem ?? "", points: Number(e.points), seconds: e.row?.time_seconds ?? 0 }));
-    if (drag.target != null) {
+      .map((e, index) => ({ e, index }))
+      .filter(({ index }) => !(drag?.kind === "move" && index === drag.index))
+      .map(({ e, index }) => (e.kind === "section"
+        ? { k: e.k, index, section: true, id: e.title, stem: e.note }
+        : { k: e.k, index, id: e.id, type: e.row?.type, stem: e.row?.stem ?? "", points: Number(e.points),
+            seconds: e.row?.time_seconds ?? 0, timed: e.row?.time_seconds != null, severity: severity(e.id) }));
+    if (drag && drag.target != null) {
       list.splice(drag.target, 0, drag.section
         ? { k: drag.k, slot: true, section: true, id: drag.id, stem: drag.stem }
         : { k: "slot", slot: true, id: drag.id, type: drag.type, stem: drag.stem, points: drag.points, seconds: drag.seconds });
@@ -570,23 +597,38 @@
         </section>
         <section class="exam-list" class:drop-zone={drag?.kind === "add"} aria-label={t("exams.content")} bind:this={listEl}>
           <h3 class="pane-title exam-pane-title">
-            <span>{drag ? t("exams.dragHint") : t("exams.content")}</span>
-            {#if !drag}<button class="btn btn-small ghost" title={t("exams.addSectionHint")} onclick={addSection}><Icon name="plus" />{t("exams.addSection")}</button>{/if}
+            <span>{drag ? t("exams.dragHint") : outline ? t("exams.outlineHint") : t("exams.content")}</span>
+            {#if !drag}
+              <span class="pane-actions">
+                <button class="btn btn-small ghost" title={t("exams.addSectionHint")} onclick={addSection}><Icon name="plus" />{t("exams.addSection")}</button>
+                <span class="seg seg-small" role="group" aria-label={t("exams.view")}>
+                  <button class:on={!outline} title={t("exams.fullHint")} onclick={() => showOutline(false)}>{t("exams.full")}</button>
+                  <button class:on={outline} title={t("exams.outlineTitle")} onclick={() => showOutline(true)}>{t("exams.outline")}</button>
+                </span>
+              </span>
+            {/if}
           </h3>
           {#if !entries.length && !drag}<p class="muted pad">{t("exams.emptyExam")}</p>{/if}
-          {#if drag}
-            <ol class="exam-entries compact" style:padding-top="{anchor}px">
+          {#if drag || outline}
+            <ol class="exam-entries compact" class:held={drag} style:padding-top="{anchor}px">
               {#each folded as x (x.k)}
-                <li class="entry-compact" class:section-compact={x.section} class:drop-slot={x.slot} animate:flip={{ duration: 160 }}>
+                <li class="entry-compact" class:section-compact={x.section} class:drop-slot={x.slot} class:landed={landedKey === x.k}
+                  class:line={outline && !drag} data-key={x.k} animate:flip={{ duration: 160 }}
+                  role={outline && !drag ? "button" : null} tabindex={outline && !drag ? 0 : null}
+                  onpointerdown={(e) => outline && !drag && pressLine(e, x)}
+                  onkeydown={(e) => outline && e.key === "Enter" && openLine(x)}>
                   {#if x.section}
                     <span class="compact-title">{x.id || t("exams.sectionTitle")}</span>
                     <span class="compact-stem">{x.stem}</span>
+                    {#if x.sum && outline && x.sum.seconds}<span class="compact-time">{formatTotal(x.sum.seconds)}</span>{/if}
                     {#if x.sum}<span class="compact-points">{formatPoints(x.sum.points)} {t("exams.pointsShort")}</span>{/if}
                   {:else}
                     <span class="compact-no">{x.number}</span>
                     <span class="type-icon"><Icon name={TYPE_ICONS[x.type] ?? "questions"} /></span>
                     <span class="qid">{x.id}</span>
+                    {#if x.severity}<i class="line-dot {x.severity}" title={t(`sev.${x.severity}`)}></i>{/if}
                     <span class="compact-stem">{x.stem}</span>
+                    {#if outline}<span class="compact-time" class:missing={!x.timed}>{x.timed ? formatTime(x.seconds) : t("exams.noTime")}</span>{/if}
                     <span class="compact-points">{formatPoints(x.points)} {t("exams.pointsShort")}</span>
                   {/if}
                 </li>

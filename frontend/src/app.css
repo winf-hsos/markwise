@@ -854,7 +854,16 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
   box-shadow: 0 10px 28px -10px rgba(23, 32, 43, 0.35); transform: rotate(-1.5deg); }
 .drag-ghost.nowhere { border-color: var(--line); opacity: 0.75; }
 .exam-entry.landed .booklet-item { box-shadow: 0 0 0 3px var(--accent); transition: box-shadow 0.4s; }
-.exam-entries.compact { padding-bottom: 60vh; } /* room to scroll the grabbed line under the pointer */
+.exam-entries.compact.held { padding-bottom: 60vh; } /* room to scroll the grabbed line under the pointer */
+.pane-actions { display: inline-flex; align-items: center; gap: 8px; }
+.entry-compact.line { cursor: pointer; }
+.entry-compact.line:hover { border-color: var(--accent); }
+.entry-compact.line:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.entry-compact.landed { box-shadow: 0 0 0 3px var(--accent-soft); border-color: var(--accent); }
+.compact-time { color: var(--faint); font-size: 12px; white-space: nowrap; }
+.compact-time.missing { color: #a8700b; }
+.line-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: #d9a21b; }
+.line-dot.error { background: var(--red); }
 
 /* sections of an exam: a heading with its points and time, and a note for the students */
 .exam-pane-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -871,6 +880,7 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .section-sum { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
 .section-compact { border-left: 3px solid var(--accent); background: var(--paper); }
 .compact-title { font-weight: 650; white-space: nowrap; }
+.section-compact:not(:first-child) { margin-top: 8px; }
 .section-compact .compact-stem { font-style: italic; color: var(--muted); }
 .picker-take { color: var(--red); }
 
