@@ -120,6 +120,9 @@
   const examFindings = $derived((current?.findings ?? []).filter((f) => (!f.question || f.severity === "note") && !f.params?.section));
   // A text for one line: without the marks of bold, italic and code.
   const plain = (text) => text.replace(/\*\*|`/g, "").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1$2");
+  // A question's text in the exam's language; where it has none, in the interface's language, marked as missing.
+  const stemOf = (row) => row?.stems?.[current?.language] ?? row?.stem ?? "";
+  const untranslated = (row) => Boolean(row && current && !row.stems?.[current.language]);
   const formatPoints = (value) => Number(value).toLocaleString(undefined, { maximumFractionDigits: 1 });
 
   let saving = null;
@@ -320,7 +323,7 @@
     drag = {
       kind: pressed.kind, index: pressed.index ?? -1, row: pressed.row ?? null, section: entry?.kind === "section",
       id: entry?.kind === "section" ? entry.title : (entry ?? row).id, pool: (entry ?? row).pool, k: entry?.k,
-      type: entry?.kind === "section" ? "section" : row?.type, stem: entry?.kind === "section" ? entry.note : row?.stem ?? "",
+      type: entry?.kind === "section" ? "section" : row?.type, stem: entry?.kind === "section" ? entry.note : stemOf(row),
       seconds: row?.time_seconds ?? 0, points: entry ? Number(entry.points ?? 0) : suggest(row?.time_seconds),
       x: event.clientX, y: event.clientY, target: pressed.kind === "move" ? pressed.index : null, ready: false,
     };
@@ -428,7 +431,7 @@
       .filter(({ index }) => !(drag?.kind === "move" && index === drag.index))
       .map(({ e, index }) => (e.kind === "section"
         ? { k: e.k, index, section: true, id: e.title, stem: e.note }
-        : { k: e.k, index, id: e.id, type: e.row?.type, stem: plain(e.row?.stem ?? ""), points: Number(e.points),
+        : { k: e.k, index, id: e.id, type: e.row?.type, stem: plain(stemOf(e.row)), points: Number(e.points),
             seconds: e.row?.time_seconds ?? 0, timed: e.row?.time_seconds != null, severity: severity(e.id) }));
     if (drag && drag.target != null) {
       list.splice(drag.target, 0, drag.section
@@ -654,8 +657,9 @@
                     <span class="q-concept">{q.variant_of ? t("q.variantOf", { id: q.variant_of }) : q.concept_name}</span>
                     {#if q.errors}<span class="tag red"><i class="dot"></i>{q.errors} {t("sev.error")}</span>{/if}
                     {#if q.time_seconds}<span class="tag">{formatTime(q.time_seconds)}</span>{/if}
+                    {#if untranslated(q)}<span class="tag warn" title={t("exams.noLangHint")}>{t("exams.noLang", { lang: current.language.toUpperCase() })}</span>{/if}
                   </div>
-                  <span class="q-stem">{q.stem}</span>
+                  <span class="q-stem">{stemOf(q)}</span>
                 </div>
                 <button class="icon-btn small-icon" title={t("exams.preview")} aria-label={t("exams.preview")} onclick={() => previewQuestion(q.pool, q.id)}><Icon name="eye" /></button>
                 <button class="icon-btn small-icon" title={t("exams.edit")} aria-label={t("exams.edit")} onclick={() => editQuestion(q.pool, q.id)}><Icon name="edit" /></button>
@@ -769,7 +773,7 @@
                 </div>
                 {#each findingsFor(entry.id) as f}<span class="entry-finding {f.severity}">{findingText(f)}</span>{/each}
                 {#if !item || !printWords}
-                  <div class="booklet-item waiting">{entry.row?.stem ?? ""}</div>
+                  <div class="booklet-item waiting">{stemOf(entry.row)}</div>
                 {:else if item.missing}
                   <div class="booklet-item waiting">{t("exams.missing")}</div>
                 {:else}

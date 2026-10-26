@@ -86,6 +86,9 @@ def rows(pool: Pool, lang: str = "de") -> list[dict]:
             "modified": q.path.stat().st_mtime,
             "variants": variants.get(q.id, []),
             "stem": _text(q.get("stem"), lang, languages),
+            # the text in each language that has one, for pages that show another language than the interface
+            "stems": {code: str(q.get("stem")[code]) for code in languages
+                      if isinstance(q.get("stem"), dict) and str(q.get("stem").get(code) or "").strip()},
             "options": len(q.options),
             "errors": counts[q.id][ERROR],
             "warnings": counts[q.id][WARNING],

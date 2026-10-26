@@ -158,3 +158,9 @@ def test_a_section_about_one_concept_points_out_questions_about_another(module):
     rest = Api().get_exam(str(exam.root))["data"]["entries"][1:]
     Api().update_exam(str(exam.root), {"entries": [entry, *rest]})
     assert Exam.open(exam.root).sections[0].concept == ""
+
+
+def test_the_question_list_carries_each_language_for_an_exam_in_another_one(module):
+    rows = Api().list_questions(str(module.root))["data"]["questions"]
+    row = next(r for r in rows if r["id"] == "co-001")
+    assert set(row["stems"]) <= {"de", "en"} and row["stems"] and all(v.strip() for v in row["stems"].values())
