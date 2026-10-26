@@ -14,7 +14,6 @@ from pathlib import Path
 import tomli_w
 
 LANGUAGES = ("de", "en")
-THEMES = ("markwise", "hsos")  # colour schemes: the green of Markwise, the blue of Hochschule Osnabrück
 
 
 def app_dir() -> Path:
@@ -31,7 +30,6 @@ def settings_file() -> Path:
 @dataclass
 class Settings:
     language: str = "de"
-    theme: str = "markwise"
     examiner: str = ""
     nav_collapsed: bool = False
     llm_enabled: bool = False  # help from a language model, off until the examiner switches it on
@@ -50,8 +48,6 @@ class Settings:
                 raise ValueError(f"unknown setting {key!r}")
             if key == "language" and value not in LANGUAGES:
                 raise ValueError(f"language must be one of {', '.join(LANGUAGES)}")
-            if key == "theme" and value not in THEMES:
-                raise ValueError(f"theme must be one of {', '.join(THEMES)}")
             expected = type(getattr(self, key))
             if not isinstance(value, expected):
                 raise ValueError(f"{key} must be of type {expected.__name__}")

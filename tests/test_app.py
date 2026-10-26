@@ -205,11 +205,13 @@ def test_cli_list_searches_a_whole_module(module_with_questions, capsys):
     assert [r["id"] for r in json.loads(capsys.readouterr().out)] == ["co-002"]
 
 
-def test_colour_scheme_setting():
-    api = Api()
-    assert api.get_settings()["data"]["theme"] == "markwise"
-    assert api.update_settings({"theme": "hsos"})["data"]["theme"] == "hsos"
-    assert "error" in api.update_settings({"theme": "purple"})
+def test_a_colour_scheme_from_an_earlier_version_is_ignored():
+    from markwise import settings
+    settings.settings_file().parent.mkdir(parents=True, exist_ok=True)
+    settings.settings_file().write_text('theme = "hsos"\nlanguage = "en"\n', encoding="utf-8")
+    data = Api().get_settings()["data"]
+    assert "theme" not in data and data["language"] == "en"
+    assert "error" in Api().update_settings({"theme": "hsos"})
 
 
 def test_pool_languages_can_be_changed_and_texts_are_kept(tmp_path):

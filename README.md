@@ -166,7 +166,7 @@ Markwise reads the questions of a module once and keeps them in memory for all p
 
 ### Settings
 
-**Settings** switches the interface between German and English, chooses the **colour scheme** (Markwise green, or Hochschule Osnabrück with its blue #009ee3; green for correct, red for errors and yellow for warnings stay the same in every scheme) and stores your name, which Markwise notes on questions you create, change or release (without a name, it takes your Windows user name). **Ctrl+B** collapses and expands the side menu. Your settings and the list of modules live in `%APPDATA%\Markwise\settings.toml`, on your computer only and never in a pool or module folder.
+**Settings** switches the interface between German and English and stores your name, which Markwise notes on questions you create, change or release (without a name, it takes your Windows user name). **Ctrl+B** collapses and expands the side menu. Your settings and the list of modules live in `%APPDATA%\Markwise\settings.toml`, on your computer only and never in a pool or module folder.
 
 When the interface is German, new modules file their exams under `01 - Semester\<semester>\Klausur\`, otherwise under `…\Exam\`; `exam_path` in `module.toml` changes that.
 
@@ -474,6 +474,8 @@ npm run build        # before committing: updates src/markwise/app/static
 ```
 
 In the browser the interface reaches the core through `markwise serve`, which listens on 127.0.0.1 only and refuses requests that do not come from the interface. `markwise app --dev` opens the window on the development server instead of the build, and `--debug` allows the developer tools.
+
+The logo, a white tick on a green rounded square, is drawn by `python tools\make_icon.py`, which writes the favicon of the interface and the Windows icon `src/markwise/app/markwise.ico`.
 
 The concept is in [docs/concept.md](docs/concept.md), the question format in [docs/question-format.md](docs/question-format.md). A clickable prototype of the interface (look and feel only, sample data, no logic) is in [prototype/](prototype/): open `prototype/index.html` in a browser.
 
