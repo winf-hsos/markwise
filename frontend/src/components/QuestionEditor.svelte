@@ -17,8 +17,9 @@
   // Edits one question: form on the left, the question as it reads on the right, checked while typing.
   // `practice` lists the practice questions of the same pool for the variant choice.
   // `draft` brings back unsaved changes from an earlier visit; `ondraft` hears of every change while unsaved.
-  // `back` names where closing leads, the question list unless the editor was opened from elsewhere.
-  let { question, practice = [], onclose, onsaved, draft = null, ondraft, back = "" } = $props();
+  // `back` names where closing leads, the question list unless the editor was opened from elsewhere;
+  // with `saveOnBack`, going back saves first instead of asking whether to discard.
+  let { question, practice = [], onclose, onsaved, draft = null, ondraft, back = "", saveOnBack = false } = $props();
   let shell; // the editor's element: pages stay open in the background, and a hidden editor must not save
   // The editor is created anew for every question (see {#key} in the page), so it starts from this snapshot.
   const initial = untrack(() => question);
@@ -275,8 +276,9 @@
     fields.image_columns = columns;
   }
 
+  // Whether the question was saved; a conflict or an error keeps the editor open with its message.
   async function save(force = false) {
-    if (busy) return;
+    if (busy) return false;
     busy = true;
     try {
       const result = await call("save_question", base.pool, base.data.id, $state.snapshot(fields), base.mtime_ns, force);
@@ -287,9 +289,11 @@
       conflict = false;
       showToast(!result.changed ? t("edit.noChange") : wasReviewed && base.data.status === "draft" ? t("edit.savedDraft") : t("edit.saved"));
       onsaved?.(result.question);
+      return true;
     } catch (err) {
       if (err.code === "conflict") conflict = true;
       else showToast(errorText(err));
+      return false;
     } finally {
       busy = false;
     }
@@ -308,7 +312,9 @@
   }
 
   async function close() {
-    if (dirty && !(await ask({ title: t("edit.leaveTitle"), message: t("edit.confirmLeave", { id: base.data.id }), action: t("edit.discard") }))) return;
+    if (dirty && saveOnBack) {
+      if (!(await save())) return;
+    } else if (dirty && !(await ask({ title: t("edit.leaveTitle"), message: t("edit.confirmLeave", { id: base.data.id }), action: t("edit.discard") }))) return;
     ondraft?.(null);
     onclose?.();
   }

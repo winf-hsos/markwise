@@ -384,7 +384,7 @@
   {:else if current}
     {#if editing}
       {#key editing.pool + editing.id}
-        <QuestionEditor question={editing} {practice} back={t("exams.backToExam")} onclose={() => (editing = null)}
+        <QuestionEditor question={editing} {practice} back={t("exams.backToExam")} saveOnBack onclose={() => (editing = null)}
           onsaved={() => refreshQuestions(modulePath)} draft={drafts.get(draftKey(editing))}
           ondraft={(d) => (d ? drafts.set(draftKey(editing), d) : drafts.delete(draftKey(editing)))} />
       {/key}
