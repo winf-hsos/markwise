@@ -190,6 +190,16 @@ def cmd_question_restore(args) -> int:
     return _lifecycle(args, lifecycle.restore)
 
 
+def cmd_question_move(args) -> int:
+    moved = editing.move_to_concept(Pool.open(args.pool), args.id, args.concept)
+    if args.json:
+        _print_json([{"id": q.id, "concept": q.concept, "path": str(q.path)} for q in moved])
+    else:
+        for q in moved:
+            print(f"{q.id}: {q.concept} ({q.path})")
+    return 0
+
+
 def cmd_question_delete(args) -> int:
     if not args.yes:
         print("Deleting needs --yes. A question that is not a draft, or was in an exam, is retired instead.",
@@ -569,6 +579,11 @@ def build_parser() -> argparse.ArgumentParser:
         if by:
             p.add_argument("--by", help="the examiner's name (default: from the settings, else the Windows user)")
         p.set_defaults(func=func)
+    p = question.add_parser("move", parents=[common], help="put a question, with its exam variants, under another concept")
+    p.add_argument("pool")
+    p.add_argument("id")
+    p.add_argument("concept", help="the identifier of the concept, as `concept list` shows it")
+    p.set_defaults(func=cmd_question_move)
     p = question.add_parser("delete", parents=[common], help="delete a draft, retire anything else")
     p.add_argument("pool")
     p.add_argument("id")

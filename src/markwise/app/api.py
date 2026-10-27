@@ -437,6 +437,18 @@ class Api:
         return self._step(lifecycle.restore, pool_path, qid)
 
     @_answer
+    def move_question(self, pool_path: str, qid: str, concept: str) -> dict:
+        """Put a question, with its exam variants, under another concept; its identifier stays."""
+        pool = Pool.open(pool_path)
+        try:
+            moved = editing.move_to_concept(pool, qid, concept)
+        except editing.MoveError as exc:
+            raise Refusal(exc.code, str(exc), id=qid, concept=concept) from None
+        detail = catalog.detail(pool, qid)
+        detail["moved"] = [q.id for q in moved]
+        return detail
+
+    @_answer
     def delete_question(self, pool_path: str, qid: str, variants: str | None = None) -> dict:
         """Delete a draft; anything else is retired, so that its identifier is never given again. A draft with
         variants is refused until `variants` says whether they are deleted too or become questions of their own."""

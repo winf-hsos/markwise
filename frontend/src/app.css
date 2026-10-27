@@ -874,6 +874,17 @@ button.heritage:hover { text-decoration: underline; }
 .time-pop .hint { font-size: 11.5px; color: var(--faint); }
 .entry-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
 .entry-bar .q-concept { flex: 1 1 60px; }
+.entry-bar .entry-gap { flex: 1 1 0; }
+.concept-pick { min-width: 0; }
+.tag.concept-quiet { background: transparent; color: var(--faint); font-size: 12px; max-width: 220px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; display: inline-block; vertical-align: middle; }
+.tag-button.concept-quiet:hover { color: var(--ink-soft); background: var(--surface); }
+.concept-pop { width: 300px; }
+.concept-list { display: grid; max-height: 260px; overflow: auto; margin: 0 -6px; }
+.concept-list button { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 0; border-radius: 6px; background: none;
+  text-align: left; font: inherit; color: var(--ink); cursor: pointer; }
+.concept-list button:hover { background: var(--surface); }
+.concept-list button.on { background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; }
+.concept-list .count { margin-left: auto; color: var(--faint); font-size: 12px; font-weight: 400; }
 .entry-bar .qid { white-space: nowrap; }
 .entry-main { display: grid; gap: 4px; min-width: 0; }
 .entry-finding { font-size: 12px; color: var(--muted); }

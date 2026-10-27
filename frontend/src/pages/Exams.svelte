@@ -16,6 +16,7 @@
   import ExamItem from "../components/ExamItem.svelte";
   import TimePick from "../components/TimePick.svelte";
   import TagPick from "../components/TagPick.svelte";
+  import ConceptPick from "../components/ConceptPick.svelte";
   import Dialog from "../components/Dialog.svelte";
   import QuestionPreview from "../components/QuestionPreview.svelte";
 
@@ -593,6 +594,19 @@
       showToast(errorText(err));
     }
   }
+  // The concept, chosen from its label: the question moves there in its pool, with its exam variants.
+  async function moveConcept(pool, id, concept) {
+    try {
+      const result = await call("move_question", pool, id, concept);
+      const row = rows.get(key(pool, id));
+      if (row) Object.assign(row, { concept, concept_name: result.concept_name }); // shown at once; the pools are read again below
+      const others = result.moved.length - 1;
+      showToast(t(others ? "conceptPick.movedWith" : "conceptPick.moved", { id, name: result.concept_name, n: others }));
+      refreshQuestions(modulePath);
+    } catch (err) {
+      showToast(errorText(err));
+    }
+  }
   const LEVEL_OPTIONS = $derived(["remember", "understand", "apply"].map((v) => ({ value: v, label: t(`level.${v}`) })));
 
   // --- editing a question without leaving the exam ----------------------------------------------------
@@ -897,7 +911,12 @@
                     onpointerdown={(e) => pressHandle(e, i)} onkeydown={(e) => onHandleKey(e, i)}><Icon name="grip" /></button>
                   <span class="type-icon"><Icon name={TYPE_ICONS[entry.row?.type] ?? "questions"} /></span>
                   <span class="qid">{entry.id}</span>
-                  <span class="q-concept">{entry.row?.concept_name ?? ""}</span>
+                  {#if entry.row}
+                    <ConceptPick quiet pool={entry.pool} concept={entry.row.concept} name={entry.row.concept_name}
+                      variantOf={entry.row.variant_of} variants={entry.row.variants?.length ?? 0}
+                      onchoose={(c) => moveConcept(entry.pool, entry.id, c)} />
+                  {/if}
+                  <span class="entry-gap"></span>
                   {#if entry.row?.level}<TagPick label={t(`level.${entry.row.level}`)} heading={t("levelPick.title", { id: entry.id })}
                     hint={t("pick.hint")} value={entry.row.level} options={LEVEL_OPTIONS} note={t("timePick.note")}
                     onchoose={(level) => setLevel(i, level)} />{/if}

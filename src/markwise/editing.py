@@ -200,5 +200,47 @@ def set_field(pool: Pool, qid: str, path: str, raw_value: str) -> tuple[Question
     return save(pool, qid, fields)
 
 
+class MoveError(ValueError):
+    """A question that cannot go to another concept; `code` names the reason for the interface."""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
+def move_to_concept(pool: Pool, qid: str, concept: str, author: str | None = None) -> list[Question]:
+    """Put a question under another concept of its pool, together with its exam variants, which belong to the
+    concept of the question they vary. Each file moves to the folder of the new concept; the identifiers stay, so
+    that exams and variants still find the questions. A variant is not moved on its own. Returns the questions
+    moved, the question first."""
+    question = pool.find(qid)
+    if question.variant_of:
+        raise MoveError("variant_concept", f"{qid} is a variant and belongs to the concept of {question.variant_of}")
+    if concept not in pool.concepts():
+        raise MoveError("concept_unknown", f"no concept '{concept}' in this pool")
+    if concept == question.concept:
+        return [question]
+    family = [question] + sorted((q for q in pool.load()[0] if q.variant_of == qid), key=lambda q: q.id)
+    for q in family:
+        if pool.path_for(concept, q.id).exists():
+            raise MoveError("question_exists", f"{q.id} exists in '{concept}' already")
+    pool.keep_prefix(concept)  # new questions there keep the concept's prefix, not that of the newcomers
+    author = default_author() if author is None else author
+    for q in family:
+        old = q.path
+        q.data["concept"] = concept
+        if author:
+            for key, value in (("changed_by", author), ("changed_at", today())):
+                if key in q.data:
+                    q.data[key] = value
+                else:
+                    insert_field(q.data, key, value)
+        target = pool.path_for(concept, q.id)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        q.save(target)
+        old.unlink()
+    return family
+
+
 def mtime_ns(path: str | Path) -> int:
     return Path(path).stat().st_mtime_ns

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import shutil
 import tomllib
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -53,11 +54,11 @@ class PoolSettings:
 
 
 def _read_concepts(raw) -> dict[str, dict]:
-    """Concepts as a table of names and descriptions; the earlier plain list of identifiers is read as well."""
+    """Concepts as a table of names, descriptions and, once a question moved in from elsewhere, the prefix of the
+    concept's identifiers; the earlier plain list of identifiers is read as well."""
     if isinstance(raw, list):
         return {str(cid): {} for cid in raw}
-    return {str(cid): {"name": str(info.get("name", "")), "description": str(info.get("description", ""))}
-            for cid, info in raw.items()}
+    return {str(cid): {k: str(info[k]) for k in ("name", "description", "prefix") if k in info} for cid, info in raw.items()}
 
 
 @dataclass
@@ -270,13 +271,30 @@ class Pool:
         return f"{parent_id}-v{max(numbers, default=0) + 1}"
 
     def prefix_for(self, concept: str) -> str:
-        """The prefix used by existing questions of the concept, else the initials of the concept name."""
+        """The prefix of the concept's identifiers: the one kept in pool.toml, else the one most of its questions
+        use, else the initials of the concept name. A question moved here from another concept keeps its identifier
+        and thus its prefix, so the concept keeps its own before the first one moves in (see keep_prefix)."""
+        kept = ((self.settings.concepts or {}).get(concept) or {}).get("prefix")
+        if kept:
+            return kept
+        initials = "".join(part[0] for part in concept.split("-") if part) or "q"
         folder = self.questions_dir / concept
         if folder.exists():
-            for path in sorted(folder.glob("*.yaml")):
-                if m := re.match(r"^(.+)-\d+$", path.stem):  # a numbered question, not a variant such as x-001-v1
-                    return m.group(1)
-        return "".join(part[0] for part in concept.split("-") if part) or "q"
+            prefixes = Counter(m.group(1) for path in folder.glob("*.yaml")
+                               if (m := re.match(r"^(.+)-\d+$", path.stem)))  # numbered questions, not variants
+            if prefixes:  # on a tie the concept's own initials win
+                return max(sorted(prefixes), key=lambda p: (prefixes[p], p == initials))
+        return initials
+
+    def keep_prefix(self, concept: str) -> None:
+        """Write the concept's prefix into pool.toml, so that questions moving in do not change it."""
+        prefix = self.prefix_for(concept)
+        if self.settings.concepts is None:  # from now on the pool keeps a list, starting with its folders
+            self.settings.concepts = {cid: {} for cid in self.concepts()}
+        info = self.settings.concepts.setdefault(concept, {})
+        if info.get("prefix") != prefix:
+            info["prefix"] = prefix
+            self.write_settings()
 
     def new_question(self, concept: str, qtype: str, author: str | None = None) -> Question:
         qid = self.next_id(self.prefix_for(concept))

@@ -101,6 +101,19 @@
     }
   }
 
+  // Another concept: the question moves there in its pool, with its exam variants; its identifier stays.
+  async function move(concept) {
+    try {
+      const result = await call("move_question", question.pool, question.id, concept);
+      const others = result.moved.length - 1;
+      question = result;
+      showToast(t(others ? "conceptPick.movedWith" : "conceptPick.moved", { id: result.id, name: result.concept_name, n: others }));
+      onchanged?.();
+    } catch (err) {
+      showToast(errorText(err));
+    }
+  }
+
   async function openFile(path) {
     try {
       await call("open_file", path);
@@ -111,4 +124,4 @@
 </script>
 
 <QuestionPreview {question} {variants} {practice} {language} {fresh} me={sheet.me} editable onchange={saveFields}
-  bind:details={() => sheet.details, setDetails} onopen={openFile} onaction={act} />
+  bind:details={() => sheet.details, setDetails} onopen={openFile} onaction={act} onmove={move} />

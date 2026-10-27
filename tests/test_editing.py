@@ -368,3 +368,31 @@ def test_an_unset_time_leaves_the_file_alone(pool):
     fields["time_seconds"] = None  # how the window sends a question without a time
     _, changed = editing.save(pool, "co-002", fields, author="")
     assert not changed and path.read_bytes() == before
+
+
+def test_a_question_moves_to_another_concept_with_its_variants(pool):
+    from markwise.checks import check_pool
+
+    shapes = pool.add_concept("Light and Optics")
+    pool.write_settings()
+    pool = Pool.open(pool.root)
+    first = pool.new_question(shapes, "single", author="Examiner A")  # the concept's own prefix
+    assert first.id == "lao-001"
+    variants = sorted(q.id for q in pool.load()[0] if q.variant_of == "co-001")
+    assert variants  # the invented pool has an exam variant of co-001
+
+    with pytest.raises(editing.MoveError) as refused:
+        editing.move_to_concept(pool, variants[0], shapes)  # a variant follows its question
+    assert refused.value.code == "variant_concept"
+
+    moved = editing.move_to_concept(pool, "co-001", shapes, author="Examiner B")
+    assert [q.id for q in moved] == ["co-001", *variants]  # identifiers stay, so that exams still find them
+    for qid in ["co-001", *variants]:
+        q = pool.find(qid)
+        assert q.concept == shapes and q.path.parent.name == shapes and q.get("changed_by") == "Examiner B"
+    codes = {f.code for f in check_pool(pool)}
+    assert not codes & {"concept_folder", "variant_concept"}
+    # The concept keeps numbering its own questions, not those that moved in.
+    assert pool.new_question(shapes, "single", author="Examiner A").id == "lao-002"
+    with pytest.raises(editing.MoveError):
+        editing.move_to_concept(pool, "co-001", "no-such-concept")

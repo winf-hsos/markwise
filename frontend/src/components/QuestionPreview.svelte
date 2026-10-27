@@ -5,6 +5,7 @@
   import QuestionDetails from "./QuestionDetails.svelte";
   import TagPick from "./TagPick.svelte";
   import TimePick from "./TimePick.svelte";
+  import ConceptPick from "./ConceptPick.svelte";
   import { highlight } from "../lib/highlight.js";
   import { formatDate, formatTime } from "../lib/time.js";
   import { inline } from "../lib/inline.js";
@@ -21,7 +22,7 @@
   // question comes from, each setting changed in place. `practice` lists the pool's practice questions for the
   // choice which one a variant varies, and `fresh` opens the text of a question just created for typing.
   let { question, variants = [], compact = false, onopen, onedit, onaction, me = "", lifecycle = true, language = null,
-    editable = false, onchange, details = $bindable(false), practice = [], fresh = false } = $props();
+    editable = false, onchange, details = $bindable(false), practice = [], fresh = false, onmove } = $props();
 
   // A variant shows the settings it inherits from its parent where it sets none of its own.
   const data = $derived.by(() => {
@@ -150,6 +151,10 @@
   <header class="preview-head">
     <div class="preview-title" data-tour="q-labels">
       <span class="qid">{data.id}</span>
+      {#if can && onmove}
+        <ConceptPick pool={question.pool} concept={question.data.concept} name={question.concept_name ?? data.concept}
+          variantOf={question.data.variant_of} variants={variants.length} onchoose={onmove} />
+      {/if}
       {#if can}
         {#if data.type === "free_text"}
           <span class="tag">{t("type.free_text")}</span>
