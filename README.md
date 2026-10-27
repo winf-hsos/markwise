@@ -533,7 +533,7 @@ npm run build        # before committing: updates src/markwise/app/static
 
 In the browser the interface reaches the core through `markwise serve`, which listens on 127.0.0.1 only and refuses requests that do not come from the interface. `markwise app --dev` opens the window on the development server instead of the build, and `--debug` allows the developer tools.
 
-The logo, a white tick on a green rounded square, is drawn by `python tools\make_icon.py`, which writes the favicon of the interface and the Windows icon `src/markwise/app/markwise.ico`.
+The logo, a white tick on a rounded square in the blue of Hochschule Osnabrück (#009ee3), the accent colour of the interface, is drawn by `python tools\make_icon.py`, which writes the favicon of the interface and the Windows icon `src/markwise/app/markwise.ico`.
 
 The concept is in [docs/concept.md](docs/concept.md), the question format in [docs/question-format.md](docs/question-format.md). A clickable prototype of the interface (look and feel only, sample data, no logic) is in [prototype/](prototype/): open `prototype/index.html` in a browser.
 

@@ -18,10 +18,10 @@
   --green-soft: #e8f4ed;
   --green-ring: rgba(31, 132, 82, 0.28);
   /* the accent of the colour scheme: primary actions, the current place, focus. Markwise: the green of the tick */
-  --accent: #1f8452;
-  --accent-strong: #186b42;
-  --accent-soft: #e8f4ed;
-  --accent-ring: rgba(31, 132, 82, 0.28);
+  --accent: #009ee3;         /* Hochschulblau, the colour of Markwise */
+  --accent-strong: #0079ae;  /* darker, for text and hover, readable on white */
+  --accent-soft: #e5f5fc;
+  --accent-ring: rgba(0, 158, 227, 0.3);
   --red: #d2373c;            /* correction red: marks, points, decisions */
   --red-soft: #fbeaea;
   --amber: #a86d06;
@@ -121,7 +121,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-weight: 500; cursor: pointer; white-space: nowrap; text-decoration: none;
 }
 .btn:hover { background: var(--surface-strong); }
-.btn.primary { background: var(--accent); color: #fff; }
+.btn.primary { background: var(--accent); color: #fff; font-weight: 600; }
 .btn.primary:hover { background: var(--accent-strong); }
 .btn.decide { background: var(--red); color: #fff; }
 .btn.ghost { background: transparent; color: var(--muted); }

@@ -16,7 +16,7 @@
 <nav class="nav" aria-label={t("nav.main")}>
   <div class="brand">
     <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
-      <rect x="3" y="3" width="58" height="58" rx="14" fill="#1f8452" />
+      <rect x="3" y="3" width="58" height="58" rx="14" fill="#009ee3" />
       <path d="M18.5 33.5 27.5 42.5 45.5 22" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
     </svg>
     <span class="brand-name">Markwise</span>

@@ -14,14 +14,14 @@ from pathlib import Path
 import pymupdf
 
 ROOT = Path(__file__).resolve().parent.parent
-GREEN = "#1f8452"  # the accent colour of the interface
+BLUE = "#009ee3"  # Hochschulblau, the accent colour of the interface
 SIZES = (16, 24, 32, 48, 64, 128, 256)
 
 
 def logo(stroke: float = 7) -> str:
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">'
-        f'<rect x="3" y="3" width="58" height="58" rx="14" fill="{GREEN}"/>'
+        f'<rect x="3" y="3" width="58" height="58" rx="14" fill="{BLUE}"/>'
         f'<path d="M18.5 33.5 27.5 42.5 45.5 22" fill="none" stroke="#fff" stroke-width="{stroke}" '
         'stroke-linecap="round" stroke-linejoin="round"/></svg>\n'
     )
