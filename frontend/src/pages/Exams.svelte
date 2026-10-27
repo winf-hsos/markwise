@@ -2,6 +2,7 @@
   import { tick, untrack } from "svelte";
   import { flip } from "svelte/animate";
   import Icon from "../components/Icon.svelte";
+  import { inline } from "../lib/inline.js";
   import MultiSelect from "../components/MultiSelect.svelte";
   import NewExamDialog from "../components/NewExamDialog.svelte";
   import PrintExamDialog from "../components/PrintExamDialog.svelte";
@@ -65,6 +66,7 @@
       current = exam;
       closed = recall("exams", modulePath).closed?.[exam.path] ?? [];
       fillingKey = null;
+      chosenKey = null;
       remember("exams", modulePath, { open: path });
     } catch (err) {
       showToast(errorText(err));
@@ -291,8 +293,64 @@
     if (event.button !== 0 || event.target.closest("button, input, a")) return;
     event.preventDefault();
     const index = current.entries.findIndex((e) => e.pool === row.pool && e.id === row.id);
-    press(event, index >= 0 ? { kind: "move", index } : { kind: "add", row });
+    // Let go without moving, the press chooses the question instead of dragging it.
+    const pick = key(row.pool, row.id);
+    press(event, index >= 0 ? { kind: "move", index, pick } : { kind: "add", row, pick });
   }
+
+  // --- the chosen question: framed on both sides, its answers shown -------------------------------------
+  //
+  // A click on a question in the exam finds it in the list on the left, a click on a row of the list finds it in
+  // the exam; on both sides it is framed, the list shows its answers below its text, and the exam shows them even
+  // while the answers are hidden.
+  let chosenKey = $state(null);
+
+  async function choose(k, from) {
+    chosenKey = k;
+    await tick();
+    if (from === "exam") {
+      const row = document.querySelector(`.picker-list [data-key="${CSS.escape(k)}"]`);
+      if (row) reveal(row);
+      else showToast(t("exams.notInPicker"));
+      return;
+    }
+    if (!inExam.has(k)) return;
+    const within = entries.find((e) => e.k === k)?.sectionK;
+    if (within && closed.includes(within)) toggleClosed(within);
+    await tick();
+    reveal(listEl?.querySelector(`[data-key="${CSS.escape(k)}"]`));
+  }
+
+  // Scrolls a question into view from its top, below the heading that stays at the top of its column
+  // (scroll-margin-top in app.css), unless it is in full view already.
+  function reveal(element) {
+    if (!element) return;
+    const box = element.closest(".exam-picker, .exam-list")?.getBoundingClientRect();
+    const r = element.getBoundingClientRect();
+    const margin = parseFloat(getComputedStyle(element).scrollMarginTop) || 0;
+    if (box && r.top >= box.top + margin && r.bottom <= box.bottom) return;
+    element.scrollIntoView({ block: "start" });
+  }
+
+  function clickEntry(event, k) {
+    if (event.target.closest("button, input, a, label, select, textarea, .tag-pick, .time-pick")) return;
+    choose(k, "exam");
+  }
+
+  // The chosen question's options, read like those of the exam when it is not in the exam yet.
+  $effect(() => {
+    const k = chosenKey;
+    if (!k || !current || k in rendered) return;
+    const row = rows.get(k);
+    if (!row) return;
+    untrack(() => {
+      call("exam_items", current.language, [{ pool: row.pool, id: row.id }])
+        .then((answer) => {
+          if (!(k in rendered)) rendered = { ...rendered, [k]: answer.items[0] };
+        })
+        .catch(() => {});
+    });
+  });
 
   function press(event, what) {
     pressed = { ...what, x0: event.clientX, y0: event.clientY };
@@ -386,9 +444,11 @@
   function onPointerUp() {
     const done = drag;
     const clicked = !done && pressed?.line; // a line of the outline pressed and let go without moving
+    const picked = !done && pressed?.pick; // a row of the list pressed and let go without moving
     drag = null;
     release();
     if (clicked) openLine(clicked);
+    if (picked) choose(picked, "picker");
     if (!done || done.target == null) return;
     const list = [...current.entries];
     anchor = 0;
@@ -706,7 +766,9 @@
           <div class="picker-list">
             {#each pickable as q (q.pool + q.id)}
               {@const added = inExam.has(key(q.pool, q.id))}
-              <div class="picker-row" class:added class:held={drag && drag.pool === q.pool && drag.id === q.id}
+              {@const rowKey = key(q.pool, q.id)}
+              {@const shown = chosenKey === rowKey ? rendered[rowKey] : null}
+              <div class="picker-row" class:added class:chosen={chosenKey === rowKey} data-key={rowKey} class:held={drag && drag.pool === q.pool && drag.id === q.id}
                 title={added ? t("exams.inExam") : t("exams.dragRow")} onpointerdown={(e) => pressRow(e, q)}>
                 <div class="entry-main">
                   <div class="q-row-head">
@@ -717,7 +779,16 @@
                     {#if q.time_seconds}<span class="tag">{formatTime(q.time_seconds)}</span>{/if}
                     {#if untranslated(q)}<span class="tag warn" title={t("exams.noLangHint")}>{t("exams.noLang", { lang: current.language.toUpperCase() })}</span>{/if}
                   </div>
-                  <span class="q-stem">{stemOf(q)}</span>
+                  {#if shown && !shown.missing}
+                    <span class="q-stem">{@html inline(shown.stem)}</span>
+                  {:else}
+                    <span class="q-stem">{stemOf(q)}</span>
+                  {/if}
+                  {#if shown && !shown.missing && shown.options.length}
+                    <ol class="picker-options">
+                      {#each shown.options as o (o.id)}<li><span class="box" aria-hidden="true"></span><b>{o.id}</b><span>{@html inline(o.text)}</span></li>{/each}
+                    </ol>
+                  {/if}
                 </div>
                 <button class="icon-btn small-icon" title={t("exams.preview")} aria-label={t("exams.preview")} onclick={() => previewQuestion(q.pool, q.id)}><Icon name="eye" /></button>
                 <button class="icon-btn small-icon" title={t("exams.edit")} aria-label={t("exams.edit")} onclick={() => editQuestion(q.pool, q.id)}><Icon name="edit" /></button>
@@ -808,7 +879,9 @@
               </li>
               {:else if !closed.includes(entry.sectionK)}
               {@const item = rendered[entry.k]}
-              <li class="exam-entry" class:landed={landedKey === entry.k} data-key={entry.k}>
+              <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+              <li class="exam-entry" class:landed={landedKey === entry.k} class:chosen={chosenKey === entry.k} data-key={entry.k}
+                onclick={(e) => clickEntry(e, entry.k)}>
                 <div class="entry-bar">
                   <button class="drag-handle" title={t("exams.dragHandle")} aria-label={t("exams.dragHandle")}
                     onpointerdown={(e) => pressHandle(e, i)} onkeydown={(e) => onHandleKey(e, i)}><Icon name="grip" /></button>
@@ -836,7 +909,7 @@
                 {:else if item.missing}
                   <div class="booklet-item waiting">{t("exams.missing")}</div>
                 {:else}
-                  <ExamItem {item} number={entry.number} points={Number(entry.points)} words={printWords} {brief} />
+                  <ExamItem {item} number={entry.number} points={Number(entry.points)} words={printWords} brief={brief && chosenKey !== entry.k} />
                 {/if}
               </li>
               {/if}

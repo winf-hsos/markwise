@@ -1053,3 +1053,14 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .tour-anchor { display: inline-flex; }
 .picker-count { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
 .picker-hide { height: auto; align-self: center; font-size: 12.5px; color: var(--muted); margin-left: auto; }
+/* the chosen question of an exam, framed in the list and in the exam */
+.picker-row { cursor: pointer; }
+.picker-row.chosen { box-shadow: inset 0 0 0 2px var(--accent); }
+.picker-row.chosen .q-stem { display: block; -webkit-line-clamp: unset; overflow: visible; }
+.picker-options { list-style: none; margin: 6px 0 2px; padding: 0; display: grid; gap: 4px; font-size: 13px; color: var(--ink-soft); }
+.picker-options li { display: grid; grid-template-columns: 12px 14px 1fr; gap: 6px; align-items: start; }
+.picker-options .box { width: 11px; height: 11px; border: 1.2px solid #9aa0aa; border-radius: 2px; align-self: start; margin-top: 3px; }
+.picker-options b { color: var(--muted); font-weight: 600; }
+.exam-entry { cursor: pointer; scroll-margin-top: 58px; }
+.picker-row { scroll-margin-top: 44px; }
+.exam-entry.chosen { box-shadow: 0 0 0 2px var(--accent); }
