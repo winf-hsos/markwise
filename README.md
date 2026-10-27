@@ -116,7 +116,7 @@ The arrows above the question page through the questions in the order of the lis
 
 ### Releasing, exam variants, retiring
 
-A question is written as a **draft**. When an examiner has read it and agrees, **Release** under the status label notes their name in `reviewed_by` and makes the question **reviewed**; a second examiner can **Release as well**, so that both names stand there, as § 5 (3) c of the general examination regulations asks for two examiners. A question with errors cannot be released. A release stays when the question is changed later; only the examiner who gave it can take it back.
+A question is written as a **draft**. When an examiner has read it and agrees, **Release** under the status label notes their name in `reviewed_by` and makes the question **released** (in the file `status: reviewed`); a second examiner can **Release as well**, so that both names stand there, as § 5 (3) c of the general examination regulations asks for two examiners. A question with errors cannot be released. A release stays when the question is changed later; only the examiner who gave it can take it back.
 
 Every change of status is made at the status label, after a click on it:
 
@@ -132,7 +132,7 @@ The **⋯** menu next to **Details** holds the other steps:
 - **Open in editor**: opens the question's file in the program Windows uses for YAML files.
 - **Delete** (drafts only): removes the file after a confirmation. Everything else is retired instead. If the question has exam variants, Markwise asks what becomes of them: **Delete with its variants** deletes them as well (a released variant is retired instead), **Keep the variants** makes them exam questions of their own. They then get an ordinary identifier (the next free number of the concept, so `cp-005-v1` becomes, say, `cp-018`), and the settings they inherited so far are written into their own file.
 
-A tick in the list marks reviewed questions.
+A tick in the list marks released questions.
 
 ### Concepts
 
@@ -179,7 +179,7 @@ From an exam, the pencil next to a question opens it in the editor (see [Putting
 
 **Save** (or **Ctrl+S**) writes only what you changed: every other line of the file stays as it was, including comments and fields Markwise does not know. **Discard** returns to the saved state, **Back to the list** asks before it drops unsaved changes. If someone else saved the same file in the meantime, for example a colleague in a shared folder, Markwise says so and lets you either load their version or save yours over it.
 
-A **reviewed** question stays reviewed when you change it. Every question notes who created it and who changed it last, with the date, using your name from the settings or else your Windows user name; the preview shows both.
+A **released** question stays released when you change it. Every question notes who created it and who changed it last, with the date, using your name from the settings or else your Windows user name; the preview shows both.
 
 ### Markwise remembers where you were
 
