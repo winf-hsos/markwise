@@ -235,6 +235,8 @@ The exam checks itself as you go and says what needs a look: a question meant fo
 - `Lösungsschlüssel.pdf`, the answer key: every question with its correct options, and the expected answer and marking notes of the free-text questions.
 - `layout.json`: where every box landed on every page, for reading the scans later.
 
+The cover of the booklet, and the answer sheet if there is one, say how to answer, with a small ticked box and a small blackened box as examples: tick a box to choose an answer, blacken it completely to take the answer back. They also ask for a dark ballpoint pen or fineliner in blue or black, and no pencil, felt-tip or erasable pen: a felt tip fills a box so far that it may need a look, pencil and erasable ink scan pale.
+
 Every page that is scanned carries four corner marks and a QR code with the exam, the page and the number of the copy; the first page of each copy has the tick grid for the student number and a field for the name. Copies have an even number of pages, so that double-sided printing starts each copy on a new sheet. A choice question is never split across two pages. Each print replaces the last one in the folder; a PDF still open in another program stops it with a message. Once printed, the dialog lists the PDFs of the last print to open.
 
 ## The four things Markwise works with

@@ -61,7 +61,10 @@ class Thresholds:
     inner_inset_mm: float = 0.7  # from the outer box edge to the measured area
     empty_fill: float = 0.02  # at most this much ink ...
     empty_faint: float = 0.04  # ... and this much visible mark: empty
-    tick_fill: float = 0.08  # from here on: a clear tick or cross
+    # From here on: a clear tick or cross. On machine-filled sheets after an imitated scan (2026-10-27), half
+    # strokes reached 0.082 and the faintest real marks (pencil crosses) started at 0.114; 0.08 let a half stroke
+    # through as a cross. To be checked again on the first scan from the copier.
+    tick_fill: float = 0.10
     heavy_fill: float = 0.55  # from here on: doubtful, more than a cross
     filled_fill: float = 0.80  # from here on: doubtful, box blackened
     search_mm: float = 2.0  # wide search for a box outline around its place

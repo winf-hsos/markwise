@@ -16,6 +16,26 @@ from .qr import encode_payload, qr_svg
 
 FONTS = '("Arial", "Liberation Sans", "DejaVu Sans")'
 
+# Which pens to use, on the answer sheet and on the cover of an exam booklet alike. A thick felt tip fills a box
+# so far that it may look blackened, pencil and erasable ink scan too pale (and erasable ink can vanish).
+PEN_HINT = {
+    "de": "Schreiben Sie bitte mit einem dunklen Kugelschreiber oder Fineliner in Blau oder Schwarz, nicht mit "
+          "Bleistift, Filzstift oder einem radierbaren Stift.",
+    "en": "Please write with a dark ballpoint pen or fineliner in blue or black, not with a pencil, a felt-tip "
+          "pen or an erasable pen.",
+}
+
+
+def example_marks(stroke: str) -> tuple[str, str]:
+    """Typst code (without the leading #) for a small ticked box and a small blackened box, as shown in the
+    instructions; `stroke` is the outline of the printed boxes."""
+    sample = f"box(width: 3.2mm, height: 3.2mm, stroke: {stroke}, baseline: 0.5mm"
+    cross = (
+        f"{sample}, place(line(start: (0%, 0%), end: (100%, 100%), stroke: 0.9pt))"
+        f" + place(line(start: (100%, 0%), end: (0%, 100%), stroke: 0.9pt)))"
+    )
+    return cross, f"{sample}, fill: black)"
+
 
 @dataclass(frozen=True)
 class SheetPage:
@@ -85,18 +105,13 @@ def _page_source(layout: Layout, page: SheetPage) -> str:
         out.append(_label(p.student_left - 5.5, y, 4, p.box_size, str(digit), "right + horizon", 8))
 
     # Instructions next to the student number.
-    sample = f"box(width: 3.2mm, height: 3.2mm, stroke: {stroke}, baseline: 0.5mm"
-    cross = (
-        f"#{sample}, place(line(start: (0%, 0%), end: (100%, 100%), stroke: 0.9pt))"
-        f" + place(line(start: (100%, 0%), end: (0%, 100%), stroke: 0.9pt)))"
-    )
-    filled = f"#{sample}, fill: black)"
+    cross, filled = example_marks(stroke)
     instructions = (
         "block(width: 70mm)[#set par(leading: 0.55em, spacing: 0.9em)\n"
         "#text(size: 9pt, weight: \"bold\")[So füllen Sie den Bogen aus]\n\n"
-        "#text(size: 8.5pt)[Arbeiten Sie bitte mit einem dunklen Kugelschreiber oder Filzstift. "
-        f"Eine Antwort wählen Sie, indem Sie ihr Kästchen ankreuzen {cross}, und Sie nehmen sie zurück, "
-        f"indem Sie das Kästchen vollständig ausmalen {filled}.]\n\n"
+        f"#text(size: 8.5pt)[{PEN_HINT['de']} "
+        f"Eine Antwort wählen Sie, indem Sie ihr Kästchen ankreuzen #{cross}, und Sie nehmen sie zurück, "
+        f"indem Sie das Kästchen vollständig ausmalen #{filled}.]\n\n"
         "#text(size: 8.5pt)[Tragen Sie Ihre Matrikelnummer oben in die Felder ein und kreuzen Sie "
         "darunter in jeder Spalte die passende Ziffer an.]]"
     )

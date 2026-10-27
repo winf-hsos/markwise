@@ -24,6 +24,7 @@ from .module import Module
 from .pool import Pool
 from .sheet.layout import BoxSpec, Layout, Rect, SheetParams
 from .sheet.qr import encode_payload, qr_svg
+from .sheet.render import PEN_HINT, example_marks
 from . import formulas
 from .text import unwrap
 
@@ -53,8 +54,9 @@ WORDS = {
         "minutes": "Minuten", "total": "Gesamtpunktzahl", "name": "Name", "student": "Matrikelnummer",
         "booklet": "Heft", "page": "Seite", "examiners": "Prüfende",
         "how": "So beantworten Sie die Fragen",
-        "tick": "Eine Antwort wählen Sie, indem Sie ihr Kästchen ankreuzen; Sie nehmen sie zurück, indem Sie das "
-                "Kästchen vollständig ausmalen. Arbeiten Sie bitte mit einem dunklen Kugelschreiber oder Filzstift.",
+        "choose": "Eine Antwort wählen Sie, indem Sie ihr Kästchen ankreuzen",
+        "undo": ", und Sie nehmen sie zurück, indem Sie das Kästchen vollständig ausmalen",
+        "pen": PEN_HINT["de"],
         "single": "Genau eine Antwort ist richtig.", "multiple": "Eine oder mehrere Antworten sind richtig.",
         "sheet_note": "Kreuzen Sie Ihre Antworten auf dem Antwortbogen an. Nur der Antwortbogen wird bewertet.",
         "inline_note": "Kreuzen Sie Ihre Antworten direkt unter den Fragen an. Bitte trennen Sie keine Seiten heraus.",
@@ -70,8 +72,9 @@ WORDS = {
         "minutes": "minutes", "total": "Total points", "name": "Name", "student": "Student number",
         "booklet": "Booklet", "page": "Page", "examiners": "Examiners",
         "how": "How to answer",
-        "tick": "Choose an answer by ticking its box; take it back by filling the box completely. Please use a dark "
-                "ballpoint or felt-tip pen.",
+        "choose": "Choose an answer by ticking its box",
+        "undo": ", and take it back by filling the box completely",
+        "pen": PEN_HINT["en"],
         "single": "Exactly one answer is correct.", "multiple": "One or more answers are correct.",
         "sheet_note": "Tick your answers on the answer sheet. Only the answer sheet is marked.",
         "inline_note": "Tick your answers right below the questions. Please do not tear out any pages.",
@@ -323,6 +326,13 @@ def _with_sections(exam: Exam, items: list[Item], words: dict, render) -> str:
     return "".join(out)
 
 
+def _how_to_tick(words: dict) -> str:
+    """How to choose and take back an answer, with a small ticked and a blackened box, and which pens to use."""
+    cross, filled = example_marks(f"{PARAMS.box_stroke_pt}pt + luma({PARAMS.box_stroke_grey}%)")
+    return (f"#text(size: 9.5pt)[#{_s(words['choose'])} #{cross}#{_s(words['undo'])} #{filled}. "
+            f"#{_s(words['pen'])}]")
+
+
 def _cover_text(exam: Exam, items: list[Item], words: dict, module: Module, note: str) -> str:
     total = sum(i.points for i in items)
     facts = [(words["date"], exam.date), (words["total"], f"{total:g}")]
@@ -340,7 +350,7 @@ def _cover_text(exam: Exam, items: list[Item], words: dict, module: Module, note
         f"#v(4mm)#grid(columns: (auto, 1fr), column-gutter: 3mm, align(bottom, {_s(words['name'] + ':')}), "
         "block(width: 100%, height: 7mm, stroke: (bottom: 0.5pt)))\n\n"
         f"#v(4mm)#block(width: 100%, inset: 4mm, radius: 1.5mm, stroke: 0.5pt + luma(75%), [#text(weight: \"bold\", "
-        f"{_s(words['how'])})#parbreak()#text(size: 9.5pt, {_s(words['tick'])})#parbreak()"
+        f"{_s(words['how'])})#parbreak(){_how_to_tick(words)}#parbreak()"
         f"#text(size: 9.5pt, {_s(note)})])\n"
     )
 
@@ -539,7 +549,10 @@ def print_exam(exam: Exam, module: Module | None = None, booklets: int = 1) -> P
             answers = "".join(
                 f"#block(breakable: true, below: 9mm, [#text(weight: \"bold\", {_s(words['question'] + ' ' + str(i.number))})"
                 f"#parbreak(){_lines(i.lines)}{_point_strip(i, words)}])\n" for i in free)
-            content = cover_space + grid + ("#pagebreak()\n" + answers if answers else "")
+            # The answer sheet is what is filled in, so it says again how, with the same examples as the cover.
+            rule = (f"#block(width: 100%, inset: 3mm, radius: 1.5mm, stroke: 0.5pt + luma(75%), "
+                    f"[{_how_to_tick(words)}])\n#v(4mm)\n")
+            content = cover_space + rule + grid + ("#pagebreak()\n" + answers if answers else "")
             pdf, found, per = _scanned(content, setup, code, booklets, build)
             output[files["sheet"]] = pdf
 
