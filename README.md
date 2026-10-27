@@ -116,7 +116,7 @@ The arrows above the question page through the questions in the order of the lis
 
 ### Releasing, exam variants, retiring
 
-A question is written as a **draft**. When an examiner has read it and agrees, **Release** under the status label notes their name in `reviewed_by` and makes the question **released** (in the file `status: reviewed`); a second examiner can **Release as well**, so that both names stand there, as § 5 (3) c of the general examination regulations asks for two examiners. A question with errors cannot be released. A release stays when the question is changed later; only the examiner who gave it can take it back.
+A question is written as a **draft**. When an examiner has read it and agrees, **Release** under the status label notes their name in `released_by` and makes the question **released** (`status: released`); a second examiner can **Release as well**, so that both names stand there, as § 5 (3) c of the general examination regulations asks for two examiners. A question with errors cannot be released. A release stays when the question is changed later; only the examiner who gave it can take it back.
 
 Every change of status is made at the status label, after a click on it:
 
@@ -304,7 +304,7 @@ id: r-001
 concept: regression
 type: single              # single | multiple | free_text
 level: understand         # remember | understand | apply
-status: draft             # draft | reviewed | piloted | retired
+status: draft             # draft | released | piloted | retired
 public: true              # true: practice question; false: reserved for exams
 stem:
   de: |
@@ -329,7 +329,7 @@ Things worth knowing:
 - **Multiple choice** marks every correct option with `correct: true`. One correct option is allowed, so the number of correct answers cannot be guessed.
 - **Feedback** explains for every option why it is right or wrong. Students see it in practice mode; in exams it is never printed.
 - **Exam variants** are questions with `public: false` and `variant_of: <id of the practice question>`: the same learning goal at the same level, but a different surface. Their file holds only their own texts and any setting they set themselves; type, level, time, coverage, misconception, lines and half points otherwise come from the parent. Students who understood the practice question can solve the variant; students who only memorised it cannot.
-- **Optional fields:** `image` (a file name from the pool's `images` folder), `code` (a code block below the question text), `coverage` (where the material is taught), `misconception`, `session`, `reviewed_by`.
+- **Optional fields:** `image` (a file name from the pool's `images` folder), `code` (a code block below the question text), `coverage` (where the material is taught), `misconception`, `session`, `released_by`. Files written before 27 October 2026 may still say `status: reviewed` and `reviewed_by`; Markwise reads them as `released` and writes the new names the next time it saves the question.
 - **Free-text questions** have no options but `points`, `half_points`, `lines` (size of the answer area), `expected` and `marking_notes`.
 - **Fields Markwise does not know are kept.** You may add your own fields and comments; Markwise preserves them, and when it saves a file, the parts it did not change stay exactly as they were.
 - **Working together:** if a colleague changed the same file in a shared folder after Markwise loaded it, Markwise refuses to save over it instead of silently overwriting their work.

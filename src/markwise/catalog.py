@@ -123,7 +123,7 @@ def concept_overview(pool: Pool, lang: str = "de") -> list[dict]:
             "retired": len(by_concept.get(concept["id"], [])) - len(items),
             "levels": {v: count("level", v) for v in ("remember", "understand", "apply")},
             "types": {v: count("type", v) for v in ("single", "multiple", "free_text")},
-            "statuses": {v: count("status", v) for v in ("draft", "reviewed", "piloted")},
+            "statuses": {v: count("status", v) for v in ("draft", "released", "piloted")},
             "practice": sum(1 for r in items if r["public"]),
             "exam": sum(1 for r in items if r["exam"]),
             "both": sum(1 for r in items if r["public"] and r["exam"]),

@@ -39,19 +39,19 @@ def _set(question: Question, key: str, value) -> None:
 
 
 def release(pool: Pool, qid: str, author: str | None = None) -> Question:
-    """Add the examiner to reviewed_by and make the question reviewed. A question with errors cannot be released."""
+    """Add the examiner to released_by and make the question released. A question with errors cannot be released."""
     name = _author(author)
     question = pool.find(qid)
     if question.status == "retired":
         raise LifecycleError("retired", f"{qid} is retired")
     if any(f.severity == ERROR for f in check_question(question, pool)):
         raise LifecycleError("has_errors", f"{qid} has errors; correct them before releasing it")
-    reviewers = [str(r) for r in question.data.get("reviewed_by") or []]
+    reviewers = [str(r) for r in question.data.get("released_by") or []]
     if name not in reviewers:
         reviewers.append(name)
-    _set(question, "reviewed_by", CommentedSeq(reviewers))
+    _set(question, "released_by", CommentedSeq(reviewers))
     if question.status == "draft":
-        question.data["status"] = "reviewed"
+        question.data["status"] = "released"
     question.save()
     return question
 
@@ -60,15 +60,15 @@ def withdraw(pool: Pool, qid: str, author: str | None = None) -> Question:
     """Take back the examiner's own release; without any release left, the question is a draft again."""
     name = _author(author)
     question = pool.find(qid)
-    reviewers = [str(r) for r in question.data.get("reviewed_by") or []]
+    reviewers = [str(r) for r in question.data.get("released_by") or []]
     if name not in reviewers:
         raise LifecycleError("not_released_by_you", f"{qid} was not released by {name}")
     reviewers.remove(name)
     if reviewers:
-        question.data["reviewed_by"] = CommentedSeq(reviewers)
+        question.data["released_by"] = CommentedSeq(reviewers)
     else:
-        del question.data["reviewed_by"]
-        if question.status == "reviewed":
+        del question.data["released_by"]
+        if question.status == "released":
             question.data["status"] = "draft"
     question.save()
     return question
@@ -84,7 +84,7 @@ def create_variant(pool: Pool, qid: str, author: str | None = None) -> Question:
         raise LifecycleError("is_variant", f"{qid} is itself an exam variant")
     name = default_author() if author is None else author
     new_id = pool.next_variant_id(original.id)
-    skip = {"id", "status", "public", "exam", "variant_of", "reviewed_by", "created_by", "created_at",
+    skip = {"id", "status", "public", "exam", "variant_of", "released_by", "created_by", "created_at",
             "changed_by", "changed_at", *INHERITED}
     fields = {key: copy.deepcopy(value) for key, value in original.data.items() if key not in skip}
     fields.update(id=new_id, status="draft", public=False, variant_of=original.id)
@@ -156,7 +156,7 @@ def restore(pool: Pool, qid: str) -> Question:
     if question.status != "retired":
         raise LifecycleError("not_retired", f"{qid} is not retired")
     question.data["status"] = "draft"
-    if "reviewed_by" in question.data:
-        del question.data["reviewed_by"]
+    if "released_by" in question.data:
+        del question.data["released_by"]
     question.save()
     return question

@@ -39,7 +39,7 @@
 
   const pick = (value) => (value && typeof value === "object" ? value[shown] ?? "" : value ?? "");
   const severityClass = { error: "red", warning: "warn", note: "" };
-  const reviewers = $derived((data.reviewed_by ?? []).map(String));
+  const reviewers = $derived((data.released_by ?? []).map(String));
   const releasedByMe = $derived(Boolean(me) && reviewers.includes(me));
   const retired = $derived(data.status === "retired");
   const hasErrors = $derived(question.findings.some((f) => f.severity === "error"));
@@ -162,10 +162,10 @@
         <TimePick seconds={question.data.time_seconds ?? null} inherited={data.variant_of ? inherited.time_seconds ?? null : null}
           parent={parentId} title={data.id} note="" align="left" onchoose={(time_seconds) => save({ time_seconds })} />
         {#if lifecycle}
-          <TagPick label={t(`status.${data.status}`)} tone={data.status === "reviewed" || data.status === "piloted" ? "ok" : ""}
+          <TagPick label={t(`status.${data.status}`)} tone={data.status === "released" || data.status === "piloted" ? "ok" : ""}
             heading={t("q.meta.status")} hint={t("pick.statusHint")} note={statusNote} actions={statusActions} />
         {:else}
-          <span class="tag" class:ok={data.status === "reviewed" || data.status === "piloted"}>{t(`status.${data.status}`)}</span>
+          <span class="tag" class:ok={data.status === "released" || data.status === "piloted"}>{t(`status.${data.status}`)}</span>
         {/if}
         {#if data.variant_of}
           <span class="tag" title={t("q.variantExamOnly")}>{t("use.exam")}</span>
@@ -181,7 +181,7 @@
           <TagPick label={t(`status.${data.status}`)} heading={t("q.meta.status")} hint={t("pick.statusHint")} note={statusNote}
             actions={statusActions} />
         {:else}
-          <span class="tag" class:ok={data.status === "reviewed" || data.status === "piloted"}>{t(`status.${data.status}`)}</span>
+          <span class="tag" class:ok={data.status === "released" || data.status === "piloted"}>{t(`status.${data.status}`)}</span>
         {/if}
         <span class="tag">{t(useKey(data))}</span>
       {/if}
@@ -304,7 +304,7 @@
       {/if}
       {#if data.coverage && !can}<dt>{t("q.meta.coverage")}</dt><dd>{data.coverage}</dd>{/if}
       {#if data.misconception && !can}<dt>{t("q.meta.misconception")}</dt><dd>{data.misconception}</dd>{/if}
-      {#if reviewers.length}<dt>{t("q.meta.reviewed")}</dt><dd>{reviewers.join(", ")}</dd>{/if}
+      {#if reviewers.length}<dt>{t("q.meta.released")}</dt><dd>{reviewers.join(", ")}</dd>{/if}
       {#if data.created_by || data.created_at}<dt>{t("q.meta.created")}</dt><dd>{t("q.by", { name: data.created_by || "–", date: formatDate(data.created_at) })}</dd>{/if}
       <dt>{t("q.meta.pool")}</dt><dd>{question.pool_name}</dd>
       {#if question.modified}<dt>{t("q.meta.modified")}</dt><dd>{data.changed_by ? `${data.changed_by}, ` : ""}{new Date(question.modified * 1000).toLocaleString(ui.lang === "de" ? "de-DE" : "en-GB", { dateStyle: "medium", timeStyle: "short" })}</dd>{/if}

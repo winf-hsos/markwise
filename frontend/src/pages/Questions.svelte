@@ -150,7 +150,7 @@
   };
   const LEVELS = ["remember", "understand", "apply"];
   const TYPE_ICONS = { single: "single", multiple: "multiple", free_text: "freetext" };
-  const STATUSES = ["draft", "reviewed", "piloted", "retired"];
+  const STATUSES = ["draft", "released", "piloted", "retired"];
   let sort = $state(readSort());
   function readSort() {
     try {
@@ -512,7 +512,7 @@
         <MultiSelect bind:selected={filter.level} label={t("q.meta.level")} allLabel={t("q.all.levels")}
           options={["remember", "understand", "apply"].map((v) => ({ value: v, label: t(`level.${v}`) }))} />
         <MultiSelect bind:selected={filter.status} label={t("q.meta.status")} allLabel={t("q.all.status")}
-          options={["draft", "reviewed", "piloted", "retired"].map((v) => ({ value: v, label: t(`status.${v}`) }))} />
+          options={["draft", "released", "piloted", "retired"].map((v) => ({ value: v, label: t(`status.${v}`) }))} />
         <MultiSelect bind:selected={filter.type} label={t("stats.type")} allLabel={t("q.all.types")}
           options={["single", "multiple", "free_text"].map((v) => ({ value: v, label: t(`type.${v}`) }))} />
         <MultiSelect bind:selected={filter.use} label={t("q.meta.use")} allLabel={t("q.all.use")}
@@ -573,7 +573,7 @@
               {#if !child && q.variants.length}<span class="tag variant-count">{t(q.variants.length === 1 ? "q.variantCount1" : "q.variantCount", { n: q.variants.length })}</span>{/if}
               {#if q.errors}<span class="tag red"><i class="dot"></i>{q.errors} {t("sev.error")}</span>
               {:else if q.warnings}<span class="tag warn"><i class="dot"></i>{t("sev.warning")}</span>{/if}
-              {#if q.status === "reviewed"}<span class="status-mark" title={t("status.reviewed")}><Icon name="check" /></span>{/if}
+              {#if q.status === "released"}<span class="status-mark" title={t("status.released")}><Icon name="check" /></span>{/if}
               {#if q.status === "retired"}<span class="tag">{t("status.retired")}</span>{/if}
               {#if q.exam}<span class="tag">{q.public ? t("use.both") : t("use.exam")}</span>{/if}
             </span>

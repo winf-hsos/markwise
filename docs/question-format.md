@@ -38,11 +38,11 @@ concept: code-systems      # the concept's identifier, equal to the folder name
 type: single               # single | multiple | free_text
 level: understand          # remember | understand | apply
 time_seconds: 60           # how long answering takes, in seconds (5 to 3600); the exam turns it into points
-status: draft              # draft | reviewed | piloted | retired
+status: draft              # draft | released | piloted | retired
 public: true               # shown to students for practice
 exam: true                 # may be drawn for an exam; without the field: true exactly when public is false
 variant_of: cs-001         # exam variants only (id cs-001-v1, cs-001-v2 …): the practice question they vary
-reviewed_by: [Examiner A, Examiner B]   # the examiners who released it; releasing makes a draft reviewed
+released_by: [Examiner A, Examiner B]   # the examiners who released it; releasing makes a draft released
 created_by: Examiner A     # written by Markwise: who created the question, and when
 created_at: 2026-10-24
 changed_by: Examiner B     # written by Markwise: who changed it last, and when

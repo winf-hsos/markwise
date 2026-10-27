@@ -161,9 +161,9 @@ def cmd_question_set(args) -> int:
 def _lifecycle(args, step, *extra) -> int:
     pool = Pool.open(args.pool)
     question = step(pool, args.id, *extra)
-    reviewers = ", ".join(str(r) for r in question.data.get("reviewed_by") or [])
+    reviewers = ", ".join(str(r) for r in question.data.get("released_by") or [])
     if args.json:
-        _print_json({"id": question.id, "status": question.status, "reviewed_by": reviewers.split(", ") if reviewers else [],
+        _print_json({"id": question.id, "status": question.status, "released_by": reviewers.split(", ") if reviewers else [],
                      "path": str(question.path)})
     else:
         print(f"{question.id}: {question.status}" + (f", released by {reviewers}" if reviewers else ""))
@@ -557,7 +557,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("value", help="the new value; true, false and numbers are understood, everything else is text")
     p.set_defaults(func=cmd_question_set)
     for name, func, text, by in (
-        ("release", cmd_question_release, "release a question as examiner (adds you to reviewed_by)", True),
+        ("release", cmd_question_release, "release a question as examiner (adds you to released_by)", True),
         ("withdraw", cmd_question_withdraw, "take back your release; without any left the question is a draft", True),
         ("variant", cmd_question_variant, "create an exam variant of a practice question, as a copy to vary", True),
         ("retire", cmd_question_retire, "keep a question but take it out of every new exam", False),

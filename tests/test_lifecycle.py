@@ -22,21 +22,21 @@ def pool(tmp_path):
 
 def test_two_examiners_release_and_withdraw(pool):
     q = lifecycle.release(pool, "co-001", "Examiner A")
-    assert q.status == "reviewed" and list(q.data["reviewed_by"]) == ["Examiner A"]
+    assert q.status == "released" and list(q.data["released_by"]) == ["Examiner A"]
     q = lifecycle.release(pool, "co-001", "Examiner B")
-    assert list(q.data["reviewed_by"]) == ["Examiner A", "Examiner B"]
-    assert list(lifecycle.release(pool, "co-001", "Examiner B").data["reviewed_by"]) == ["Examiner A", "Examiner B"]
+    assert list(q.data["released_by"]) == ["Examiner A", "Examiner B"]
+    assert list(lifecycle.release(pool, "co-001", "Examiner B").data["released_by"]) == ["Examiner A", "Examiner B"]
     q = lifecycle.withdraw(pool, "co-001", "Examiner A")
-    assert q.status == "reviewed" and list(q.data["reviewed_by"]) == ["Examiner B"]
+    assert q.status == "released" and list(q.data["released_by"]) == ["Examiner B"]
     q = lifecycle.withdraw(pool, "co-001", "Examiner B")
-    assert q.status == "draft" and "reviewed_by" not in q.data
+    assert q.status == "draft" and "released_by" not in q.data
     with pytest.raises(lifecycle.LifecycleError):
         lifecycle.withdraw(pool, "co-001", "Examiner B")
 
 
 def test_release_is_no_change_of_content(pool):
     q = lifecycle.release(pool, "co-001", "Examiner A")
-    assert "changed_by" not in q.data and list(q.data.keys()).index("reviewed_by") > list(q.data.keys()).index("public")
+    assert "changed_by" not in q.data and list(q.data.keys()).index("released_by") > list(q.data.keys()).index("public")
 
 
 def test_a_question_with_errors_cannot_be_released(pool):
@@ -60,7 +60,7 @@ def test_exam_variant_starts_as_a_copy(pool):
     lifecycle.release(pool, "co-001", "Examiner A")
     variant = lifecycle.create_variant(pool, "co-001", "Examiner B")
     assert variant.id == "co-001-v1" and variant.variant_of == "co-001" and not variant.public and variant.exam
-    assert variant.status == "draft" and "reviewed_by" not in variant.data and variant.get("created_by") == "Examiner B"
+    assert variant.status == "draft" and "released_by" not in variant.data and variant.get("created_by") == "Examiner B"
     assert variant.data["stem"]["en"] == pool.find("co-001").data["stem"]["en"]
     assert variant.path == pool.path_for("colours", "co-001-v1")
     assert lifecycle.create_variant(pool, "co-001", "Examiner B").id == "co-001-v2"
@@ -73,7 +73,7 @@ def test_retire_and_take_back(pool):
     lifecycle.release(pool, "co-001", "Examiner A")
     assert lifecycle.retire(pool, "co-001").status == "retired"
     q = lifecycle.restore(pool, "co-001")
-    assert q.status == "draft" and "reviewed_by" not in q.data
+    assert q.status == "draft" and "released_by" not in q.data
     with pytest.raises(lifecycle.LifecycleError):
         lifecycle.restore(pool, "co-001")
 
@@ -82,18 +82,18 @@ def test_api_steps_answer_with_the_question_or_a_code(pool, monkeypatch):
     monkeypatch.setenv("USERNAME", "examiner-a")
     api = Api()
     assert api.whoami()["data"] == "examiner-a"
-    assert api.release_question(str(pool.root), "co-001")["data"]["data"]["reviewed_by"] == ["examiner-a"]
+    assert api.release_question(str(pool.root), "co-001")["data"]["data"]["released_by"] == ["examiner-a"]
     assert api.create_variant(str(pool.root), "co-002")["code"] == "not_practice"
     variant = api.create_variant(str(pool.root), "co-001")["data"]
     assert api.delete_question(str(pool.root), variant["id"])["data"]["outcome"] == "deleted"
-    assert api.delete_question(str(pool.root), "co-001")["data"]["outcome"] == "retired"  # reviewed: only retired
+    assert api.delete_question(str(pool.root), "co-001")["data"]["outcome"] == "retired"  # released: only retired
 
 
 def test_cli_release_and_variant(pool, capsys, monkeypatch):
     import json
     from markwise.cli import main
     assert main(["question", "release", str(pool.root), "co-001", "--by", "Examiner A", "--json"]) == 0
-    assert json.loads(capsys.readouterr().out)["reviewed_by"] == ["Examiner A"]
+    assert json.loads(capsys.readouterr().out)["released_by"] == ["Examiner A"]
     assert main(["question", "variant", str(pool.root), "co-001", "--by", "Examiner A", "--json"]) == 0
     assert json.loads(capsys.readouterr().out)["id"] == "co-001-v1"
     assert main(["question", "retire", str(pool.root), "co-001-v1"]) == 0

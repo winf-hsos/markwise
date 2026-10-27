@@ -19,7 +19,7 @@
   const groups = $derived([
     { title: t("stats.type"), key: "type", items: ["single", "multiple", "free_text"].map((v) => ({ value: v, label: t(`type.${v}`), n: count((r) => r.type === v) })) },
     { title: t("stats.level"), key: "level", items: ["remember", "understand", "apply"].map((v) => ({ value: v, label: t(`level.${v}`), n: count((r) => r.level === v) })) },
-    { title: t("stats.status"), key: "status", items: ["draft", "reviewed", "piloted", "retired"].map((v) => ({ value: v, label: t(`status.${v}`), n: count((r) => r.status === v) })) },
+    { title: t("stats.status"), key: "status", items: ["draft", "released", "piloted", "retired"].map((v) => ({ value: v, label: t(`status.${v}`), n: count((r) => r.status === v) })) },
     { title: t("stats.use"), key: "use", items: [
       { value: "practice", label: t("use.practice"), n: count((r) => r.public) },
       { value: "exam", label: t("use.exam"), n: count((r) => r.exam) },

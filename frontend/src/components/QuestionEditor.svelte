@@ -341,7 +341,7 @@
   <header class="editor-bar">
     <button class="btn ghost" onclick={close}><Icon name="back" />{back || t("edit.back")}</button>
     <span class="qid">{base.data.id}</span>
-    <span class="tag" class:ok={base.data.status === "reviewed"}>{t(`status.${base.data.status}`)}</span>
+    <span class="tag" class:ok={base.data.status === "released"}>{t(`status.${base.data.status}`)}</span>
     {#if dirty}<span class="unsaved"><i class="dot"></i>{t("edit.unsaved")}</span>{/if}
     <span class="spacer"></span>
     <span class="hint">{t("edit.shortcut")}</span>

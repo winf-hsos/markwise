@@ -18,9 +18,9 @@ from .checks import Finding, check_question
 from .pool import Pool
 from .question import FIELD_ORDER, INHERITED, ConflictError, Question, default_author, insert_field, today
 
-# Fields the editor owns. id and concept name the file, status and reviewed_by belong to the release, and
+# Fields the editor owns. id and concept name the file, status and released_by belong to the release, and
 # the authorship fields are written by Markwise itself.
-EDITABLE = tuple(k for k in FIELD_ORDER if k not in ("id", "concept", "status", "reviewed_by", "created_by",
+EDITABLE = tuple(k for k in FIELD_ORDER if k not in ("id", "concept", "status", "released_by", "created_by",
                                                      "created_at", "changed_by", "changed_at"))
 OPTION_KEYS = ("id", "correct", "text", "feedback")
 # Fields that disappear from the file when the editor leaves them empty; all others always stay.

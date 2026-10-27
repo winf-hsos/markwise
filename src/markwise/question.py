@@ -13,7 +13,7 @@ from . import yamlio
 
 TYPES = ("single", "multiple", "free_text")
 LEVELS = ("remember", "understand", "apply")
-STATUSES = ("draft", "reviewed", "piloted", "retired")
+STATUSES = ("draft", "released", "piloted", "retired")
 
 # How long answering a question takes, in seconds, when nobody chose otherwise.
 DEFAULT_SECONDS = {"single": 60, "multiple": 60, "free_text": 300}
@@ -24,7 +24,7 @@ INHERITED = ("type", "level", "time_seconds", "coverage", "misconception", "half
 
 # Order of the known top-level fields when Markwise writes a new file.
 FIELD_ORDER = (
-    "id", "concept", "type", "level", "time_seconds", "status", "public", "exam", "variant_of", "reviewed_by",
+    "id", "concept", "type", "level", "time_seconds", "status", "public", "exam", "variant_of", "released_by",
     "created_by", "created_at", "changed_by", "changed_at",
     "coverage", "misconception", "session",
     "stem", "image", "images", "image_columns", "code", "code_language",
@@ -33,12 +33,35 @@ FIELD_ORDER = (
 )
 
 
+# Names that files used before a release was called a release (until 2026-10-27): read and written anew.
+OLD_NAMES = {"reviewed_by": "released_by"}
+OLD_STATUSES = {"reviewed": "released"}
+
+
+def _rename_old(data) -> None:
+    """Give fields and statuses from older files their current names, in place and at the same position."""
+    if not hasattr(data, "items"):
+        return
+    if data.get("status") in OLD_STATUSES:
+        data["status"] = OLD_STATUSES[data["status"]]
+    for old, new in OLD_NAMES.items():
+        if old in data and new not in data:
+            keys = list(data.keys())
+            position, value = keys.index(old), data[old]
+            del data[old]
+            if hasattr(data, "insert"):
+                data.insert(position, new, value)
+            else:
+                data[new] = value
+
+
 class ConflictError(Exception):
     """The file changed on disk since it was loaded, for example by a colleague in a shared folder."""
 
 
 class Question:
     def __init__(self, data: CommentedMap, path: Path | None = None):
+        _rename_old(data)
         self.data = data
         self.path = path
         self.parent: Question | None = None  # for a variant: the question it varies, once the pool has linked it

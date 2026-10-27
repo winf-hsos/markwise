@@ -68,15 +68,29 @@ def test_emptied_optional_fields_disappear_and_new_ones_find_their_place(pool):
     assert "coverage" not in keys and keys.index("code") == keys.index("image") + 1  # stem, image, code
 
 
-def test_a_reviewed_question_stays_reviewed_when_its_content_changes(pool):
+def test_a_released_question_stays_released_when_its_content_changes(pool):
     q = pool.find("co-001")
-    q.data["status"] = "reviewed"
-    q.data["reviewed_by"] = ["Examiner A", "Examiner B"]
+    q.data["status"] = "released"
+    q.data["released_by"] = ["Examiner A", "Examiner B"]
     q.save()
     fields = fields_of(pool, "co-001")
     fields["stem"]["en"] = "Which colour has the sky on a clear day?"
     question, changed = editing.save(pool, "co-001", fields)
-    assert changed and question.status == "reviewed" and list(question.data["reviewed_by"]) == ["Examiner A", "Examiner B"]
+    assert changed and question.status == "released" and list(question.data["released_by"]) == ["Examiner A", "Examiner B"]
+
+
+def test_files_from_before_releases_had_their_name_are_read_and_written_anew(pool):
+    path = pool.find("co-001").path
+    text = path.read_text(encoding="utf-8")
+    assert "status: draft\n" in text
+    path.write_text(text.replace("status: draft\n", "status: reviewed\nreviewed_by:\n  - Examiner A\n"), encoding="utf-8")
+    question = Pool.open(pool.root).find("co-001")
+    assert question.status == "released" and list(question.data["released_by"]) == ["Examiner A"]
+    fields = fields_of(pool, "co-001")
+    fields["stem"]["en"] = "Which colour has the sky on a clear day?"
+    editing.save(Pool.open(pool.root), "co-001", fields)
+    saved = path.read_text(encoding="utf-8")
+    assert "status: released\nreleased_by:\n  - Examiner A\n" in saved and "reviewed" not in saved
 
 
 def test_a_change_elsewhere_is_not_overwritten(pool):
@@ -112,7 +126,7 @@ def test_set_field_by_dotted_path(pool, path, value, check):
 
 def test_set_field_refuses_fields_that_belong_elsewhere(pool):
     with pytest.raises(ValueError):
-        editing.set_field(pool, "co-001", "status", "reviewed")
+        editing.set_field(pool, "co-001", "status", "released")
 
 
 def test_api_creates_questions_in_existing_or_named_new_concepts(pool):

@@ -31,7 +31,7 @@ KEYS = {
     "sitzung": "session", "frage": "stem", "bild": "image", "code": "code",
 }
 LEVELS = {"erinnern": "remember", "verstehen": "understand", "anwenden": "apply"}
-STATUSES = {"entwurf": "draft", "geprueft": "reviewed", "pilotiert": "piloted", "ausgemustert": "retired"}
+STATUSES = {"entwurf": "draft", "geprueft": "released", "pilotiert": "piloted", "ausgemustert": "retired"}
 OPTION_KEYS = {"kennung": "id", "text": "text", "begruendung": "feedback"}
 
 

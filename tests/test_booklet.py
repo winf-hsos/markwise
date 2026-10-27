@@ -32,7 +32,7 @@ def exam(tmp_path):
     task.data["expected"]["de"] = "Gelb."
     task.data["stem"]["en"] = "Mix *two* colours with `#rgb` codes; what does [red] + $green$ give?"
     task.data["expected"]["en"] = "Yellow."
-    task.data["status"] = "reviewed"
+    task.data["status"] = "released"
     task.data["lines"] = 4
     task.save()
     exam = Exam.create(module, "Mock Exam", "2027-01-21", "en", "inline", author="")
