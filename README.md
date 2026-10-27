@@ -118,13 +118,18 @@ The arrows above the question page through the questions in the order of the lis
 
 A question is written as a **draft**. When an examiner has read it and agrees, **Release** under the status label notes their name in `reviewed_by` and makes the question **reviewed**; a second examiner can **Release as well**, so that both names stand there, as § 5 (3) c of the general examination regulations asks for two examiners. A question with errors cannot be released. A release stays when the question is changed later; only the examiner who gave it can take it back.
 
+Every change of status is made at the status label, after a click on it:
+
+- **Release** and **Release as well**, as above.
+- **Withdraw my release**: takes your name off; without any release left, the question is a draft again.
+- **Retire**, after a confirmation: the question and its file stay, but it will not appear in any new exam, and its identifier is never given again. The list shows it struck through, and its status label then offers **Take back**, which makes it a draft again.
+
 The **⋯** menu next to **Details** holds the other steps:
 
 - **Create exam variant** (for practice questions, multiple choice and free text alike): a new exam-only question in the same concept, named after its parent with `-v1`, `-v2` and so on (`cp-005-v1`), and noting the parent in `variant_of`. Its texts start as a copy, and Markwise shows it with its details open, so that you can change its surface while keeping the learning goal.
 
   A variant **inherits the settings of its parent**: type, level, time to answer, where the material is taught and the misconception, and for a free-text question the lines for the answer and whether half points are allowed. A free-text variant suits a calculation of the same kind with other numbers: change the numbers in the text and the expected answer, and everything else stays as in the parent. With the language model switched on, **Propose other numbers** in the details of a free-text variant does that for you: the model chooses new numbers of a similar size, works out the result again and proposes the question text, expected answer and marking notes in every language of the pool. Its calculation is shown above the proposals, step by step, so that you can check it before applying anything. They are not copied but read from the parent, so a change there reaches every variant. In the labels, the details and the editor these settings are marked **inherited from cp-005** and shown in a lighter style; choosing another value gives the variant its own, marked with **inherit again** to go back to the parent's. A variant is always meant for exams only, never for practice.
-- **Withdraw my release**, under the status label: takes your name off; without any release left, the question is a draft again.
-- **Retire**: the question and its file stay, but it will not appear in any new exam, and its identifier is never given again. The list shows it struck through; **Take back** makes it a draft again.
+- **Open in editor**: opens the question's file in the program Windows uses for YAML files.
 - **Delete** (drafts only): removes the file after a confirmation. Everything else is retired instead. If the question has exam variants, Markwise asks what becomes of them: **Delete with its variants** deletes them as well (a released variant is retired instead), **Keep the variants** makes them exam questions of their own. They then get an ordinary identifier (the next free number of the concept, so `cp-005-v1` becomes, say, `cp-018`), and the settings they inherited so far are written into their own file.
 
 A tick in the list marks reviewed questions.

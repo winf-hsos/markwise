@@ -47,9 +47,6 @@
     ...(data.public && !data.variant_of
       ? [{ label: t("life.variant"), icon: "copy", onclick: () => onaction?.("variant") }] : []),
     { label: t("q.openFile"), icon: "upload", onclick: () => onopen?.(question.path) },
-    retired
-      ? { label: t("life.restore"), icon: "undo", onclick: () => onaction?.("restore") }
-      : { label: t("life.retire"), icon: "archive", onclick: () => onaction?.("retire") },
     ...(data.status === "draft" ? [{ label: t("life.delete"), icon: "trash", onclick: () => onaction?.("delete") }] : []),
   ]);
   // --- changes in place: each one goes out as the fields it touches ----------------------------
@@ -129,16 +126,23 @@
     save({ type, options });
   }
 
-  // The status label holds the release: who released the question, and releasing or taking one's release back.
+  // The status label holds every change of status: who released the question, releasing or taking one's release
+  // back, retiring it, and taking a retired question back.
   const statusNote = $derived(
-    [reviewers.length ? t("life.releasedBy", { names: reviewers.join(", ") }) : t("life.notReleased"),
-      hasErrors && !releasedByMe ? t("err.has_errors") : ""].filter(Boolean).join(" "),
+    retired ? t("life.retiredNote")
+      : [reviewers.length ? t("life.releasedBy", { names: reviewers.join(", ") }) : t("life.notReleased"),
+        hasErrors && !releasedByMe ? t("err.has_errors") : ""].filter(Boolean).join(" "),
   );
   const statusActions = $derived(
-    releasedByMe
-      ? [{ label: t("life.withdraw"), icon: "undo", onclick: () => onaction?.("withdraw") }]
-      : [{ label: reviewers.length ? t("life.releaseAlso") : t("life.release"), icon: "check", disabled: hasErrors,
-        title: hasErrors ? t("err.has_errors") : t("life.releaseHint"), onclick: () => onaction?.("release") }],
+    retired
+      ? [{ label: t("life.restore"), icon: "undo", title: t("life.restoreHint"), onclick: () => onaction?.("restore") }]
+      : [
+        releasedByMe
+          ? { label: t("life.withdraw"), icon: "undo", onclick: () => onaction?.("withdraw") }
+          : { label: reviewers.length ? t("life.releaseAlso") : t("life.release"), icon: "check", disabled: hasErrors,
+            title: hasErrors ? t("err.has_errors") : t("life.releaseHint"), onclick: () => onaction?.("release") },
+        { label: t("life.retire"), icon: "archive", title: t("life.confirmRetire"), onclick: () => onaction?.("retire") },
+      ],
   );
 </script>
 
@@ -173,7 +177,12 @@
         <span class="tag">{t(`type.${data.type}`)}</span>
         {#if data.level}<span class="tag">{t(`level.${data.level}`)}</span>{/if}
         <span class="tag" class:warn={!data.time_seconds}>{data.time_seconds ? formatTime(data.time_seconds) : t("exams.noTime")}</span>
-        <span class="tag" class:ok={data.status === "reviewed" || data.status === "piloted"}>{t(`status.${data.status}`)}</span>
+        {#if editable && lifecycle && !compact}
+          <TagPick label={t(`status.${data.status}`)} heading={t("q.meta.status")} hint={t("pick.statusHint")} note={statusNote}
+            actions={statusActions} />
+        {:else}
+          <span class="tag" class:ok={data.status === "reviewed" || data.status === "piloted"}>{t(`status.${data.status}`)}</span>
+        {/if}
         <span class="tag">{t(useKey(data))}</span>
       {/if}
     </div>
