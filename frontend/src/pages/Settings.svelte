@@ -38,14 +38,14 @@
     <section>
       <h2 class="section-title">{t("settings.general")}</h2>
       <div class="rows">
-        <div class="row-item">
+        <div class="row-item" data-tour="settings-language">
           <div class="text"><b>{t("settings.language")}</b></div>
           <div class="seg" role="group" aria-label={t("settings.language")}>
             <button class:on={app.settings?.language === "de"} onclick={() => setLanguage("de")}>Deutsch</button>
             <button class:on={app.settings?.language === "en"} onclick={() => setLanguage("en")}>English</button>
           </div>
         </div>
-        <form class="row-item" onsubmit={saveExaminer}>
+        <form class="row-item" onsubmit={saveExaminer} data-tour="settings-examiner">
           <div class="text">
             <b>{t("settings.examiner")}</b>
             <span class="hint">{t("settings.examinerHint")}</span>
@@ -60,7 +60,7 @@
       </div>
     </section>
 
-    <LanguageModelSettings />
+    <div data-tour="settings-llm"><LanguageModelSettings /></div>
 
     <section>
       <h2 class="section-title">{t("settings.about")}</h2>

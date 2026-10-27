@@ -57,6 +57,12 @@ markwise shortcut
 
 The entry opens the window without a console.
 
+### Help and tour
+
+The **?** at the right of the top bar, or **F1**, opens the help for the page that is open: what the page is for and its main steps in a few sentences. **Start the tour** in it darkens the page and shows its parts one after another, each framed and with a card that says what it does; **Next** and **Back**, or the arrow keys and Enter, move through it, **End** or Escape stop it. A part that is not on the page at the moment, such as a question when none is chosen, is skipped. The first time a page is opened on a computer, a small card at the bottom right offers its tour once.
+
+The texts live in `frontend/src/lib/help.js`, in German and English, and each step names the element it points at by a `data-tour` mark in the pages; `tests/test_help.py` checks that every step still finds its mark, so that a changed page cannot leave a step pointing at nothing.
+
 ### Setting up a module
 
 On the **Modules** page, **New module** asks for:

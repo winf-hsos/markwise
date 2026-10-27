@@ -615,7 +615,7 @@
         <span class="tag">{current.semester}</span>
         <span class="spacer"></span>
         <button class="btn ghost" onclick={() => call("reveal", current.path).catch((err) => showToast(errorText(err)))}><Icon name="folder" />{t("modules.reveal")}</button>
-        <button class="btn primary" onclick={() => (printOpen = true)}><Icon name="print" />{t("exams.print")}</button>
+        <button class="btn primary" data-tour="exam-print" onclick={() => (printOpen = true)}><Icon name="print" />{t("exams.print")}</button>
       </header>
       <PrintExamDialog bind:open={printOpen} exam={current} onprinted={(exam) => (current = exam)} />
       <Dialog bind:open={previewOpen} title={previewing ? t("exams.previewTitle", { id: previewing.data.id }) : ""} wide>
@@ -625,7 +625,7 @@
         {/if}
       </Dialog>
 
-      <div class="exam-settings">
+      <div class="exam-settings" data-tour="exam-settings">
         <label class="field" title={t("exams.renameHint")}><span>{t("exams.examTitle")}</span>
           <input class="input" value={current.title} onchange={(e) => saveSetting("title", e.currentTarget.value, e.currentTarget)} /></label>
         <label class="field" title={t("exams.renameHint")}><span>{t("exams.date")}</span>
@@ -651,7 +651,7 @@
             onchange={(e) => saveSetting("examiners", e.currentTarget.value.split(","))} /></label>
       </div>
 
-      <div class="exam-totals">
+      <div class="exam-totals" data-tour="exam-totals">
         <span><b>{asked.length}</b> {t(asked.length === 1 ? "exams.question" : "exams.questions")}</span>
         <span><b>{points.toLocaleString(undefined, { maximumFractionDigits: 1 })}</b> {t("exams.points")}</span>
         <span><b>{formatTotal(seconds)}</b> {t("exams.time")}</span>
@@ -660,7 +660,7 @@
       </div>
 
       <div class="exam-split">
-        <section class="exam-picker" aria-label={t("exams.choose")}>
+        <section class="exam-picker" aria-label={t("exams.choose")} data-tour="exam-picker">
           <h3 class="pane-title">{t("exams.choose")}</h3>
           {#if filling}
             <div class="filling-note">
@@ -717,17 +717,17 @@
             {/each}
           </div>
         </section>
-        <section class="exam-list" class:drop-zone={drag?.kind === "add"} aria-label={t("exams.content")} bind:this={listEl}>
+        <section class="exam-list" class:drop-zone={drag?.kind === "add"} aria-label={t("exams.content")} bind:this={listEl} data-tour="exam-list">
           <h3 class="pane-title exam-pane-title">
             <span>{drag ? t("exams.dragHint") : outline ? t("exams.outlineHint") : t("exams.content")}</span>
             {#if !drag}
               <span class="pane-actions">
-                <button class="btn btn-small ghost" title={t("exams.addSectionHint")} onclick={addSection}><Icon name="plus" />{t("exams.addSection")}</button>
+                <button class="btn btn-small ghost" data-tour="exam-section" title={t("exams.addSectionHint")} onclick={addSection}><Icon name="plus" />{t("exams.addSection")}</button>
                 {#if !outline}
                   <button class="icon-btn small-icon" class:on={brief} aria-pressed={brief} title={t(brief ? "exams.showAnswers" : "exams.hideAnswers")}
                     aria-label={t(brief ? "exams.showAnswers" : "exams.hideAnswers")} onclick={() => showBrief(!brief)}><Icon name={brief ? "unfold" : "fold"} /></button>
                 {/if}
-                <span class="seg seg-small" role="group" aria-label={t("exams.view")}>
+                <span class="seg seg-small" role="group" aria-label={t("exams.view")} data-tour="exam-view">
                   <button class:on={!outline} title={t("exams.fullHint")} onclick={() => showOutline(false)}>{t("exams.full")}</button>
                   <button class:on={outline} title={t("exams.outlineTitle")} onclick={() => showOutline(true)}>{t("exams.outline")}</button>
                 </span>
@@ -844,7 +844,7 @@
     <div class="page-head">
       <div><h1>{t("exams.title")}</h1><p>{t("exams.lead")}</p></div>
       <div class="actions">
-        <button class="btn primary" onclick={async () => { if (!pools.length) await loadQuestions(); newOpen = true; }}><Icon name="plus" />{t("exams.new")}</button>
+        <button class="btn primary" data-tour="exams-new" onclick={async () => { if (!pools.length) await loadQuestions(); newOpen = true; }}><Icon name="plus" />{t("exams.new")}</button>
       </div>
     </div>
     {#if loading}
@@ -852,7 +852,7 @@
     {:else if !exams.length}
       <div class="empty"><div class="mark"><Icon name="exams" /></div><p>{t("exams.none")}</p></div>
     {:else}
-      <div class="rows">
+      <div class="rows" data-tour="exams-list">
         {#each exams as exam (exam.path)}
           <button class="row-item exam-row" onclick={() => openExam(exam.path)}>
             <div class="text">

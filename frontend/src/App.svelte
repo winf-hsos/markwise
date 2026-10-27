@@ -7,6 +7,10 @@
   import Exams from "./pages/Exams.svelte";
   import Settings from "./pages/Settings.svelte";
   import ConfirmDialog from "./components/ConfirmDialog.svelte";
+  import HelpDialog from "./components/HelpDialog.svelte";
+  import Tour from "./components/Tour.svelte";
+  import TourOffer from "./components/TourOffer.svelte";
+  import { guide } from "./lib/guide.svelte.js";
   import { tick, untrack } from "svelte";
   import { t } from "./lib/i18n.svelte.js";
   import { route } from "./lib/router.svelte.js";
@@ -45,6 +49,9 @@
     if (event.ctrlKey && event.key.toLowerCase() === "b") {
       event.preventDefault();
       toggleNav();
+    } else if (event.key === "F1" && !guide.steps) {
+      event.preventDefault();
+      guide.helpOpen = true;
     }
   }
 </script>
@@ -69,4 +76,7 @@
   </main>
 </div>
 <ConfirmDialog />
+<HelpDialog />
+<Tour />
+<TourOffer />
 <div class="toast" class:show={toast.visible} role="status" aria-live="polite">{toast.text}</div>

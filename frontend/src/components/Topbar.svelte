@@ -2,6 +2,7 @@
   import Icon from "./Icon.svelte";
   import { t } from "../lib/i18n.svelte.js";
   import { app, setCurrentModule } from "../lib/state.svelte.js";
+  import { guide } from "../lib/guide.svelte.js";
 
   let open = $state(false);
 
@@ -16,7 +17,7 @@
 <svelte:window onclick={closeOnOutside} />
 
 <header class="topbar">
-  <div class="module-switch" class:open>
+  <div class="module-switch" class:open data-tour="module-switch">
     <button class="module-current" aria-haspopup="true" aria-expanded={open} onclick={() => (open = !open)}>
       {#if current}
         <span class="module-short">{current.short_name}</span><span>{current.name}</span>
@@ -36,4 +37,5 @@
   {#if current}
     <span class="path"><Icon name="folder" />{current.path}</span>
   {/if}
+  <button class="icon-btn topbar-help" title={t("help.button")} aria-label={t("help.button")} onclick={() => (guide.helpOpen = true)}><Icon name="help" /></button>
 </header>

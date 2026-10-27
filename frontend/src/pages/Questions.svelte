@@ -479,7 +479,7 @@
       <div class="actions">
         <button class="btn" onclick={load} disabled={loading}><Icon name="refresh" />{t("q.reload")}</button>
         {#if pools.some((p) => p.exists)}
-          <button class="btn primary" onclick={() => { newPreset = { pool: filter.pool.length === 1 ? filter.pool[0] : "", concept: filter.concept.length === 1 ? filter.concept[0] : "" }; newOpen = true; }}><Icon name="plus" />{t("q.new")}</button>
+          <button class="btn primary" data-tour="q-new" onclick={() => { newPreset = { pool: filter.pool.length === 1 ? filter.pool[0] : "", concept: filter.concept.length === 1 ? filter.concept[0] : "" }; newOpen = true; }}><Icon name="plus" />{t("q.new")}</button>
         {/if}
       </div>
     {/if}
@@ -498,11 +498,11 @@
     <div class="empty"><div class="mark"><Icon name="questions" /></div><p>{t("q.noPool")}</p></div>
   {:else}
     <div class="q-tools">
-      <div class="search">
+      <div class="search" data-tour="q-search">
         <Icon name="search" />
         <input class="input" type="search" bind:value={filter.search} placeholder={t("q.search")} aria-label={t("q.search")} />
       </div>
-      <div class="q-filters">
+      <div class="q-filters" data-tour="q-filters">
         {#if pools.length > 1}
           <MultiSelect bind:selected={filter.pool} label={t("q.meta.pool")} allLabel={t("q.all.pools")}
             options={pools.map((p) => ({ value: p.path, label: p.name }))} />
@@ -522,7 +522,7 @@
         <MultiSelect bind:selected={filter.time} label={t("filter.time")} allLabel={t("q.all.times")}
           options={TIME_BUCKETS.map((v) => ({ value: v, label: bucketLabel(v, t) }))} />
       </div>
-      <div class="q-count">
+      <div class="q-count" data-tour="q-count">
         <span>{filtered ? t("q.count", { shown: shown.length, total: questions.length }) : t("q.countAll", { total: questions.length })}{#if hidden}{", "}<button
           class="link-btn" title={t("q.unfoldAll")} onclick={unfoldAll}>{t(hidden === 1 ? "q.foldedOne" : "q.folded", { n: hidden })}</button>{/if}</span>
         {#if filtered}
@@ -554,7 +554,7 @@
           aria-valuenow={listWidth} tabindex="0" style:left="{listWidth - 3}px"
           onpointerdown={dragEdge} ondblclick={() => keepListWidth(LIST_WIDTH)} onkeydown={edgeKey}></div>
       {/if}
-      <div class="q-list-pane" role="listbox" hidden={!listOpen} aria-label={t("questions.title")} bind:this={listPane} onscroll={onListScroll}>
+      <div class="q-list-pane" role="listbox" hidden={!listOpen} data-tour="q-list" aria-label={t("questions.title")} bind:this={listPane} onscroll={onListScroll}>
         {#if loading && questions.length === 0}
           <p class="muted pad">{t("q.loading")}</p>
         {:else if shown.length === 0}
@@ -588,7 +588,7 @@
       </div>
       <div class="q-preview-pane">
         {#if detail && selectedRow}
-          <div class="sheet-nav">
+          <div class="sheet-nav" data-tour="q-nav">
             <button class="icon-btn small-icon" title={t("sheet.prev")} aria-label={t("sheet.prev")} disabled={position <= 0} onclick={() => step(-1)}><Icon name="back" /></button>
             <span title={hidden ? t("sheet.positionFolded") : null}>{t("sheet.position", { n: position + 1, total: order.length })}</span>
             <button class="icon-btn small-icon flip" title={t("sheet.next")} aria-label={t("sheet.next")} disabled={position >= order.length - 1} onclick={() => step(1)}><Icon name="back" /></button>

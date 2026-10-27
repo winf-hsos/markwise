@@ -1027,3 +1027,27 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .form-grid.single { flex-direction: column; align-items: stretch; }
 .entry-main .qid { white-space: nowrap; }
 .exam-list .muted.pad { padding: 14px 18px; }
+
+/* --- help and tour ------------------------------------------------------------------------------- */
+.topbar-help { margin-left: auto; flex: none; }
+.topbar .path + .topbar-help { margin-left: 8px; }
+.topbar-help svg { width: 19px; height: 19px; }
+.help-points { margin: 0; padding-left: 20px; display: grid; gap: 10px; font-size: 14px; line-height: 1.5; color: var(--ink-soft); }
+.help-hint { margin-right: auto; align-self: center; }
+.tour-veil { position: fixed; inset: 0; z-index: 900; }
+.tour-veil i { position: fixed; background: rgba(15, 22, 33, 0.55); }
+.tour-spot { position: fixed; z-index: 901; border-radius: 6px; pointer-events: none; box-shadow: 0 0 0 3px var(--accent); }
+.tour-card { position: fixed; z-index: 902; display: grid; gap: 6px; padding: 14px 16px 12px; background: var(--paper);
+  border-radius: var(--radius-l); box-shadow: 0 18px 48px -12px rgba(15, 22, 33, 0.45); font-size: 13.5px; line-height: 1.5; }
+.tour-card b { font-size: 15px; }
+.tour-card p { margin: 0 0 4px; color: var(--ink-soft); }
+.tour-count { font-size: 11.5px; color: var(--accent-strong); font-weight: 600; }
+.tour-actions { display: flex; align-items: center; gap: 6px; }
+.tour-actions .spacer { flex: 1; }
+.tour-offer { position: fixed; right: 24px; bottom: 24px; z-index: 800; width: 360px; display: flex; gap: 12px; padding: 14px 16px;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-l); box-shadow: 0 16px 40px -16px rgba(27, 31, 39, 0.35); }
+.tour-offer p { margin: 4px 0 10px; font-size: 13px; color: var(--ink-soft); line-height: 1.45; }
+.tour-offer .tour-actions { justify-content: flex-end; }
+.tour-offer-icon { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); }
+.tour-offer-icon svg { width: 20px; height: 20px; stroke: var(--accent-strong); }
+.tour-anchor { display: inline-flex; }

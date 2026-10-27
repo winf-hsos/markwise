@@ -63,8 +63,8 @@
     </div>
     {#if modules.length > 0}
       <div class="actions">
-        <button class="btn" onclick={() => (openOpen = true)}><Icon name="folder" />{t("modules.open")}</button>
-        <button class="btn primary" onclick={() => newModule()}><Icon name="plus" />{t("modules.new")}</button>
+        <button class="btn" data-tour="modules-open" onclick={() => (openOpen = true)}><Icon name="folder" />{t("modules.open")}</button>
+        <button class="btn primary" data-tour="modules-new" onclick={() => newModule()}><Icon name="plus" />{t("modules.new")}</button>
       </div>
     {/if}
   </div>
@@ -83,7 +83,7 @@
     <div class="rows">
       {#each modules as m (m.path)}
         {@const current = m.path === app.settings?.current_module}
-        <div class="row-item module-row" class:current>
+        <div class="row-item module-row" class:current data-tour="module-row">
           <div class="text">
             <div class="title">
               <span class="module-short">{m.short_name}</span>
@@ -93,7 +93,7 @@
             </div>
             <span class="path"><Icon name="folder" />{m.path}</span>
             {#if m.exists}
-              <ul class="pool-list">
+              <ul class="pool-list" data-tour="module-pools">
                 {#each m.pools as p (p.path)}
                   <li>
                     <Icon name="questions" />
@@ -122,13 +122,13 @@
             {#if m.exists && !current}
               <button class="btn" onclick={() => makeCurrent(m)}>{t("modules.makeCurrent")}</button>
             {/if}
-            <Menu label={m.name} items={[
+            <span class="tour-anchor" data-tour="module-menu"><Menu label={m.name} items={[
               ...(m.exists ? [
                 { label: t("modules.addPool"), icon: "plus", onclick: () => { addPoolModule = m; addPoolOpen = true; } },
                 { label: t("modules.reveal"), icon: "folder", onclick: () => reveal(m.path) },
               ] : []),
               { label: t("modules.forget"), icon: "remove", onclick: () => forget(m) },
-            ]} />
+            ]} /></span>
           </div>
         </div>
       {/each}

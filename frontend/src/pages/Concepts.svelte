@@ -162,7 +162,7 @@
     </div>
     {#if module && pools.length}
       <div class="actions">
-        <button class="btn primary" onclick={openNew}><Icon name="plus" />{t("concepts.new")}</button>
+        <button class="btn primary" data-tour="concepts-new" onclick={openNew}><Icon name="plus" />{t("concepts.new")}</button>
       </div>
     {/if}
   </div>
@@ -178,7 +178,7 @@
     <p class="form-error">{error}</p>
   {:else}
     <div class="q-tools concept-tools">
-      <div class="search">
+      <div class="search" data-tour="concepts-search">
         <Icon name="search" />
         <input class="input" type="search" bind:value={search} placeholder={t("concepts.search")} aria-label={t("concepts.search")} />
       </div>
@@ -191,7 +191,7 @@
       <span class="q-count">{t("concepts.count", { shown: shown.length, total: concepts.length })}</span>
     </div>
     <div class="q-split">
-      <div class="q-list-pane" role="listbox" aria-label={t("concepts.title")} bind:this={listPane}
+      <div class="q-list-pane" role="listbox" aria-label={t("concepts.title")} bind:this={listPane} data-tour="concepts-list"
         onscroll={() => remember("concepts", modulePath, { scroll: listPane.scrollTop })}>
         {#if loading && !concepts.length}<p class="muted pad">{t("loading")}</p>{/if}
         {#each shown as c (c.pool + c.id)}
@@ -209,7 +209,7 @@
       <div class="q-preview-pane">
         {#if current}
           <article class="preview concept-detail">
-            <form class="form" onsubmit={save}>
+            <form class="form" onsubmit={save} data-tour="concept-form">
               <label class="field">
                 <span>{t("concepts.name")}</span>
                 <input class="input concept-title-input" bind:value={draft.name} placeholder={current.name} />
@@ -225,7 +225,7 @@
             </form>
 
             <section class="preview-section">
-              <div class="concept-head-row">
+              <div class="concept-head-row" data-tour="concept-questions">
                 <h4 class="sub">{t(current.questions === 1 ? "modules.question" : "modules.questions", { count: current.questions })}</h4>
                 <span class="spacer"></span>
                 <button class="btn" onclick={showQuestions} disabled={!current.questions}><Icon name="questions" />{t("concepts.showQuestions")}</button>

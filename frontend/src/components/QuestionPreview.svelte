@@ -148,7 +148,7 @@
 
 <article class="preview">
   <header class="preview-head">
-    <div class="preview-title">
+    <div class="preview-title" data-tour="q-labels">
       <span class="qid">{data.id}</span>
       {#if can}
         {#if data.type === "free_text"}
@@ -162,8 +162,8 @@
         <TimePick seconds={question.data.time_seconds ?? null} inherited={data.variant_of ? inherited.time_seconds ?? null : null}
           parent={parentId} title={data.id} note="" align="left" onchoose={(time_seconds) => save({ time_seconds })} />
         {#if lifecycle}
-          <TagPick label={t(`status.${data.status}`)} tone={data.status === "released" || data.status === "piloted" ? "ok" : ""}
-            heading={t("q.meta.status")} hint={t("pick.statusHint")} note={statusNote} actions={statusActions} />
+          <span class="tour-anchor" data-tour="q-status"><TagPick label={t(`status.${data.status}`)} tone={data.status === "released" || data.status === "piloted" ? "ok" : ""}
+            heading={t("q.meta.status")} hint={t("pick.statusHint")} note={statusNote} actions={statusActions} /></span>
         {:else}
           <span class="tag" class:ok={data.status === "released" || data.status === "piloted"}>{t(`status.${data.status}`)}</span>
         {/if}
@@ -199,13 +199,13 @@
     {:else if !compact}
       {#if !retired}
         {#if editable}
-          <button class="btn ghost details-toggle" class:on={details} aria-expanded={details} title={t(details ? "sheet.detailsHide" : "sheet.detailsShow")}
+          <button class="btn ghost details-toggle" data-tour="q-details" class:on={details} aria-expanded={details} title={t(details ? "sheet.detailsHide" : "sheet.detailsShow")}
             onclick={() => (details = !details)}><Icon name="sliders" />{t("sheet.details")}<span class="details-chevron"><Icon name="chevron" /></span></button>
         {:else}
           <button class="btn primary" onclick={() => onedit?.()}><Icon name="edit" />{t("edit.edit")}</button>
         {/if}
       {/if}
-      <Menu label={t("life.more")} items={actions} />
+      <span class="tour-anchor" data-tour="q-more"><Menu label={t("life.more")} items={actions} /></span>
     {/if}
   </header>
 
@@ -214,7 +214,7 @@
   {#if data.variant_of}<p class="variant-note">{t("q.variantOf", { id: data.variant_of })}</p>{/if}
 
   {#if can}
-    <InlineText class="stem" value={pick(question.data.stem)} placeholder={t("sheet.stem")} label={t("sheet.stem")} opened={fresh} onsave={(v) => setText("stem", v)} />
+    <div data-tour="q-stem"><InlineText class="stem" value={pick(question.data.stem)} placeholder={t("sheet.stem")} label={t("sheet.stem")} opened={fresh} onsave={(v) => setText("stem", v)} /></div>
     {#if question.data.code}<InlineText code value={question.data.code} language={question.data.code_language} label={t("sheet.code")} onsave={(v) => save({ code: v })} />{/if}
   {:else}
     <div class="stem">{@html inline(pick(data.stem))}</div>
