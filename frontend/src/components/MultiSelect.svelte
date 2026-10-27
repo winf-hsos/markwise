@@ -2,7 +2,7 @@
   import { t } from "../lib/i18n.svelte.js";
 
   // A filter with several choices: a button that names what is chosen, and a list of check boxes below it.
-  // Nothing chosen means everything is shown, as "all" says.
+  // Nothing chosen means everything is shown; the button then names the filter and says "all" on pointing at it.
   let { selected = $bindable([]), options = [], allLabel, label } = $props();
 
   let open = $state(false);
@@ -10,7 +10,7 @@
 
   const chosen = $derived(options.filter((o) => selected.includes(o.value)));
   const summary = $derived(
-    chosen.length === 0 ? allLabel : chosen.length === 1 ? chosen[0].label : `${chosen[0].label} +${chosen.length - 1}`,
+    chosen.length === 0 ? label : chosen.length === 1 ? chosen[0].label : `${chosen[0].label} +${chosen.length - 1}`,
   );
 
   function toggle(value) {
@@ -33,7 +33,7 @@
 
 <div class="multi" bind:this={root} {onkeydown}>
   <button type="button" class="select multi-button" class:active={chosen.length} aria-haspopup="true" aria-expanded={open}
-    aria-label={label} title={chosen.length > 1 ? chosen.map((o) => o.label).join(", ") : ""} onclick={() => (open = !open)}>
+    aria-label={label} title={chosen.length ? `${label}: ${chosen.map((o) => o.label).join(", ")}` : allLabel} onclick={() => (open = !open)}>
     <span>{summary}</span>
   </button>
   {#if open}

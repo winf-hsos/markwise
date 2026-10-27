@@ -449,8 +449,8 @@ kbd.k { font: 11.5px var(--code); border: 1px solid var(--line); border-bottom-w
 .page-wide > .page-head { margin-bottom: 18px; }
 .q-tools { display: grid; gap: 10px; margin-bottom: 14px; }
 .q-tools .search .input { height: 38px; }
-.q-filters { display: flex; flex-wrap: wrap; gap: 8px; }
-.q-filters .select { width: 172px; height: 32px; padding: 0 8px 0 10px; font-size: 13px; color: var(--ink-soft); cursor: pointer; text-overflow: ellipsis; }
+.q-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.q-filters .select { width: auto; max-width: 220px; height: 32px; padding: 0 8px 0 10px; font-size: 13px; color: var(--ink-soft); cursor: pointer; text-overflow: ellipsis; }
 .q-count { display: flex; gap: 14px; align-items: baseline; color: var(--muted); font-size: 12.5px; }
 .q-stats { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 0 0 12px; padding: 12px 16px; border: 1px solid var(--line);
   border-radius: var(--radius-l); background: var(--paper); font-size: 12.5px; }

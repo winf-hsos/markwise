@@ -217,6 +217,11 @@
     const k = rowKey(q);
     collapsed = collapsed.includes(k) ? collapsed.filter((c) => c !== k) : [...collapsed, k];
   }
+  // Variants the list folds away: counted above the list, skipped when paging.
+  const hidden = $derived(shown.length - listed.length);
+  function unfoldAll() {
+    collapsed = collapsed.filter((k) => !withVariants.includes(k));
+  }
   function toggleAllVariants() {
     collapsed = allFolded ? collapsed.filter((k) => !withVariants.includes(k)) : [...new Set([...collapsed, ...withVariants])];
   }
@@ -513,13 +518,14 @@
           options={["single", "multiple", "free_text"].map((v) => ({ value: v, label: t(`type.${v}`) }))} />
         <MultiSelect bind:selected={filter.use} label={t("q.meta.use")} allLabel={t("q.all.use")}
           options={[{ value: "practice", label: t("use.practice") }, { value: "exam", label: t("use.exam") }]} />
-        <MultiSelect bind:selected={filter.findings} label={t("q.findings")} allLabel={t("q.all.findings")}
+        <MultiSelect bind:selected={filter.findings} label={t("filter.findings")} allLabel={t("q.all.findings")}
           options={[{ value: "errors", label: t("q.findings.errors") }, { value: "warnings", label: t("q.findings.warnings") }, { value: "none", label: t("q.findings.none") }]} />
-        <MultiSelect bind:selected={filter.time} label={t("edit.time")} allLabel={t("q.all.times")}
+        <MultiSelect bind:selected={filter.time} label={t("filter.time")} allLabel={t("q.all.times")}
           options={TIME_BUCKETS.map((v) => ({ value: v, label: bucketLabel(v, t) }))} />
       </div>
       <div class="q-count">
-        <span>{t("q.count", { shown: shown.length, total: questions.length })}</span>
+        <span>{filtered ? t("q.count", { shown: shown.length, total: questions.length }) : t("q.countAll", { total: questions.length })}{#if hidden}{", "}<button
+          class="link-btn" title={t("q.unfoldAll")} onclick={unfoldAll}>{t(hidden === 1 ? "q.foldedOne" : "q.folded", { n: hidden })}</button>{/if}</span>
         {#if filtered}
           <button class="icon-btn small-icon" title={t("q.reset")} aria-label={t("q.reset")} onclick={() => (filter = normalized({}))}><Icon name="filter-off" /></button>
         {/if}
@@ -585,7 +591,7 @@
         {#if detail && selectedRow}
           <div class="sheet-nav">
             <button class="icon-btn small-icon" title={t("sheet.prev")} aria-label={t("sheet.prev")} disabled={position <= 0} onclick={() => step(-1)}><Icon name="back" /></button>
-            <span>{t("sheet.position", { n: position + 1, total: order.length })}</span>
+            <span title={hidden ? t("sheet.positionFolded") : null}>{t("sheet.position", { n: position + 1, total: order.length })}</span>
             <button class="icon-btn small-icon flip" title={t("sheet.next")} aria-label={t("sheet.next")} disabled={position >= order.length - 1} onclick={() => step(1)}><Icon name="back" /></button>
             {#if saving}<span class="hint">{t("sheet.saving")}</span>{/if}
           </div>
