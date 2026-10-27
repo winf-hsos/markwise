@@ -282,12 +282,11 @@
     busy = true;
     try {
       const result = await call("save_question", base.pool, base.data.id, $state.snapshot(fields), base.mtime_ns, force);
-      const wasReviewed = base.data.status === "reviewed";
       base = result.question;
       fields = editable(result.question.data);
       saved = JSON.stringify(fields);
       conflict = false;
-      showToast(!result.changed ? t("edit.noChange") : wasReviewed && base.data.status === "draft" ? t("edit.savedDraft") : t("edit.saved"));
+      showToast(!result.changed ? t("edit.noChange") : t("edit.saved"));
       onsaved?.(result.question);
       return true;
     } catch (err) {
@@ -370,7 +369,6 @@
 
   <div class="editor-split">
     <form class="editor-form" onsubmit={(e) => { e.preventDefault(); save(); }}>
-      {#if base.data.status === "reviewed"}<p class="form-info">{t("edit.reviewedNote")}</p>{/if}
 
       <div class="form-grid">
         {#if qtype !== "free_text"}

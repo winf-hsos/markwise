@@ -261,10 +261,9 @@
         // The file's time from the last save of this question, so that saves in a row do not take each other for edits elsewhere.
         const mtime = detail?.pool === pool && detail?.id === id ? detail.mtime_ns : since;
         const result = await call("save_question", pool, id, fields, mtime, false);
-        const wasReviewed = detail?.data?.status === "reviewed";
         if (detail?.pool === pool && detail?.id === id) detail = result.question;
         if (result.changed) {
-          showToast(wasReviewed && result.question.data.status === "draft" ? t("edit.savedDraft") : t("edit.saved"));
+          showToast(t("edit.saved"));
           // The list is read again once the edits pause, so that it does not hold up the next save.
           clearTimeout(refreshLater);
           refreshLater = setTimeout(load, 900);

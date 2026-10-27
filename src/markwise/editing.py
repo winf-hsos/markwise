@@ -153,17 +153,13 @@ def check_fields(pool: Pool, qid: str, fields: dict) -> list[dict]:
 
 def save(pool: Pool, qid: str, fields: dict, expected_mtime_ns: int | None = None,
          force: bool = False, author: str | None = None) -> tuple[Question, bool]:
-    """Save the editor's fields. A reviewed question whose content changes goes back to draft, and every
-    change records who made it and when."""
+    """Save the editor's fields. Every change records who made it and when; a release stays, also when the
+    content changes (Nicolas, 2026-10-27), and is taken back only by the examiner who gave it."""
     question = pool.find(qid)
     if not force and expected_mtime_ns is not None and question.path.stat().st_mtime_ns != expected_mtime_ns:
         raise ConflictError(f"{question.path} changed on disk since it was opened")
     changed = apply(question.data, fields)
     if changed:
-        if question.status == "reviewed":
-            question.data["status"] = "draft"
-            if "reviewed_by" in question.data:
-                del question.data["reviewed_by"]
         author = default_author() if author is None else author
         if author:
             for key, value in (("changed_by", author), ("changed_at", today())):

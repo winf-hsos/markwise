@@ -99,7 +99,7 @@ The **Questions** page lists every question in the pools of the current module. 
 
 ### Editing a question in place
 
-The question chosen on the Questions page is shown as it reads, and all of it is changed right there; there is no separate form. At first it shows only what students see: the question text, its code, figures and formulas, and the answers (for a free-text question, the expected answer). A click on a text, or on program code, turns it into a field with its Markdown (`**bold**`, `*italic*`, `` `code` ``, `$formula$`). The tick, **Ctrl+Enter** or a click elsewhere renders it again and saves it at once; **Escape** keeps the old text. A click on an answer's box marks it as correct (for single choice, instead of the one before). The plus below the answers adds one and opens it for typing, the bin at the right of an answer, shown on pointing at it, removes it. Texts are changed in the language shown, which the DE/EN switch selects. Each change is saved on its own, and a released question becomes a draft again.
+The question chosen on the Questions page is shown as it reads, and all of it is changed right there; there is no separate form. At first it shows only what students see: the question text, its code, figures and formulas, and the answers (for a free-text question, the expected answer). A click on a text, or on program code, turns it into a field with its Markdown (`**bold**`, `*italic*`, `` `code` ``, `$formula$`). The tick, **Ctrl+Enter** or a click elsewhere renders it again and saves it at once; **Escape** keeps the old text. A click on an answer's box marks it as correct (for single choice, instead of the one before). The plus below the answers adds one and opens it for typing, the bin at the right of an answer, shown on pointing at it, removes it. Texts are changed in the language shown, which the DE/EN switch selects. Each change is saved on its own; a released question stays released.
 
 The labels next to the identifier are the question's settings, and a click on one opens a small choice right below it, the same everywhere in Markwise: **type** (single or multiple choice; free text stays free text), **level**, **time to answer** (15 s to 5 min, or **Other …** in minutes and seconds), **status** and **use** (practice, exam, or both). The status label holds the release: it says who has released the question and offers **Release**, **Release as well** or **Withdraw my release**. For an exam variant, a setting it takes from its parent is shown lighter, and its choice offers to take the parent's value again.
 
@@ -116,7 +116,7 @@ The arrows above the question page through the questions in the order of the lis
 
 ### Releasing, exam variants, retiring
 
-A question is written as a **draft**. When an examiner has read it and agrees, **Release** under the status label notes their name in `reviewed_by` and makes the question **reviewed**; a second examiner can **Release as well**, so that both names stand there, as § 5 (3) c of the general examination regulations asks for two examiners. A question with errors cannot be released. Changing the content of a reviewed question makes it a draft again.
+A question is written as a **draft**. When an examiner has read it and agrees, **Release** under the status label notes their name in `reviewed_by` and makes the question **reviewed**; a second examiner can **Release as well**, so that both names stand there, as § 5 (3) c of the general examination regulations asks for two examiners. A question with errors cannot be released. A release stays when the question is changed later; only the examiner who gave it can take it back.
 
 The **⋯** menu next to **Details** holds the other steps:
 
@@ -174,7 +174,7 @@ From an exam, the pencil next to a question opens it in the editor (see [Putting
 
 **Save** (or **Ctrl+S**) writes only what you changed: every other line of the file stays as it was, including comments and fields Markwise does not know. **Discard** returns to the saved state, **Back to the list** asks before it drops unsaved changes. If someone else saved the same file in the meantime, for example a colleague in a shared folder, Markwise says so and lets you either load their version or save yours over it.
 
-A **reviewed** question goes back to **draft** when you change its content, because it then needs a new release. Every question notes who created it and who changed it last, with the date, using your name from the settings or else your Windows user name; the preview shows both.
+A **reviewed** question stays reviewed when you change it. Every question notes who created it and who changed it last, with the date, using your name from the settings or else your Windows user name; the preview shows both.
 
 ### Markwise remembers where you were
 
@@ -341,7 +341,7 @@ markwise question list "D:\Teaching\Statistics\pool" --findings errors     # que
 markwise question show "D:\Teaching\Statistics\pool" r-001
 ```
 
-Single fields can also be changed from the command line, with the same rules as in the window (only what changes is written; a reviewed question goes back to draft):
+Single fields can also be changed from the command line, with the same rules as in the window (only what changes is written; a release stays):
 
 ```
 markwise question set "D:\Teaching\Statistics\pool" r-001 level apply

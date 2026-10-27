@@ -82,7 +82,7 @@ The examiner sets up a module once: name and short name (shown in lists and on t
 - Create from a template per type; edit in place, on the question as it reads in print: a click turns a text into its Markdown, and the settings, rationales and figures sit below the question under **Details**, hidden until wanted. From an exam, a form with a live preview opens instead. Saving overwrites the file and keeps fields, comments and layout Markwise does not edit; there is no version history.
 - Deleting a question that has never been in an exam removes the file after a confirmation. A question that has been in an exam is retired instead, so that past exams and their statistics stay traceable.
 - Rules are checked while typing (for example at least four options, no option that gives itself away by its length).
-- Review: a question becomes `reviewed` once examiners have read it; who released it is recorded in the file (`reviewed_by`). Editing a reviewed question sets it back to `draft`.
+- Review: a question becomes `reviewed` once examiners have read it; who released it is recorded in the file (`reviewed_by`). A release stays when the question is edited later; only the examiner who gave it takes it back.
 - When two people edit the same question in a shared folder at the same time, Markwise notices on saving that the file changed in the meantime and shows both versions instead of silently overwriting the other person's work.
 - Statistics per question from past exams: difficulty, discrimination, how often each wrong option was chosen.
 - Export of the public questions for a practice platform.
@@ -197,3 +197,4 @@ The repository holds code, documentation and invented test data only. Real exams
 14. **Language:** one language per exam; the booklets contain only that language.
 15. **Order of building:** exams are first put together by hand and printed as anonymous booklets with a tick grid for the student number; personalised booklets from the participant list, shuffling and drawing by a blueprint follow.
 16. **Formulas:** LaTeX math between dollar signs (`$…$`, `$$…$$`) with the rules of Pandoc, so that people and language models write them as text and the websites read them alike; KaTeX sets them in the window, the bundled Typst package mitex in the booklet (Nicolas, 2026-10-26).
+17. **Releases stay:** editing a released question keeps it `reviewed` with its examiners; a release ends only when the examiner who gave it takes it back (Nicolas, 2026-10-27).

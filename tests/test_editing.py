@@ -68,7 +68,7 @@ def test_emptied_optional_fields_disappear_and_new_ones_find_their_place(pool):
     assert "coverage" not in keys and keys.index("code") == keys.index("image") + 1  # stem, image, code
 
 
-def test_a_reviewed_question_becomes_a_draft_when_its_content_changes(pool):
+def test_a_reviewed_question_stays_reviewed_when_its_content_changes(pool):
     q = pool.find("co-001")
     q.data["status"] = "reviewed"
     q.data["reviewed_by"] = ["Examiner A", "Examiner B"]
@@ -76,7 +76,7 @@ def test_a_reviewed_question_becomes_a_draft_when_its_content_changes(pool):
     fields = fields_of(pool, "co-001")
     fields["stem"]["en"] = "Which colour has the sky on a clear day?"
     question, changed = editing.save(pool, "co-001", fields)
-    assert changed and question.status == "draft" and "reviewed_by" not in question.data
+    assert changed and question.status == "reviewed" and list(question.data["reviewed_by"]) == ["Examiner A", "Examiner B"]
 
 
 def test_a_change_elsewhere_is_not_overwritten(pool):
