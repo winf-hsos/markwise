@@ -48,6 +48,7 @@
       const kept = recall("exams", modulePath);
       outline = kept.outline ?? false;
       brief = kept.brief ?? false;
+      hideAdded = kept.hideAdded ?? false;
       if (kept.open && exams.some((e) => e.path === kept.open)) await openExam(kept.open);
     } catch (err) {
       showToast(errorText(err));
@@ -572,6 +573,12 @@
 
   let search = $state("");
   let filter = $state({ pool: [], concept: [], level: [], type: [], use: ["exam"] });
+  // Questions already in the exam can leave the list, so that it shows only what is still to choose from.
+  let hideAdded = $state(false);
+  function setHideAdded(on) {
+    hideAdded = on;
+    remember("exams", modulePath, { hideAdded: on });
+  }
   const words = $derived(search.toLowerCase().split(/\s+/).filter(Boolean));
   const anyOf = (chosen, test) => !chosen.length || chosen.some(test);
   const candidates = $derived(
@@ -587,6 +594,8 @@
         words.every((w) => q.search.includes(w)),
     ),
   );
+  const hiddenAdded = $derived(hideAdded ? candidates.filter((q) => inExam.has(key(q.pool, q.id))).length : 0);
+  const pickable = $derived(hideAdded ? candidates.filter((q) => !inExam.has(key(q.pool, q.id))) : candidates);
   const pickerConcepts = $derived(
     [...new Map(questions.filter((q) => anyOf(filter.pool, (v) => q.pool === v)).map((q) => [q.concept, q.concept_name])).entries()]
       .sort((a, b) => a[1].localeCompare(b[1])),
@@ -688,10 +697,14 @@
               <MultiSelect bind:selected={filter.use} label={t("q.meta.use")} allLabel={t("q.all.use")}
                 options={[{ value: "practice", label: t("use.practice") }, { value: "exam", label: t("use.exam") }]} />
             </div>
-            <span class="hint">{t("q.count", { shown: candidates.length, total: questions.length })}</span>
+            <div class="picker-count">
+              <span class="hint">{t("q.count", { shown: pickable.length, total: questions.length })}{#if hiddenAdded}{", "}{t(hiddenAdded === 1 ? "exams.hiddenAddedOne" : "exams.hiddenAdded", { n: hiddenAdded })}{/if}</span>
+              <label class="check-line picker-hide" title={t("exams.hideAddedHint")}>
+                <input type="checkbox" checked={hideAdded} onchange={(e) => setHideAdded(e.currentTarget.checked)} />{t("exams.hideAdded")}</label>
+            </div>
           </div>
           <div class="picker-list">
-            {#each candidates as q (q.pool + q.id)}
+            {#each pickable as q (q.pool + q.id)}
               {@const added = inExam.has(key(q.pool, q.id))}
               <div class="picker-row" class:added class:held={drag && drag.pool === q.pool && drag.id === q.id}
                 title={added ? t("exams.inExam") : t("exams.dragRow")} onpointerdown={(e) => pressRow(e, q)}>

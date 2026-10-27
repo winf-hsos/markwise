@@ -1051,3 +1051,5 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .tour-offer-icon { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); }
 .tour-offer-icon svg { width: 20px; height: 20px; stroke: var(--accent-strong); }
 .tour-anchor { display: inline-flex; }
+.picker-count { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.picker-hide { height: auto; align-self: center; font-size: 12.5px; color: var(--muted); margin-left: auto; }
