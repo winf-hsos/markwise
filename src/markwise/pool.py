@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 import shutil
 import tomllib
-from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -27,6 +26,20 @@ def slugify(name: str) -> str:
     return text or "concept"
 
 
+def prefix_from_name(name: str) -> str:
+    """A short prefix for the identifiers of a pool, from its name: a short first word as it is (`LiFi Project` gives
+    `lifi`), else the initials of the words (`Artificial Intelligence` gives `ai`), else the start of a single long
+    word (`Statistics` gives `stat`). Anything in brackets is left out."""
+    words = re.findall(r"[0-9a-z]+", re.sub(r"\(.*?\)", " ", name).lower())
+    if not words:
+        return "q"
+    if len(words) == 1:
+        return words[0][:4]
+    if len(words[0]) <= 5:
+        return words[0]
+    return "".join(w[0] for w in words)
+
+
 def name_from_id(concept_id: str) -> str:
     """A readable stand-in for a concept that has no name yet."""
     return concept_id.replace("-", " ").capitalize()
@@ -40,6 +53,8 @@ class PoolSettings:
     max_options: int = 5
     # id -> {"name": ..., "description": ...}; None: the folder names under questions/ are the concepts
     concepts: dict[str, dict] | None = None
+    # the prefix of the identifiers of new questions; made from the name when first needed (Pool.id_prefix)
+    id_prefix: str = ""
 
     def to_toml(self) -> dict:
         data = {
@@ -48,17 +63,19 @@ class PoolSettings:
             "min_options": self.min_options,
             "max_options": self.max_options,
         }
+        if self.id_prefix:
+            data["id_prefix"] = self.id_prefix
         if self.concepts is not None:
             data["concepts"] = {cid: {k: v for k, v in info.items() if v} for cid, info in self.concepts.items()}
         return data
 
 
 def _read_concepts(raw) -> dict[str, dict]:
-    """Concepts as a table of names, descriptions and, once a question moved in from elsewhere, the prefix of the
-    concept's identifiers; the earlier plain list of identifiers is read as well."""
+    """Concepts as a table of names and descriptions; the earlier plain list of identifiers is read as well."""
     if isinstance(raw, list):
         return {str(cid): {} for cid in raw}
-    return {str(cid): {k: str(info[k]) for k in ("name", "description", "prefix") if k in info} for cid, info in raw.items()}
+    return {str(cid): {"name": str(info.get("name", "")), "description": str(info.get("description", ""))}
+            for cid, info in raw.items()}
 
 
 @dataclass
@@ -95,6 +112,7 @@ class Pool:
             min_options=int(raw.get("min_options", 4)),
             max_options=int(raw.get("max_options", 5)),
             concepts=_read_concepts(raw["concepts"]) if "concepts" in raw else None,
+            id_prefix=str(raw.get("id_prefix", "")),
         )
         return cls(root, settings)
 
@@ -270,34 +288,28 @@ class Pool:
         numbers = [int(m.group(1)) for qid in self.all_ids() if (m := pattern.match(qid))]
         return f"{parent_id}-v{max(numbers, default=0) + 1}"
 
-    def prefix_for(self, concept: str) -> str:
-        """The prefix of the concept's identifiers: the one kept in pool.toml, else the one most of its questions
-        use, else the initials of the concept name. A question moved here from another concept keeps its identifier
-        and thus its prefix, so the concept keeps its own before the first one moves in (see keep_prefix)."""
-        kept = ((self.settings.concepts or {}).get(concept) or {}).get("prefix")
+    def id_prefix(self) -> str:
+        """The prefix of the identifiers of new questions, the same for every concept, so that a question can change
+        its concept without its identifier saying otherwise: `lifi-001`. Made from the pool's name the first time
+        it is needed and then kept in pool.toml, so that renaming the pool does not change it. Questions from
+        earlier pools keep the concept prefixes they came with; the pool prefix never equals one of those."""
+        if self.settings.id_prefix:
+            return self.settings.id_prefix
+        with open(self.root / POOL_FILE, "rb") as f:  # another window may have made it since this pool was opened
+            kept = str(tomllib.load(f).get("id_prefix", ""))
         if kept:
+            self.settings.id_prefix = kept
             return kept
-        initials = "".join(part[0] for part in concept.split("-") if part) or "q"
-        folder = self.questions_dir / concept
-        if folder.exists():
-            prefixes = Counter(m.group(1) for path in folder.glob("*.yaml")
-                               if (m := re.match(r"^(.+)-\d+$", path.stem)))  # numbered questions, not variants
-            if prefixes:  # on a tie the concept's own initials win
-                return max(sorted(prefixes), key=lambda p: (prefixes[p], p == initials))
-        return initials
-
-    def keep_prefix(self, concept: str) -> None:
-        """Write the concept's prefix into pool.toml, so that questions moving in do not change it."""
-        prefix = self.prefix_for(concept)
-        if self.settings.concepts is None:  # from now on the pool keeps a list, starting with its folders
-            self.settings.concepts = {cid: {} for cid in self.concepts()}
-        info = self.settings.concepts.setdefault(concept, {})
-        if info.get("prefix") != prefix:
-            info["prefix"] = prefix
-            self.write_settings()
+        prefix = prefix_from_name(self.settings.name)
+        taken = {m.group(1) for qid in self.all_ids() if (m := re.match(r"^(.+?)-\d+", qid))}
+        while prefix in taken:
+            prefix += "q"
+        self.settings.id_prefix = prefix
+        self.write_settings()
+        return prefix
 
     def new_question(self, concept: str, qtype: str, author: str | None = None) -> Question:
-        qid = self.next_id(self.prefix_for(concept))
+        qid = self.next_id(self.id_prefix())
         path = self.path_for(concept, qid)
         author = default_author() if author is None else author
         question = Question(template(qid, concept, qtype, self.settings.languages, self.settings.min_options, author))

@@ -190,14 +190,33 @@ def test_retired_questions_are_only_read(imported):
 
 def test_new_question_and_delete(imported):
     _, pool = imported
+    # New questions are numbered per pool, whatever their concept, with a prefix made from the pool's name.
+    prefix = pool.id_prefix()
+    assert prefix and Pool.open(pool.root).settings.id_prefix == prefix  # kept in pool.toml
     q = pool.new_question("colours", "single")
-    assert q.id == "co-003" and len(q.options) == 4 and q.path.exists()
+    assert q.id == f"{prefix}-001" and len(q.options) == 4 and q.path.exists()
     free = pool.new_question("shapes", "free_text")
-    assert free.id == "s-001" and free.get("time_seconds") == 300 and "points" not in free.data
-    assert pool.delete("co-003", used_in_exam=False) == "deleted"
+    assert free.id == f"{prefix}-002" and free.get("time_seconds") == 300 and "points" not in free.data
+    assert pool.delete(q.id, used_in_exam=False) == "deleted"
     assert pool.delete("co-001", used_in_exam=True) == "retired"
     assert pool.find("co-001").status == "retired"
-    assert pool.next_id("co") == "co-003"  # a deleted draft frees its id; retired questions keep theirs
+    assert pool.next_id(prefix) == f"{prefix}-003"  # numbers are never given twice while a file has them
+    assert pool.next_id("co") == "co-003"  # retired questions keep their identifiers
+
+
+def test_the_pool_prefix_comes_from_the_name_and_never_equals_a_concept_prefix(tmp_path):
+    from markwise.pool import prefix_from_name
+
+    assert prefix_from_name("LiFi Project (Digitization and Programming)") == "lifi"
+    assert prefix_from_name("Artificial Intelligence") == "ai"
+    assert prefix_from_name("Statistics") == "stat"
+    pool = Pool.create(tmp_path / "p", PoolSettings(name="Artificial Intelligence"))
+    pool.new_question("agents", "single")  # ai-001
+    (pool.questions_dir / "basics").mkdir()
+    (pool.questions_dir / "agents" / "ai-001.yaml").rename(pool.questions_dir / "basics" / "ai-007.yaml")
+    pool.settings.id_prefix = ""  # as if an earlier pool came with questions named ai-… and no prefix kept yet
+    pool.write_settings()
+    assert Pool.open(pool.root).id_prefix() == "aiq"
 
 
 def test_save_detects_a_change_on_disk(imported):

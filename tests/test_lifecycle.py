@@ -64,7 +64,7 @@ def test_exam_variant_starts_as_a_copy(pool):
     assert variant.data["stem"]["en"] == pool.find("co-001").data["stem"]["en"]
     assert variant.path == pool.path_for("colours", "co-001-v1")
     assert lifecycle.create_variant(pool, "co-001", "Examiner B").id == "co-001-v2"
-    assert pool.next_id(pool.prefix_for("colours")) == "co-003"  # variants do not disturb the numbering
+    assert pool.next_id("co") == "co-003"  # variants do not disturb the numbering
     with pytest.raises(lifecycle.LifecycleError):
         lifecycle.create_variant(pool, "co-002")  # co-002 is a variant itself
 
@@ -164,15 +164,16 @@ def test_detached_variants_become_questions_of_their_own(pool):
     parent_level = pool.find("co-001").level
     _draft_parent_with_variants(pool)
     result = lifecycle.delete(pool, "co-001", "detach")
+    p = pool.id_prefix()  # detached variants are numbered like new questions
     assert [(v["id"], v["new_id"]) for v in result["variants"]] == [
-        ("co-001-v1", "co-003"), ("co-001-v2", "co-004"), ("co-002", "co-005")]
-    assert pool.all_ids() == {"co-003", "co-004", "co-005"}
-    own, inherited = pool.find("co-003"), pool.find("co-004")
+        ("co-001-v1", f"{p}-001"), ("co-001-v2", f"{p}-002"), ("co-002", f"{p}-003")]
+    assert pool.all_ids() == {f"{p}-001", f"{p}-002", f"{p}-003"}
+    own, inherited = pool.find(f"{p}-001"), pool.find(f"{p}-002")
     assert own.data["level"] == "remember"  # its own value stays
     assert inherited.data["level"] == parent_level and "type" in inherited.data  # inherited settings are written in
     assert not own.variant_of and not inherited.variant_of and not inherited.public and inherited.exam
-    assert pool.next_id(pool.prefix_for("colours")) == "co-006"
-    assert not [f for f in check_pool(pool) if f.question in ("co-003", "co-004") and f.severity == "error"]
+    assert pool.next_id(p) == f"{p}-004"
+    assert not [f for f in check_pool(pool) if f.question in (f"{p}-001", f"{p}-002") and f.severity == "error"]
 
 
 def test_a_free_text_question_can_have_variants_that_inherit_lines_and_half_points(pool):

@@ -15,6 +15,7 @@ name = "LiFi Project"
 languages = ["de", "en"]   # every question needs stem, options and feedback in each
 min_options = 4            # never below 4 (§ 5 (3) a of the general examination regulations)
 max_options = 5
+id_prefix = "lifi"         # prefix of new identifiers, made from the name when first needed; then it stays
 
 # The concepts, each with a name and a short description in plain words. The key is the identifier
 # Markwise makes from the name; it names the folder of the concept's questions and never changes.
@@ -33,7 +34,7 @@ The identifier is the name in lower case, with umlauts written out (`ä` becomes
 ## A question
 
 ```yaml
-id: cs-001                 # prefix of the concept and a running number
+id: lifi-007               # prefix of the pool and a running number (imported questions keep theirs, e.g. cs-001)
 concept: code-systems      # the concept's identifier, equal to the folder name
 type: single               # single | multiple | free_text
 level: understand          # remember | understand | apply

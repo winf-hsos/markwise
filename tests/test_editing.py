@@ -133,7 +133,7 @@ def test_api_creates_questions_in_existing_or_named_new_concepts(pool):
     api = Api()
     assert api.create_question(str(pool.root), "planets", "single")["code"] == "concept_unknown"
     created = api.create_question(str(pool.root), "shapes", "multiple")["data"]
-    assert created["id"] == "s-001" and created["data"]["type"] == "multiple" and created["concept_name"] == "Shapes"
+    assert created["id"] == f"{pool.id_prefix()}-001" and created["data"]["type"] == "multiple" and created["concept_name"] == "Shapes"
     new = api.create_question(str(pool.root), "", "single", {"name": "Größen und Maße", "description": "Wie viel wovon."})["data"]
     assert new["data"]["concept"] == "groessen-und-masse" and new["concept_name"] == "Größen und Maße"
     assert api.create_question(str(pool.root), "", "single", {"name": "größen und maße"})["code"] == "concept_exists"
@@ -376,8 +376,9 @@ def test_a_question_moves_to_another_concept_with_its_variants(pool):
     shapes = pool.add_concept("Light and Optics")
     pool.write_settings()
     pool = Pool.open(pool.root)
-    first = pool.new_question(shapes, "single", author="Examiner A")  # the concept's own prefix
-    assert first.id == "lao-001"
+    prefix = pool.id_prefix()
+    first = pool.new_question(shapes, "single", author="Examiner A")  # numbered per pool, not per concept
+    assert first.id == f"{prefix}-001"
     variants = sorted(q.id for q in pool.load()[0] if q.variant_of == "co-001")
     assert variants  # the invented pool has an exam variant of co-001
 
@@ -392,7 +393,7 @@ def test_a_question_moves_to_another_concept_with_its_variants(pool):
         assert q.concept == shapes and q.path.parent.name == shapes and q.get("changed_by") == "Examiner B"
     codes = {f.code for f in check_pool(pool)}
     assert not codes & {"concept_folder", "variant_concept"}
-    # The concept keeps numbering its own questions, not those that moved in.
-    assert pool.new_question(shapes, "single", author="Examiner A").id == "lao-002"
+    # Moving changes nothing about the numbering of new questions.
+    assert pool.new_question(shapes, "single", author="Examiner A").id == f"{prefix}-002"
     with pytest.raises(editing.MoveError):
         editing.move_to_concept(pool, "co-001", "no-such-concept")

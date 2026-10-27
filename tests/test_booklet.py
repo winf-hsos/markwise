@@ -134,7 +134,7 @@ def test_an_exam_with_errors_or_without_questions_does_not_print(exam):
 def test_the_exam_page_gets_questions_as_the_booklet_shows_them(exam):
     module = Module.around(exam.root)
     pool = str(module.pool_root(exam.questions[0].pool))
-    answer = Api().exam_items("en", [{"pool": pool, "id": "co-002"}, {"pool": pool, "id": "co-003"},
+    answer = Api().exam_items("en", [{"pool": pool, "id": "co-002"}, {"pool": pool, "id": exam.questions[1].id},
                                      {"pool": pool, "id": "co-404"}])["data"]
     choice, task, gone = answer["items"]
     assert choice["type"] == "multiple" and choice["options"] and all(set(o) == {"id", "text"} for o in choice["options"])

@@ -224,7 +224,6 @@ def move_to_concept(pool: Pool, qid: str, concept: str, author: str | None = Non
     for q in family:
         if pool.path_for(concept, q.id).exists():
             raise MoveError("question_exists", f"{q.id} exists in '{concept}' already")
-    pool.keep_prefix(concept)  # new questions there keep the concept's prefix, not that of the newcomers
     author = default_author() if author is None else author
     for q in family:
         old = q.path

@@ -128,7 +128,7 @@ def delete(pool: Pool, qid: str, variants: str | None = None, used_in_exam: bool
                                              f"(--variants delete|detach)")
     result = {"id": qid, "variants": []}
     if variants == "detach":
-        prefix = pool.prefix_for(question.concept)
+        prefix = pool.id_prefix()
         for child in children:
             old_id, new_id = child.id, pool.next_id(prefix)  # numbered before the parent goes, so it is never reused
             _detach(pool, child, new_id)
