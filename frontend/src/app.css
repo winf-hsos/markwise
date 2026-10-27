@@ -543,6 +543,22 @@ div.inline-view { white-space: pre-wrap; }
 .tag-select { width: auto; height: 24px; padding: 0 22px 0 8px; font-size: 12px; }
 .preview-title .chips { display: inline-flex; gap: 4px; }
 .preview-title .chip { height: 24px; padding: 0 9px; font-size: 12px; }
+/* the details below a question: settings, attachments and the help of the model, each saved at once */
+.details-toggle.on { background: var(--accent-soft); color: var(--accent-strong); }
+.details-chevron { display: inline-flex; margin-left: -2px; transition: transform 0.15s; }
+.details-chevron svg { width: 14px; height: 14px; }
+.details-toggle.on .details-chevron { transform: rotate(180deg); }
+.details-panel { display: grid; gap: 18px; }
+.details-panel .form-grid { gap: 14px 20px; align-items: flex-start; }
+.details-panel .form-grid .select { min-width: 220px; }
+.details-panel .chips { height: auto; }
+.details-panel .chip { height: 26px; padding: 0 10px; font-size: 12.5px; }
+.details-panel .time-choice { display: flex; flex-wrap: wrap; gap: 4px; }
+.details-panel .check-line { height: auto; align-self: center; margin-top: 18px; }
+.details-more { gap: 12px; }
+.details-assist { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.details-assist .spinner { width: 16px; height: 16px; border-width: 2px; }
+.seg button .warn-dot, .seg-small button .dot { margin-left: 5px; }
 .pad { padding: 16px 18px; margin: 0; }
 
 .q-row { display: grid; gap: 4px; width: 100%; padding: 11px 18px; border: 0; border-bottom: 1px solid var(--line-soft);

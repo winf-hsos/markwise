@@ -2,7 +2,6 @@
   import { tick, untrack } from "svelte";
   import Icon from "../components/Icon.svelte";
   import QuestionPreview from "../components/QuestionPreview.svelte";
-  import QuestionEditor from "../components/QuestionEditor.svelte";
   import QuestionStats from "../components/QuestionStats.svelte";
   import MultiSelect from "../components/MultiSelect.svelte";
   import { TIME_BUCKETS, bucketLabel, timeBucket } from "../lib/time.js";
@@ -11,7 +10,7 @@
   import { call } from "../lib/api.js";
   import { errorText, t } from "../lib/i18n.svelte.js";
   import { app, pending, showToast } from "../lib/state.svelte.js";
-  import { drafts, recall, remember } from "../lib/viewstate.svelte.js";
+  import { recall, remember } from "../lib/viewstate.svelte.js";
   import { dropQuestions, ensureQuestions, questionsOf, refreshQuestions } from "../lib/questions.svelte.js";
   import { route } from "../lib/router.svelte.js";
 
@@ -26,7 +25,7 @@
   const error = $derived(store.error && !store.loaded ? errorText(store.error) : "");
   let selected = $state(null); // { pool, id }
   let detail = $state(null);
-  let editing = $state(null); // the detail of the question in the editor
+  let fresh = $state(""); // the key of a question just created, whose text opens for typing
   let newOpen = $state(false);
   let newPreset = $state({});
   let listPane = $state(null);
@@ -62,7 +61,7 @@
   });
 
   // Whenever the page opens or another module becomes the current one: take up where the person left this
-  // module (filters, selection, scroll position, an open editor), then load.
+  // module (filters, selection, scroll position), then load.
   $effect(() => {
     modulePath;
     untrack(() => restore());
@@ -71,7 +70,6 @@
   async function restore() {
     const kept = recall("questions", modulePath);
     detail = null;
-    editing = null;
     selected = kept.selected ?? null;
     filter = normalized(kept.filter);
     collapsed = kept.collapsed ?? [];
@@ -90,12 +88,6 @@
     if (wanted) {
       newPreset = wanted;
       newOpen = true;
-    } else if (kept.editing) {
-      try {
-        editing = await call("get_question", kept.editing.pool, kept.editing.id);
-      } catch {
-        editing = null; // the question is gone; the list shows what is there
-      }
     }
     restoredFor = modulePath;
   }
@@ -107,7 +99,6 @@
     if (!wanted && !create) return;
     untrack(() => {
       if (restoredFor !== modulePath) return; // restore() takes it up
-      editing = null; // unsaved changes stay among the drafts
       if (wanted) filter = normalized(wanted);
       if (create) {
         newPreset = create;
@@ -124,7 +115,6 @@
       filter: $state.snapshot(filter),
       selected: $state.snapshot(selected),
       collapsed: $state.snapshot(collapsed),
-      editing: editing ? { pool: editing.pool, id: editing.id } : null,
     };
     if (restoredFor === modulePath) untrack(() => remember("questions", modulePath, state));
   });
@@ -132,8 +122,6 @@
   function onListScroll() {
     remember("questions", modulePath, { scroll: listPane.scrollTop });
   }
-
-  const draftKey = (q) => `${q.pool}\n${q.id}`;
 
   const words = $derived(filter.search.toLowerCase().split(/\s+/).filter(Boolean));
   const any = (chosen, test) => !chosen.length || chosen.some(test);
@@ -246,6 +234,7 @@
 
   async function show(row) {
     selected = { pool: row.pool, id: row.id };
+    if (fresh !== rowKey(row)) fresh = "";
     try {
       detail = await call("get_question", row.pool, row.id);
     } catch (err) {
@@ -366,13 +355,13 @@
   // Up and down move through the list while the search field or the list has the focus; Alt with left and right,
   // or Page Up and Down, page through the questions from anywhere but a text field.
   function onkeydown(event) {
-    if (route.path === "/questions" && !editing && !event.target.closest?.("textarea, input, select")
+    if (route.path === "/questions" && !event.target.closest?.("textarea, input, select")
       && ((event.altKey && ["ArrowLeft", "ArrowRight"].includes(event.key)) || ["PageUp", "PageDown"].includes(event.key))) {
       event.preventDefault();
       step(event.key === "ArrowLeft" || event.key === "PageUp" ? -1 : 1);
       return;
     }
-    if (route.path !== "/questions" || editing || !["ArrowDown", "ArrowUp"].includes(event.key) || event.target.closest?.("select, .preview")) return;
+    if (route.path !== "/questions" || !["ArrowDown", "ArrowUp"].includes(event.key) || event.target.closest?.("select, .preview")) return;
     if (!shown.length) return;
     event.preventDefault();
     const index = selectedRow ? order.indexOf(selectedRow) : -1;
@@ -381,22 +370,34 @@
     document.getElementById(`q-${next.pool}-${next.id}`)?.scrollIntoView({ block: "nearest" });
   }
 
-  // The practice questions of the pool being edited, for the choice "exam variant of".
-  const practice = $derived(editing ? questions.filter((q) => q.pool === editing.pool && q.public && !q.variant_of) : []);
+  // The practice questions of the pool shown, for the choice "exam variant of".
+  const practice = $derived(detail ? questions.filter((q) => q.pool === detail.pool && q.public && !q.variant_of) : []);
 
-  async function edit() {
-    editing = await call("get_question", detail.pool, detail.id);
+  // The details below a question, shown or hidden as they were left on this computer.
+  let details = $state(readDetails());
+  function readDetails() {
+    try {
+      return localStorage.getItem("markwise-question-details") === "open";
+    } catch {
+      return false;
+    }
   }
+  $effect(() => {
+    try {
+      localStorage.setItem("markwise-question-details", details ? "open" : "closed");
+    } catch {
+      /* no storage: the choice is simply not kept */
+    }
+  });
 
-  function created(fresh) {
-    showToast(t("newQ.created", { id: fresh.id }));
-    selected = { pool: fresh.pool, id: fresh.id };
-    editing = fresh;
-    load();
-  }
-
-  function closeEditor() {
-    editing = null; // what was saved is being read again already (onsaved)
+  // A new question shows at once, with its text open for typing; filters that would hide it are cleared.
+  async function created(question) {
+    showToast(t("newQ.created", { id: question.id }));
+    selected = { pool: question.pool, id: question.id };
+    detail = question;
+    fresh = rowKey(question);
+    await load();
+    if (!selectedRow) filter = normalized({});
   }
 
   // A step of a question's life, from the preview: release, withdraw, variant, retire, restore, delete.
@@ -441,7 +442,8 @@
       load();
       if (name === "variant") {
         selected = { pool: result.pool, id: result.id };
-        editing = result;
+        detail = result;
+        details = true; // what makes the variant differ is in the details
         showToast(t("life.variantCreated", { id: result.id }));
       } else {
         detail = result;
@@ -469,7 +471,7 @@
       <h1>{t("questions.title")}</h1>
       <p>{pools.length ? t("q.from", { pools: pools.map((p) => p.name).join(t("q.and")) }) : t("questions.lead")}</p>
     </div>
-    {#if module && !editing}
+    {#if module}
       <div class="actions">
         <button class="btn" onclick={load} disabled={loading}><Icon name="refresh" />{t("q.reload")}</button>
         {#if pools.some((p) => p.exists)}
@@ -488,12 +490,6 @@
     </div>
   {:else if error}
     <p class="form-error">{error}</p>
-  {:else if editing}
-    {#key editing.pool + editing.id}
-      <QuestionEditor question={editing} {practice} onclose={closeEditor} onsaved={() => load()}
-        draft={drafts.get(draftKey(editing))}
-        ondraft={(d) => (d ? drafts.set(draftKey(editing), d) : drafts.delete(draftKey(editing)))} />
-    {/key}
   {:else if !loading && pools.length === 0}
     <div class="empty"><div class="mark"><Icon name="questions" /></div><p>{t("q.noPool")}</p></div>
   {:else}
@@ -593,8 +589,8 @@
             <button class="icon-btn small-icon flip" title={t("sheet.next")} aria-label={t("sheet.next")} disabled={position >= order.length - 1} onclick={() => step(1)}><Icon name="back" /></button>
             {#if saving}<span class="hint">{t("sheet.saving")}</span>{/if}
           </div>
-          <QuestionPreview question={detail} variants={selectedRow.variants} onopen={openFile} onedit={edit} onaction={act} {me}
-            editable onchange={saveFields} />
+          <QuestionPreview question={detail} variants={selectedRow.variants} onopen={openFile} onaction={act} {me}
+            editable onchange={saveFields} bind:details {practice} fresh={fresh === rowKey(detail)} />
         {:else}
           <div class="empty quiet"><p>{t("q.select")}</p></div>
         {/if}

@@ -4,6 +4,7 @@ export const ICONS = {
   panel: '<rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke-width="1.8"/><path d="M9 4.5v15" fill="none" stroke-width="1.8"/>',
   modules: '<path d="M3.5 7.5 12 3l8.5 4.5L12 12 3.5 7.5Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><path d="M3.5 12 12 16.5 20.5 12M3.5 16.5 12 21l8.5-4.5" fill="none" stroke-width="1.7" stroke-linejoin="round"/>',
   folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/>',
+  sliders: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9" fill="none" stroke-width="1.8" stroke-linecap="round"/><circle cx="15" cy="7" r="2" fill="none" stroke-width="1.8"/><circle cx="9" cy="17" r="2" fill="none" stroke-width="1.8"/>',
   chevron: '<path d="m7 10 5 5 5-5" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   zip: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><path d="M11 6h1M11 9h1M11 12h1M10.5 15h2v3h-2z" fill="none" stroke-width="1.5"/>',
   file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" fill="none" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 3v5h5" fill="none" stroke-width="1.7" stroke-linejoin="round"/>',

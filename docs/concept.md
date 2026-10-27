@@ -79,7 +79,7 @@ The examiner sets up a module once: name and short name (shown in lists and on t
 
 **Working with questions.**
 - Browse, search and filter by concept, level, status, type, public or exam, language.
-- Create from a template per type; edit with a live preview that looks exactly like the printed question. Saving overwrites the file and keeps fields, comments and layout Markwise does not edit; there is no version history.
+- Create from a template per type; edit in place, on the question as it reads in print: a click turns a text into its Markdown, and the settings, rationales and figures sit below the question under **Details**, hidden until wanted. From an exam, a form with a live preview opens instead. Saving overwrites the file and keeps fields, comments and layout Markwise does not edit; there is no version history.
 - Deleting a question that has never been in an exam removes the file after a confirmation. A question that has been in an exam is retired instead, so that past exams and their statistics stay traceable.
 - Rules are checked while typing (for example at least four options, no option that gives itself away by its length).
 - Review: a question becomes `reviewed` once examiners have read it; who released it is recorded in the file (`reviewed_by`). Editing a reviewed question sets it back to `draft`.

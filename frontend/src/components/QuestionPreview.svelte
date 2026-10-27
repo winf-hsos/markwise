@@ -2,6 +2,7 @@
   import Icon from "./Icon.svelte";
   import Menu from "./Menu.svelte";
   import InlineText from "./InlineText.svelte";
+  import QuestionDetails from "./QuestionDetails.svelte";
   import { highlight } from "../lib/highlight.js";
   import { formatDate, formatTime } from "../lib/time.js";
   import { inline } from "../lib/inline.js";
@@ -13,9 +14,12 @@
   // `lifecycle` false leaves out release and the other steps, for a look from elsewhere, such as an exam;
   // `language` is the language to show first.
   // `editable` lets each text turn into a field for its Markdown on a click; `onchange(fields)` receives what changed,
-  // in the shape the editor saves, so that the page can save it at once.
+  // in the shape the editor saves, so that the page can save it at once. An editable question shows only its text,
+  // figures, code and answers; `details` adds below them the rationales, all settings, the findings and where the
+  // question comes from, each setting changed in place. `practice` lists the pool's practice questions for the
+  // choice which one a variant varies, and `fresh` opens the text of a question just created for typing.
   let { question, variants = [], compact = false, onopen, onedit, onaction, me = "", lifecycle = true, language = null,
-    editable = false, onchange } = $props();
+    editable = false, onchange, details = $bindable(false), practice = [], fresh = false } = $props();
 
   // A variant shows the settings it inherits from its parent where it sets none of its own.
   const data = $derived.by(() => {
@@ -51,8 +55,9 @@
   const can = $derived(editable && !retired && Boolean(onchange));
   const copy = (value) => JSON.parse(JSON.stringify(value ?? null));
   const save = (fields) => onchange?.(fields);
+  // Only the language changed goes out; the other languages of the text stay as they are in the file.
   function setText(key, value) {
-    save({ [key]: { ...(copy(question.data[key]) ?? {}), [shown]: value } });
+    save({ [key]: { [shown]: value } });
   }
   const optionsCopy = () => copy(question.data.options ?? []);
   function setOption(index, key, value) {
@@ -79,28 +84,13 @@
   function removeOption(index) {
     save({ options: optionsCopy().filter((_, i) => i !== index) });
   }
-  function setType(type) {
-    const options = optionsCopy();
-    if (type === "single") {
-      let seen = false;
-      for (const o of options) {
-        o.correct = Boolean(o.correct) && !seen;
-        seen ||= o.correct;
-      }
-    }
-    save({ type, options });
-  }
-  // Practice and exam can both be on; at least one stays on.
-  function toggleUse(which) {
-    const exam = typeof question.data.exam === "boolean" ? question.data.exam : !question.data.public;
-    const now = { public: question.data.public === true, exam };
-    now[which] = !now[which];
-    if (!now.public && !now.exam) return;
-    save(now);
-  }
-  const TIMES = [15, 30, 45, 60, 120, 300];
-  const timeChoices = $derived([...new Set([...TIMES, ...(question.data.time_seconds ? [question.data.time_seconds] : [])])].sort((a, b) => a - b));
-  const usesOf = (d) => ({ practice: d.public === true, exam: typeof d.exam === "boolean" ? d.exam : !d.public });
+  // Languages in which a text the question needs is still empty, marked on the language switch.
+  const missing = $derived(can ? languages.filter((l) => {
+    const text = (value) => String(value?.[l] ?? "").trim();
+    return !text(data.stem) || (data.type === "free_text" ? !text(data.expected) : (data.options ?? []).some((o) => !text(o.text)));
+  }) : []);
+  const open = $derived(!can || details); // everything below the answers shows
+  const problems = $derived(question.findings.filter((f) => f.severity !== "note"));
 
   const useKey = (d) => {
     const exam = typeof d.exam === "boolean" ? d.exam : !d.public;
@@ -112,29 +102,15 @@
   <header class="preview-head">
     <div class="preview-title">
       <span class="qid">{data.id}</span>
-      {#if can && data.type !== "free_text" && !isInherited("type")}
-        <select class="select select-small tag-select" aria-label={t("stats.type")} value={data.type} onchange={(e) => setType(e.currentTarget.value)}>
-          <option value="single">{t("type.single")}</option>
-          <option value="multiple">{t("type.multiple")}</option>
-        </select>
-      {:else}
-        <span class="tag">{t(`type.${data.type}`)}</span>
-      {/if}
+      <span class="tag">{t(`type.${data.type}`)}</span>
       <span class="tag" class:ok={data.status === "reviewed" || data.status === "piloted"}>{t(`status.${data.status}`)}</span>
-      {#if can && !data.variant_of}
-        {@const uses = usesOf(question.data)}
-        <span class="chips" role="group" aria-label={t("q.meta.use")}>
-          <button type="button" class="chip" class:on={uses.practice} aria-pressed={uses.practice} onclick={() => toggleUse("public")}>{t("use.practice")}</button>
-          <button type="button" class="chip" class:on={uses.exam} aria-pressed={uses.exam} onclick={() => toggleUse("exam")}>{t("use.exam")}</button>
-        </span>
-      {:else}
-        <span class="tag">{t(useKey(data))}</span>
-      {/if}
+      <span class="tag">{t(useKey(data))}</span>
     </div>
     {#if languages.length > 1}
       <div class="seg seg-small" role="group">
         {#each languages as code}
-          <button class:on={shown === code} onclick={() => (lang = code)}>{code.toUpperCase()}</button>
+          <button class:on={shown === code} onclick={() => (lang = code)}
+            title={missing.includes(code) ? t("edit.missingIn", { lang: code.toUpperCase() }) : null}>{code.toUpperCase()}{#if missing.includes(code)}<i class="dot warn-dot"></i>{/if}</button>
         {/each}
       </div>
     {/if}
@@ -148,7 +124,12 @@
           <button class="btn" disabled={hasErrors} title={hasErrors ? t("err.has_errors") : t("life.releaseHint")}
             onclick={() => onaction?.("release")}><Icon name="check" />{reviewers.length ? t("life.releaseAlso") : t("life.release")}</button>
         {/if}
-        <button class="btn primary" class:ghost={can} title={can ? t("sheet.allFields") : null} onclick={() => onedit?.()}><Icon name="edit" />{can ? t("sheet.allFieldsShort") : t("edit.edit")}</button>
+        {#if editable}
+          <button class="btn ghost details-toggle" class:on={details} aria-expanded={details} title={t(details ? "sheet.detailsHide" : "sheet.detailsShow")}
+            onclick={() => (details = !details)}><Icon name="sliders" />{t("sheet.details")}<span class="details-chevron"><Icon name="chevron" /></span></button>
+        {:else}
+          <button class="btn primary" onclick={() => onedit?.()}><Icon name="edit" />{t("edit.edit")}</button>
+        {/if}
       {/if}
       <Menu label={t("life.more")} items={actions} />
     {/if}
@@ -159,7 +140,7 @@
   {#if data.variant_of}<p class="variant-note">{t("q.variantOf", { id: data.variant_of })}</p>{/if}
 
   {#if can}
-    <InlineText class="stem" value={pick(question.data.stem)} placeholder={t("sheet.stem")} label={t("sheet.stem")} onsave={(v) => setText("stem", v)} />
+    <InlineText class="stem" value={pick(question.data.stem)} placeholder={t("sheet.stem")} label={t("sheet.stem")} opened={fresh} onsave={(v) => setText("stem", v)} />
     {#if question.data.code}<InlineText code value={question.data.code} language={question.data.code_language} label={t("sheet.code")} onsave={(v) => save({ code: v })} />{/if}
   {:else}
     <div class="stem">{@html inline(pick(data.stem))}</div>
@@ -174,11 +155,12 @@
   {/if}
 
   {#if data.type === "free_text" && can}
-    {#if data.half_points}<p class="muted small">{t("q.halfPoints")}</p>{/if}
     <h4 class="sub">{t("q.expected")}</h4>
     <InlineText value={pick(question.data.expected)} placeholder={t("sheet.expected")} onsave={(v) => setText("expected", v)} />
-    <h4 class="sub">{t("q.markingNotes")}</h4>
-    <InlineText value={pick(question.data.marking_notes)} placeholder={t("sheet.marking")} onsave={(v) => setText("marking_notes", v)} />
+    {#if details}
+      <h4 class="sub">{t("q.markingNotes")}</h4>
+      <InlineText value={pick(question.data.marking_notes)} placeholder={t("sheet.marking")} onsave={(v) => setText("marking_notes", v)} />
+    {/if}
   {:else if data.type === "free_text"}
     {#if data.half_points}<p class="muted small">{t("q.halfPoints")}</p>{/if}
     {#if pick(data.expected)}<h4 class="sub">{t("q.expected")}</h4><p class="prose">{@html inline(pick(data.expected))}</p>{/if}
@@ -193,7 +175,7 @@
             <div class="option-text"><b>{option.id}</b>
               <InlineText tag="span" value={pick(option.text)} placeholder={t("sheet.option")} opened={added === option.id}
                 onsave={(v) => { added = null; setOption(i, "text", v); }} /></div>
-            <InlineText value={pick(option.feedback)} placeholder={t("sheet.feedback")} onsave={(v) => setOption(i, "feedback", v)} />
+            {#if details}<InlineText value={pick(option.feedback)} placeholder={t("sheet.feedback")} onsave={(v) => setOption(i, "feedback", v)} />{/if}
           </div>
           <button type="button" class="icon-btn small-icon danger option-remove" title={t("sheet.removeOption")} aria-label={t("sheet.removeOption")}
             onclick={() => removeOption(i)}><Icon name="trash" /></button>
@@ -217,35 +199,30 @@
     </ol>
   {/if}
 
+  {#if can && details}
+    <QuestionDetails {question} {data} lang={shown} {practice} {save} />
+  {/if}
+
+  {#if open || problems.length}
   <section class="preview-section">
     <h4 class="sub">{t("q.findings")}</h4>
     {#if question.findings.length === 0}
       <p class="check-ok"><Icon name="check" />{t("q.noFindings")}</p>
     {:else}
       <ul class="findings">
-        {#each question.findings as f}
+        {#each open ? question.findings : problems as f}
           <li><span class="tag {severityClass[f.severity]}">{t(`sev.${f.severity}`)}</span>{findingText(f)}</li>
         {/each}
       </ul>
     {/if}
   </section>
+  {/if}
 
-  {#if !compact}
+  {#if !compact && open}
   <section class="preview-section">
     <dl class="meta">
       <dt>{t("q.meta.concept")}</dt><dd>{question.concept_name ?? data.concept}{#if question.concept_description}<span class="muted small concept-desc">{question.concept_description}</span>{/if}</dd>
-      {#if can}
-        <dt>{t("q.meta.level")}</dt>
-        <dd><select class="select select-small" aria-label={t("q.meta.level")} value={question.data.level ?? ""} onchange={(e) => save({ level: e.currentTarget.value || null })}>
-          {#if data.variant_of}<option value="">{t("sheet.inherit", { value: question.inherited?.level ? t(`level.${question.inherited.level}`) : "–" })}</option>{/if}
-          {#each ["remember", "understand", "apply"] as level}<option value={level}>{t(`level.${level}`)}</option>{/each}
-        </select></dd>
-        <dt>{t("edit.time")}</dt>
-        <dd><select class="select select-small" aria-label={t("edit.time")} value={question.data.time_seconds ?? ""} onchange={(e) => save({ time_seconds: e.currentTarget.value ? Number(e.currentTarget.value) : null })}>
-          <option value="">{data.variant_of ? t("sheet.inherit", { value: question.inherited?.time_seconds ? formatTime(question.inherited.time_seconds) : "–" }) : t("q.noTime")}</option>
-          {#each timeChoices as s}<option value={s}>{formatTime(s)}</option>{/each}
-        </select></dd>
-      {:else}
+      {#if !can}
       <dt>{t("q.meta.level")}</dt><dd>{t(`level.${data.level}`)}{#if isInherited("level")}<span class="muted small"> · {t("q.inherited")}</span>{/if}</dd>
       <dt>{t("edit.time")}</dt><dd>{data.time_seconds ? formatTime(data.time_seconds) : t("q.noTime")}{#if isInherited("time_seconds")}<span class="muted small"> · {t("q.inherited")}</span>{/if}</dd>
       {/if}
@@ -255,8 +232,8 @@
       {#if data.variant_of}
         <dt>{t("q.parent")}</dt><dd>{data.variant_of}{#if question.parent?.stem}<span class="muted small concept-desc">{question.parent.stem}</span>{/if}</dd>
       {/if}
-      {#if data.coverage}<dt>{t("q.meta.coverage")}</dt><dd>{data.coverage}</dd>{/if}
-      {#if data.misconception}<dt>{t("q.meta.misconception")}</dt><dd>{data.misconception}</dd>{/if}
+      {#if data.coverage && !can}<dt>{t("q.meta.coverage")}</dt><dd>{data.coverage}</dd>{/if}
+      {#if data.misconception && !can}<dt>{t("q.meta.misconception")}</dt><dd>{data.misconception}</dd>{/if}
       {#if reviewers.length}<dt>{t("q.meta.reviewed")}</dt><dd>{reviewers.join(", ")}</dd>{/if}
       {#if data.created_by || data.created_at}<dt>{t("q.meta.created")}</dt><dd>{t("q.by", { name: data.created_by || "–", date: formatDate(data.created_at) })}</dd>{/if}
       <dt>{t("q.meta.pool")}</dt><dd>{question.pool_name}</dd>
