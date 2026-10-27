@@ -1,12 +1,11 @@
 <script>
   import { tick, untrack } from "svelte";
   import Icon from "../components/Icon.svelte";
-  import QuestionPreview from "../components/QuestionPreview.svelte";
+  import QuestionSheet from "../components/QuestionSheet.svelte";
   import QuestionStats from "../components/QuestionStats.svelte";
   import MultiSelect from "../components/MultiSelect.svelte";
   import { TIME_BUCKETS, bucketLabel, timeBucket } from "../lib/time.js";
   import NewQuestionDialog from "../components/NewQuestionDialog.svelte";
-  import { ask } from "../lib/confirm.svelte.js";
   import { call } from "../lib/api.js";
   import { errorText, t } from "../lib/i18n.svelte.js";
   import { app, pending, showToast } from "../lib/state.svelte.js";
@@ -248,34 +247,7 @@
     }
   }
 
-  // --- changes made in the preview, saved one by one, in the order they were made ---------------------
-  let queue = Promise.resolve();
-  let refreshLater = null;
-  let saving = $state(0);
-  function saveFields(fields) {
-    const { pool, id } = detail;
-    const since = detail.mtime_ns;
-    saving += 1;
-    queue = queue.then(async () => {
-      try {
-        // The file's time from the last save of this question, so that saves in a row do not take each other for edits elsewhere.
-        const mtime = detail?.pool === pool && detail?.id === id ? detail.mtime_ns : since;
-        const result = await call("save_question", pool, id, fields, mtime, false);
-        if (detail?.pool === pool && detail?.id === id) detail = result.question;
-        if (result.changed) {
-          showToast(t("edit.saved"));
-          // The list is read again once the edits pause, so that it does not hold up the next save.
-          clearTimeout(refreshLater);
-          refreshLater = setTimeout(load, 900);
-        }
-      } catch (err) {
-        showToast(err.code === "conflict" ? t("sheet.conflict") : errorText(err));
-        if (detail?.pool === pool && detail?.id === id) show({ pool, id });
-      } finally {
-        saving -= 1;
-      }
-    });
-  }
+  let saving = $state(0); // saves under way in the question sheet
 
   // Paging through the questions as the list shows them, also while the list is hidden.
   const position = $derived(selectedRow ? order.indexOf(selectedRow) : -1);
@@ -377,23 +349,6 @@
   // The practice questions of the pool shown, for the choice "exam variant of".
   const practice = $derived(detail ? questions.filter((q) => q.pool === detail.pool && q.public && !q.variant_of) : []);
 
-  // The details below a question, shown or hidden as they were left on this computer.
-  let details = $state(readDetails());
-  function readDetails() {
-    try {
-      return localStorage.getItem("markwise-question-details") === "open";
-    } catch {
-      return false;
-    }
-  }
-  $effect(() => {
-    try {
-      localStorage.setItem("markwise-question-details", details ? "open" : "closed");
-    } catch {
-      /* no storage: the choice is simply not kept */
-    }
-  });
-
   // A new question shows at once, with its text open for typing; filters that would hide it are cleared.
   async function created(question) {
     showToast(t("newQ.created", { id: question.id }));
@@ -404,66 +359,16 @@
     if (!selectedRow) filter = normalized({});
   }
 
-  // A step of a question's life, from the preview: release, withdraw, variant, retire, restore, delete.
-  let me = $state("");
-  call("whoami").then((name) => (me = name)).catch(() => {});
-
-  async function act(name) {
-    const { pool, id } = detail;
-    if (name === "retire" && !(await ask({ title: t("life.retireTitle", { id }), message: t("life.confirmRetire", { id }), action: t("life.retire") }))) return;
-    // Deleting a question that has variants asks what becomes of them: deleted too, or questions of their own.
-    const variants = selectedRow?.variants ?? [];
-    let withVariants = null;
-    if (name === "delete" && variants.length && detail.data.status === "draft") {
-      const n = variants.length;
-      withVariants = await ask({
-        title: t("life.deleteTitle", { id }),
-        message: t(n === 1 ? "life.deleteWithVariant" : "life.deleteWithVariants", { id, n, ids: variants.join(", ") }),
-        choices: [
-          { value: "detach", label: t("life.keepVariants") },
-          { value: "delete", label: t(n === 1 ? "life.deleteVariant" : "life.deleteVariants"), danger: true },
-        ],
-      });
-      if (!withVariants) return;
-    } else if (name === "delete" && !(await ask({ title: t("life.deleteTitle", { id }), message: t("life.confirmDelete", { id }), action: t("life.delete"), danger: true }))) return;
-    try {
-      if (name === "delete") {
-        const result = await call("delete_question", pool, id, withVariants);
-        const done = t(result.outcome === "deleted" ? "life.deleted" : "life.retiredToast", { id });
-        const detached = result.variants.filter((v) => v.new_id).map((v) => v.new_id);
-        showToast(detached.length ? t("life.variantsDetached", { done, ids: detached.join(", ") })
-          : result.variants.length ? t("life.variantsDeleted", { done, n: result.variants.length }) : done);
-        // Out of the list at once; reading the pools again takes a moment.
-        dropQuestions(modulePath, pool, [id, ...result.variants.map((v) => v.id)]);
-        selected = null;
-        detail = null;
-        load();
-        return;
-      }
-      const method = { release: "release_question", withdraw: "withdraw_release", variant: "create_variant",
-        retire: "retire_question", restore: "restore_question" }[name];
-      const result = await call(method, pool, id);
-      load();
-      if (name === "variant") {
-        selected = { pool: result.pool, id: result.id };
-        detail = result;
-        details = true; // what makes the variant differ is in the details
-        showToast(t("life.variantCreated", { id: result.id }));
-      } else {
-        detail = result;
-        showToast(t(`life.${name}Toast`, { id }));
-      }
-    } catch (err) {
-      showToast(errorText(err));
-    }
+  // What the sheet reports back: a variant just created is chosen, deleted questions leave the list at once.
+  function variantCreated(question) {
+    selected = { pool: question.pool, id: question.id };
+    load();
   }
-
-  async function openFile(path) {
-    try {
-      await call("open_file", path);
-    } catch (err) {
-      showToast(errorText(err));
-    }
+  function deleted(pool, ids) {
+    dropQuestions(modulePath, pool, ids); // out of the list at once; reading the pools again takes a moment
+    selected = null;
+    detail = null;
+    load();
   }
 </script>
 
@@ -594,8 +499,8 @@
             <button class="icon-btn small-icon flip" title={t("sheet.next")} aria-label={t("sheet.next")} disabled={position >= order.length - 1} onclick={() => step(1)}><Icon name="back" /></button>
             {#if saving}<span class="hint">{t("sheet.saving")}</span>{/if}
           </div>
-          <QuestionPreview question={detail} variants={selectedRow.variants} onopen={openFile} onaction={act} {me}
-            editable onchange={saveFields} bind:details {practice} fresh={fresh === rowKey(detail)} />
+          <QuestionSheet bind:question={detail} bind:saving variants={selectedRow.variants} {practice}
+            fresh={fresh === rowKey(detail)} onchanged={load} onvariant={variantCreated} ondeleted={deleted} />
         {:else}
           <div class="empty quiet"><p>{t("q.select")}</p></div>
         {/if}

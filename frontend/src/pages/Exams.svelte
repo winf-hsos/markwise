@@ -10,9 +10,9 @@
   import { errorText, findingText, t } from "../lib/i18n.svelte.js";
   import { formatDate, formatTime, formatTotal } from "../lib/time.js";
   import { app, showToast } from "../lib/state.svelte.js";
-  import { drafts, recall, remember } from "../lib/viewstate.svelte.js";
+  import { recall, remember } from "../lib/viewstate.svelte.js";
   import { ensureQuestions, questionsOf, refreshQuestions } from "../lib/questions.svelte.js";
-  import QuestionEditor from "../components/QuestionEditor.svelte";
+  import QuestionSheet from "../components/QuestionSheet.svelte";
   import ExamItem from "../components/ExamItem.svelte";
   import TimePick from "../components/TimePick.svelte";
   import TagPick from "../components/TagPick.svelte";
@@ -29,7 +29,8 @@
   const store = $derived(questionsOf(modulePath));
   const pools = $derived(store.pools);
   const questions = $derived(store.questions);
-  let editing = $state(null); // the detail of a question opened from the exam, in the editor
+  let editing = $state(null); // the question opened from the exam, changed in place as on the Questions page
+  let editSaving = $state(0);
   let newOpen = $state(false);
   let printOpen = $state(false);
 
@@ -618,7 +619,6 @@
 
   // The practice questions of the pool being edited, for the choice "exam variant of".
   const practice = $derived(editing ? questions.filter((q) => q.pool === editing.pool && q.public && !q.variant_of) : []);
-  const draftKey = (q) => `${q.pool}\n${q.id}`;
 
   // Whenever the questions were read again, here or on another page, the exam checks itself anew: a time
   // added or an error fixed changes what it says.
@@ -669,11 +669,21 @@
     <div class="empty"><div class="mark"><Icon name="exams" /></div><p>{t("exams.noModule")}</p></div>
   {:else if current}
     {#if editing}
-      {#key editing.pool + editing.id}
-        <QuestionEditor question={editing} {practice} back={t("exams.backToExam")} saveOnBack onclose={() => (editing = null)}
-          onsaved={() => refreshQuestions(modulePath)} draft={drafts.get(draftKey(editing))}
-          ondraft={(d) => (d ? drafts.set(draftKey(editing), d) : drafts.delete(draftKey(editing)))} />
-      {/key}
+      <!-- The same question sheet as on the Questions page; every change is saved at once. -->
+      <div class="exam-shell exam-edit">
+        <header class="editor-bar">
+          <button class="btn ghost" onclick={() => (editing = null)}><Icon name="back" />{t("exams.backToExam")}</button>
+          <b class="exam-title">{current.title}</b>
+          <span class="spacer"></span>
+          {#if editSaving}<span class="hint">{t("sheet.saving")}</span>{/if}
+        </header>
+        <div class="exam-edit-body">
+          <QuestionSheet bind:question={editing} bind:saving={editSaving} {practice} language={current.language}
+            variants={rows.get(key(editing.pool, editing.id))?.variants ?? []}
+            onchanged={() => refreshQuestions(modulePath)} onvariant={() => refreshQuestions(modulePath)}
+            ondeleted={() => { editing = null; refreshQuestions(modulePath); }} />
+        </div>
+      </div>
     {/if}
     <!-- Hidden, not closed, while a question is being edited: search, filters and scroll positions stay. -->
     <div class="exam-shell" style:display={editing ? "none" : null}>

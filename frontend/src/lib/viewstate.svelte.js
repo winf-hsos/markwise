@@ -47,5 +47,3 @@ export function rememberRoute(path) {
   persist();
 }
 
-// Unsaved edits by question (pool + id), for the time the window is open.
-export const drafts = new Map();

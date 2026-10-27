@@ -230,7 +230,6 @@ textarea.input { height: auto; padding: 8px 12px; resize: vertical; line-height:
 
 .editor { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr); gap: 16px; align-items: start; }
 .editor > div:last-child { position: sticky; top: 16px; }
-.editor-form { display: flex; flex-direction: column; gap: 14px; }
 .row { display: flex; gap: 10px; }
 .row > * { flex: 1; }
 .opt { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: start; }
@@ -553,7 +552,6 @@ div.inline-view { white-space: pre-wrap; }
 .details-panel .form-grid .select { min-width: 220px; }
 .details-panel .chips { height: auto; }
 .details-panel .chip { height: 26px; padding: 0 10px; font-size: 12.5px; }
-.details-panel .time-choice { display: flex; flex-wrap: wrap; gap: 4px; }
 .details-panel .check-line { height: auto; align-self: center; margin-top: 18px; }
 .details-more { gap: 12px; }
 .details-assist { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -608,39 +606,21 @@ div.inline-view { white-space: pre-wrap; }
 .preview-actions { display: flex; gap: 8px; margin-bottom: 10px; }
 
 /* --- question editor (step 4) ----------------------------------------------------- */
-.editor-shell { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--radius-l); overflow: hidden; }
 .editor-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px 10px 8px; border-bottom: 1px solid var(--line); background: var(--paper); }
 .exam-shell > .editor-bar { flex-wrap: wrap; }
 .editor-bar .qid { font-size: 14px; }
 .editor-bar .spacer { flex: 1; }
 .editor-bar .hint { color: var(--faint); font-size: 12px; margin-right: 6px; }
-.unsaved { display: inline-flex; align-items: center; gap: 6px; color: var(--amber); font-size: 12.5px; }
 .conflict { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--red-soft); color: var(--red); font-size: 13px; }
 .conflict p { margin: 0 auto 0 0; }
-.editor-split { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); }
-.editor-form { overflow: auto; padding: 22px 26px 40px; display: grid; gap: 16px; align-content: start; border-right: 1px solid var(--line); }
-.editor-preview { overflow: auto; background: #fbfbfc; }
 .form-grid { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: flex-end; }
 .form-grid .select { min-width: 260px; max-width: 100%; }
 
-.lang-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: -4px; }
-.lang-tabs button { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border: 0; border-bottom: 2px solid transparent;
-  background: none; color: var(--muted); cursor: pointer; margin-bottom: -1px; }
-.lang-tabs button.on { color: var(--ink); font-weight: 600; border-bottom-color: var(--accent); }
 .warn-dot { color: var(--amber); }
 
 .grow-text { field-sizing: content; min-height: 34px; max-height: 360px; line-height: 1.5; padding: 7px 12px; }
 .grow-text.mono { font-family: var(--code); font-size: 12.5px; }
 
-.option-edit { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.option-edit li { display: grid; grid-template-columns: 30px 1fr 32px; gap: 8px; align-items: start; padding: 10px; border: 1px solid var(--line-soft); border-radius: var(--radius-m); }
-.option-edit li.correct { border-color: #bfe0cc; background: #f7fbf8; }
-.correct-toggle { width: 24px; height: 24px; margin-top: 5px; border: 1.5px solid #a3a9b2; border-radius: 6px; background: var(--paper); display: grid; place-items: center; cursor: pointer; }
-.correct-toggle.on { border-color: var(--green); background: var(--green); }
-.correct-toggle svg { width: 15px; height: 15px; stroke: #fff; }
-.option-fields { display: grid; grid-template-columns: 18px 1fr; gap: 6px 8px; align-items: start; }
-.option-letter { font: 600 13px/34px var(--ui); color: var(--muted); }
-.option-fields .feedback { grid-column: 2; font-size: 12.5px; color: var(--ink-soft); background: #fcfcfd; }
 .check-line { display: inline-flex; align-items: center; gap: 8px; height: 34px; align-self: flex-end; font-size: 13px; }
 .more summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 4px 0; }
 .more[open] { display: grid; gap: 12px; }
@@ -726,10 +706,6 @@ div.inline-view { white-space: pre-wrap; }
 .options.single li.correct .box { background: var(--paper); }
 .options.single li.correct .box::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--green); }
 .options.single .box svg { display: none; }
-.correct-toggle.round { border-radius: 50%; }
-.correct-toggle.round.on { background: var(--paper); }
-.correct-toggle.round.on::after { content: ""; width: 11px; height: 11px; border-radius: 50%; background: var(--green); }
-.correct-toggle.round svg { display: none; }
 
 /* --- concepts page ------------------------------------------------------------------ */
 .concept-tools { grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; }
@@ -758,9 +734,6 @@ div.inline-view { white-space: pre-wrap; }
 .icon-btn.danger:hover { color: var(--red); background: var(--red-soft); }
 .attachment-card .icon-btn { width: 30px; height: 30px; }
 
-.time-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.time-custom { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; font-size: 13px; color: var(--muted); }
-.time-custom .input { width: 64px; height: 30px; padding: 0 8px; }
 
 /* --- release and retire ------------------------------------------------------------- */
 .released { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border-radius: var(--radius-m);
@@ -784,15 +757,9 @@ div.inline-view { white-space: pre-wrap; }
 .proposal-why { display: block; margin-top: 3px; font-size: 12px; color: var(--faint); }
 .model-select { width: 260px; }
 .env-key { background: var(--accent-soft); }
-.assist-whole { display: grid; gap: 8px; justify-items: start; padding-top: 14px; border-top: 1px solid var(--line-soft); }
-.assist-whole .assist-review { justify-self: stretch; }
 .assist-change-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .assist-before { margin-top: 6px; color: var(--faint); text-decoration: line-through; font: 14px/1.45 var(--print); }
 .assist-after { margin-top: 4px; font: 15px/1.45 var(--print); }
-.lang-row { display: flex; align-items: flex-end; gap: 12px; border-bottom: 1px solid var(--line); margin-bottom: -4px; }
-.lang-row .lang-tabs { border-bottom: 0; margin-bottom: 0; }
-.review-btn { margin-left: auto; margin-bottom: 4px; }
-.review-btn + .lang-hint { margin-left: 0; }
 .assist-change-head .lang-tag { margin-left: 6px; }
 .assist-bar { position: sticky; top: -22px; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
   margin: -12px -14px 0; padding: 10px 14px; background: var(--accent-soft); border-bottom: 1px solid var(--line-soft);
@@ -808,8 +775,6 @@ div.inline-view { white-space: pre-wrap; }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
 .assist-note { padding: 10px 12px; border-radius: var(--radius-m); background: var(--paper); border: 1px dashed var(--line); }
 .assist-note p { margin: 4px 0 0; white-space: pre-line; font: 12.5px/1.55 var(--code); }
-.lang-hint { margin-left: auto; padding-bottom: 8px; font-size: 12px; color: var(--faint); text-decoration: none; }
-.lang-hint:hover { color: var(--accent); }
 .pool-langs { display: inline-flex; gap: 3px; }
 .q-row.variant-row { padding-left: 40px; background: #fcfcfd; }
 .q-row.variant-row.on { background: var(--accent-soft); }
@@ -1064,3 +1029,6 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 .exam-entry { cursor: pointer; scroll-margin-top: 58px; }
 .picker-row { scroll-margin-top: 44px; }
 .exam-entry.chosen { box-shadow: 0 0 0 2px var(--accent); }
+/* a question opened from the exam: the same sheet as on the Questions page */
+.exam-edit-body { flex: 1; min-height: 0; overflow: auto; }
+.exam-edit-body > .preview { margin: 0 auto; }
