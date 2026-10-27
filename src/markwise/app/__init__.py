@@ -15,6 +15,17 @@ DEV_URL = "http://localhost:5173"
 APP_ID = "HochschuleOsnabrueck.Markwise"
 
 
+def drop_page_cache(storage: Path) -> None:
+    """Forget the pages WebView2 keeps from earlier starts. pywebview serves the interface on a fixed local port,
+    and its "do not cache" header gets lost, so after an update the window could still show the old interface.
+    The interface lies on this computer, so the cache gains nothing; what the pages remember (Local Storage)
+    stays. A cache still in use by another window is left alone."""
+    import shutil
+    profile = storage / "EBWebView" / "Default"
+    for name in ("Cache", "Code Cache"):
+        shutil.rmtree(profile / name, ignore_errors=True)
+
+
 def run(dev: bool = False, debug: bool = False) -> None:
     import webview  # imported here so that the command line works without a window toolkit
 
@@ -33,6 +44,7 @@ def run(dev: bool = False, debug: bool = False) -> None:
     )
     storage = user_settings.app_dir() / "webview"
     storage.mkdir(parents=True, exist_ok=True)
+    drop_page_cache(storage)
     webview.start(debug=debug, private_mode=False, storage_path=str(storage), icon=str(ICON))
 
 

@@ -230,3 +230,16 @@ def test_pool_languages_can_be_changed_and_texts_are_kept(tmp_path):
     assert reopened.find(question.id).data["stem"]["en"].startswith("How many")  # dropping a language deletes nothing
     with pytest.raises(ValueError):
         reopened.set_languages(["fr"])
+
+
+def test_the_window_forgets_cached_pages_but_keeps_what_pages_remember(tmp_path):
+    from markwise.app import drop_page_cache
+
+    profile = tmp_path / "EBWebView" / "Default"
+    for name in ("Cache", "Code Cache", "Local Storage"):
+        (profile / name).mkdir(parents=True)
+        (profile / name / "data").write_text("old", encoding="utf-8")
+    drop_page_cache(tmp_path)
+    assert not (profile / "Cache").exists() and not (profile / "Code Cache").exists()
+    assert (profile / "Local Storage" / "data").read_text(encoding="utf-8") == "old"
+    drop_page_cache(tmp_path / "nothing-here")  # a first start has no cache yet
