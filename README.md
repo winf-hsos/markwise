@@ -488,6 +488,14 @@ python tools\scan_test.py read <scan.pdf> work\scan-test\results
 
 prints for each sheet whether the QR code, the orientation, the student number and every box were read as expected, and saves image crops of the uncertain boxes and a control image per page. The `work` folder is never part of the repository.
 
+For a first test without a pen, Markwise can fill in the sheets itself, with marks that look handwritten (crosses and ticks in ballpoint blue and black, small and oversized crosses, blackened boxes, half strokes, faint, normal and erased pencil, a circled box, felt-tip crosses, the student numbers written and ticked), exactly as the instruction sheet asks:
+
+```
+python tools\fill_test_sheet.py fill work\scan-test\scan-test-sheets.pdf work\scan-test\filled.pdf
+```
+
+Print the filled sheets without scaling and scan them as above; this tests printer, paper and copier, though not real pens. `python tools\fill_test_sheet.py simulate <filled.pdf> <scan.pdf>` imitates such a scan (slightly turned and shifted, blurred, noisy, grey paper, the second sheet upside down), to check the reader before anything is printed.
+
 ## Not there yet
 
 | What | Planned for |
