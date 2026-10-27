@@ -14,6 +14,7 @@
   import QuestionEditor from "../components/QuestionEditor.svelte";
   import ExamItem from "../components/ExamItem.svelte";
   import TimePick from "../components/TimePick.svelte";
+  import TagPick from "../components/TagPick.svelte";
   import Dialog from "../components/Dialog.svelte";
   import QuestionPreview from "../components/QuestionPreview.svelte";
 
@@ -517,6 +518,21 @@
     }
   }
 
+  // The level, chosen from its label like the time, belongs to the question in its pool.
+  async function setLevel(index, level) {
+    const entry = entries[index];
+    try {
+      const detail = await call("get_question", entry.pool, entry.id);
+      await call("save_question", entry.pool, entry.id, { level }, detail.mtime_ns, false);
+      if (entry.row) entry.row.level = level; // shown at once; the pools are read again below
+      showToast(t("levelPick.done", { id: entry.id, level: t(`level.${level}`) }));
+      refreshQuestions(modulePath);
+    } catch (err) {
+      showToast(errorText(err));
+    }
+  }
+  const LEVEL_OPTIONS = $derived(["remember", "understand", "apply"].map((v) => ({ value: v, label: t(`level.${v}`) })));
+
   // --- editing a question without leaving the exam ----------------------------------------------------
 
   async function editQuestion(pool, id) {
@@ -786,7 +802,9 @@
                   <span class="type-icon"><Icon name={TYPE_ICONS[entry.row?.type] ?? "questions"} /></span>
                   <span class="qid">{entry.id}</span>
                   <span class="q-concept">{entry.row?.concept_name ?? ""}</span>
-                  {#if entry.row?.level}<span class="tag">{t(`level.${entry.row.level}`)}</span>{/if}
+                  {#if entry.row?.level}<TagPick label={t(`level.${entry.row.level}`)} heading={t("levelPick.title", { id: entry.id })}
+                    hint={t("pick.hint")} value={entry.row.level} options={LEVEL_OPTIONS} note={t("timePick.note")}
+                    onchoose={(level) => setLevel(i, level)} />{/if}
                   {#if entry.row}<TimePick seconds={entry.row.time_seconds} title={entry.id} onchoose={(s) => setTime(i, s)} />{/if}
                   <label class="entry-points" title={t("exams.pointsHint")}>
                     <input class="input" type="number" min="0.5" step="0.5" value={entry.points}

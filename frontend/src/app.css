@@ -882,14 +882,25 @@ button.heritage:hover { text-decoration: underline; }
 .exam-entry > .booklet-item { border: 0; border-radius: 0 0 6px 6px; box-shadow: none; }
 
 /* the answering time as a label that opens a small choice */
-.time-pick { position: relative; display: inline-flex; }
+.time-pick, .tag-pick { position: relative; display: inline-flex; }
+.tag-button.faint { background: transparent; box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); }
+.tag-button.ok { cursor: pointer; }
+.chip.faint { border-style: dashed; }
+.tag-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; width: max-content; min-width: 220px; max-width: 320px;
+  display: grid; gap: 10px; padding: 12px 14px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-l);
+  box-shadow: 0 16px 40px -16px rgba(27, 31, 39, 0.28); font-size: 13px; font-weight: 400; color: var(--ink); }
+.tag-pop b { font-weight: 600; }
+.tag-pop-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag-pop-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag-pop .hint { font-size: 11.5px; color: var(--faint); }
 .tag-button { border: 0; cursor: pointer; font: inherit; }
 .tag-button:hover { box-shadow: inset 0 0 0 1px var(--line); }
 .tag-button.warn:hover { box-shadow: inset 0 0 0 1px #d9a21b; }
-.time-pop { position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; width: 300px; display: grid; gap: 10px; padding: 12px 14px;
+.time-pop { position: absolute; top: calc(100% + 6px); left: auto; right: 0; z-index: 20; width: 300px; display: grid; gap: 10px; padding: 12px 14px;
   background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-l); box-shadow: 0 16px 40px -16px rgba(27, 31, 39, 0.28);
   font-size: 13px; }
 .time-pop-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.time-pop.left { left: 0; right: auto; }
 .time-pop-other { display: flex; align-items: center; gap: 6px; }
 .time-pop-other .input { width: 58px; height: 30px; padding: 0 6px; text-align: right; }
 .time-pop-other .btn { margin-left: auto; }

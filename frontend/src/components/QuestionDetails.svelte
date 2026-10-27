@@ -1,7 +1,6 @@
 <script>
   import Icon from "./Icon.svelte";
   import Menu from "./Menu.svelte";
-  import TimeChoice from "./TimeChoice.svelte";
   import AssistChanges from "./AssistChanges.svelte";
   import CodeDialog from "./CodeDialog.svelte";
   import ImageDialog from "./ImageDialog.svelte";
@@ -10,10 +9,11 @@
   import { errorText, t } from "../lib/i18n.svelte.js";
   import { llmReady, showToast } from "../lib/state.svelte.js";
 
-  // The settings of a question below its text and answers, each saved the moment it changes: type, level, use,
-  // time, the question a variant varies, figures and code, where the content is taught, and the help of the
-  // language model. `data` is the question with what a variant inherits filled in, `lang` the language shown,
-  // `practice` the practice questions of the pool, and `save(fields)` saves the fields it is given.
+  // The settings of a question below its text and answers that have no label in its heading, each saved the moment
+  // it changes: the question a variant varies, the lines and half points of free text, figures and code, where the
+  // content is taught, and the help of the language model. `data` is the question with what a variant inherits
+  // filled in, `lang` the language shown, `practice` the practice questions of the pool, and `save(fields)` saves the
+  // fields it is given.
   let { question, data, lang, practice = [], save } = $props();
 
   const own = $derived(question.data);
@@ -25,44 +25,11 @@
   const isChoice = $derived(data.type === "single" || data.type === "multiple");
   const copy = (value) => JSON.parse(JSON.stringify(value ?? null));
 
-  function setType(type) {
-    const options = copy(own.options ?? []);
-    if (type === "single") {
-      let seen = false;
-      for (const o of options) {
-        o.correct = Boolean(o.correct) && !seen;
-        seen ||= o.correct;
-      }
-    }
-    save({ type, options });
-  }
-
-  // Practice and exam can both be on; at least one stays on. A practice question is no exam variant.
   const uses = $derived({ public: own.public === true, exam: typeof own.exam === "boolean" ? own.exam : !own.public });
-  function toggleUse(which) {
-    const next = { ...uses, [which]: !uses[which] };
-    if (!next.public && !next.exam) return;
-    save(next.public && own.variant_of ? { ...next, variant_of: "" } : next);
-  }
 
   // A variant varies a question of the same kind: free text a free-text question, choice a choice question.
   const variantChoices = $derived(practice.filter((p) => p.concept === own.concept && p.id !== own.id
     && (p.type === "free_text") === (data.type === "free_text")));
-
-  // The time is saved a moment after the last change, so that typing minutes and seconds saves once; until
-  // then the choice shows what was chosen.
-  let time = $state(undefined);
-  let timeLater = null;
-  $effect(() => {
-    question.data.id;
-    own.time_seconds;
-    time = undefined;
-  });
-  function setTime(seconds) {
-    time = seconds;
-    clearTimeout(timeLater);
-    timeLater = setTimeout(() => save({ time_seconds: seconds }), 500);
-  }
 
   // --- figures and code ------------------------------------------------------------------------------------
   let codeOpen = $state(false);
@@ -173,40 +140,8 @@
 {/snippet}
 
 <section class="preview-section details-panel">
+  {#if !uses.public || data.type === "free_text"}
   <div class="form-grid">
-    {#if isChoice}
-      <div class="field">
-        <span class="field-label">{t("edit.type")}{@render heritage("type")}</span>
-        <div class="seg seg-small" role="group" aria-label={t("edit.type")}>
-          {#each ["single", "multiple"] as v}
-            <button type="button" class:on={data.type === v} class:inherited={fromParent("type")} onclick={() => setType(v)}>{t(`type.${v}`)}</button>
-          {/each}
-        </div>
-      </div>
-    {/if}
-    <div class="field">
-      <span class="field-label">{t("edit.level")}{@render heritage("level")}</span>
-      <div class="seg seg-small" role="group" aria-label={t("edit.level")}>
-        {#each ["remember", "understand", "apply"] as v}
-          <button type="button" class:on={data.level === v} class:inherited={fromParent("level")} onclick={() => save({ level: v })}>{t(`level.${v}`)}</button>
-        {/each}
-      </div>
-    </div>
-    {#if !isVariant}
-      <div class="field">
-        <span>{t("edit.use")}</span>
-        <div class="chips" role="group" aria-label={t("edit.use")}>
-          <button type="button" class="chip" class:on={uses.public} aria-pressed={uses.public} onclick={() => toggleUse("public")}>{t("use.practice")}</button>
-          <button type="button" class="chip" class:on={uses.exam} aria-pressed={uses.exam} onclick={() => toggleUse("exam")}>{t("use.exam")}</button>
-        </div>
-      </div>
-    {/if}
-    <div class="field">
-      <span class="field-label">{t("edit.time")}{@render heritage("time_seconds")}</span>
-      {#key question.pool + question.data.id}
-        <TimeChoice bind:value={() => (time === undefined ? own.time_seconds ?? null : time), setTime} inherited={isVariant ? inherited.time_seconds ?? null : null} />
-      {/key}
-    </div>
     {#if !uses.public}
       <label class="field">
         <span>{t("edit.variantOf")}</span>
@@ -226,6 +161,7 @@
         onchange={(e) => save({ half_points: e.currentTarget.checked })} />{t("edit.halfPoints")}{@render heritage("half_points")}</label>
     {/if}
   </div>
+  {/if}
 
   <div class="attachments">
     {#if own.code}

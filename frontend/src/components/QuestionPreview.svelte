@@ -3,6 +3,8 @@
   import Menu from "./Menu.svelte";
   import InlineText from "./InlineText.svelte";
   import QuestionDetails from "./QuestionDetails.svelte";
+  import TagPick from "./TagPick.svelte";
+  import TimePick from "./TimePick.svelte";
   import { highlight } from "../lib/highlight.js";
   import { formatDate, formatTime } from "../lib/time.js";
   import { inline } from "../lib/inline.js";
@@ -44,7 +46,6 @@
   const actions = $derived([
     ...(data.public && !data.variant_of
       ? [{ label: t("life.variant"), icon: "copy", onclick: () => onaction?.("variant") }] : []),
-    ...(releasedByMe ? [{ label: t("life.withdraw"), icon: "undo", onclick: () => onaction?.("withdraw") }] : []),
     { label: t("q.openFile"), icon: "upload", onclick: () => onopen?.(question.path) },
     retired
       ? { label: t("life.restore"), icon: "undo", onclick: () => onaction?.("restore") }
@@ -92,19 +93,89 @@
   const open = $derived(!can || details); // everything below the answers shows
   const problems = $derived(question.findings.filter((f) => f.severity !== "note"));
 
-  const useKey = (d) => {
+  const useOf = (d) => {
     const exam = typeof d.exam === "boolean" ? d.exam : !d.public;
-    return d.public && exam ? "use.both" : d.public ? "use.practice" : "use.exam";
+    return d.public && exam ? "both" : d.public ? "practice" : "exam";
   };
+  const useKey = (d) => `use.${useOf(d)}`;
+
+  // --- the labels in the heading: each opens the choice of its setting --------------------------------
+  const inherited = $derived(question.inherited ?? {});
+  const parentId = $derived(question.parent?.id ?? data.variant_of ?? "");
+  // A variant can take a setting from its parent again; the chip says what that is.
+  const inheritChip = (key, label) => (data.variant_of && inherited[key] != null
+    ? [{ value: null, label: t("sheet.inherit", { value: label(inherited[key]) }), faint: true, title: t("edit.inheritAgainHint", { id: parentId }) }] : []);
+  const typeOptions = $derived([
+    ...["single", "multiple"].map((v) => ({ value: v, label: t(`type.${v}`) })),
+    ...inheritChip("type", (v) => t(`type.${v}`)),
+  ]);
+  const levelOptions = $derived([
+    ...["remember", "understand", "apply"].map((v) => ({ value: v, label: t(`level.${v}`) })),
+    ...inheritChip("level", (v) => t(`level.${v}`)),
+  ]);
+  const useOptions = ["practice", "exam", "both"].map((v) => ({ value: v, label: t(`use.${v}`) }));
+  const USES = { practice: { public: true, exam: false }, exam: { public: false, exam: true }, both: { public: true, exam: true } };
+  const inheritedNote = (key) => (isInherited(key) ? t("edit.inherited", { id: parentId }) : "");
+
+  function setType(type) {
+    const options = optionsCopy();
+    if ((type ?? inherited.type) === "single") {
+      let seen = false;
+      for (const o of options) {
+        o.correct = Boolean(o.correct) && !seen;
+        seen ||= o.correct;
+      }
+    }
+    save({ type, options });
+  }
+
+  // The status label holds the release: who released the question, and releasing or taking one's release back.
+  const statusNote = $derived(
+    [reviewers.length ? t("life.releasedBy", { names: reviewers.join(", ") }) : t("life.notReleased"),
+      hasErrors && !releasedByMe ? t("err.has_errors") : ""].filter(Boolean).join(" "),
+  );
+  const statusActions = $derived(
+    releasedByMe
+      ? [{ label: t("life.withdraw"), icon: "undo", onclick: () => onaction?.("withdraw") }]
+      : [{ label: reviewers.length ? t("life.releaseAlso") : t("life.release"), icon: "check", disabled: hasErrors,
+        title: hasErrors ? t("err.has_errors") : t("life.releaseHint"), onclick: () => onaction?.("release") }],
+  );
 </script>
 
 <article class="preview">
   <header class="preview-head">
     <div class="preview-title">
       <span class="qid">{data.id}</span>
-      <span class="tag">{t(`type.${data.type}`)}</span>
-      <span class="tag" class:ok={data.status === "reviewed" || data.status === "piloted"}>{t(`status.${data.status}`)}</span>
-      <span class="tag">{t(useKey(data))}</span>
+      {#if can}
+        {#if data.type === "free_text"}
+          <span class="tag">{t("type.free_text")}</span>
+        {:else}
+          <TagPick label={t(`type.${data.type}`)} heading={t("edit.type")} hint={t("pick.hint")} faint={isInherited("type")}
+            value={question.data.type ?? null} options={typeOptions} note={inheritedNote("type")} onchoose={setType} />
+        {/if}
+        <TagPick label={t(`level.${data.level}`)} heading={t("edit.level")} hint={t("pick.hint")} faint={isInherited("level")}
+          value={question.data.level ?? null} options={levelOptions} note={inheritedNote("level")} onchoose={(level) => save({ level })} />
+        <TimePick seconds={question.data.time_seconds ?? null} inherited={data.variant_of ? inherited.time_seconds ?? null : null}
+          parent={parentId} title={data.id} note="" align="left" onchoose={(time_seconds) => save({ time_seconds })} />
+        {#if lifecycle}
+          <TagPick label={t(`status.${data.status}`)} tone={data.status === "reviewed" || data.status === "piloted" ? "ok" : ""}
+            heading={t("q.meta.status")} hint={t("pick.statusHint")} note={statusNote} actions={statusActions} />
+        {:else}
+          <span class="tag" class:ok={data.status === "reviewed" || data.status === "piloted"}>{t(`status.${data.status}`)}</span>
+        {/if}
+        {#if data.variant_of}
+          <span class="tag" title={t("q.variantExamOnly")}>{t("use.exam")}</span>
+        {:else}
+          <TagPick label={t(useKey(question.data))} heading={t("edit.use")} hint={t("pick.hint")} value={useOf(question.data)}
+            options={useOptions} onchoose={(use) => save(USES[use])} />
+        {/if}
+      {:else}
+        <span class="tag">{t(`type.${data.type}`)}</span>
+        {#if data.level}<span class="tag">{t(`level.${data.level}`)}</span>{/if}
+        <span class="tag" class:warn={!data.time_seconds}>{data.time_seconds ? formatTime(data.time_seconds) : t("exams.noTime")}</span>
+        <span class="tag" class:ok={data.status === "reviewed" || data.status === "piloted"}>{t(`status.${data.status}`)}</span>
+        <span class="tag">{t(useKey(data))}</span>
+      {/if}
     </div>
     {#if languages.length > 1}
       <div class="seg seg-small" role="group">
@@ -118,12 +189,6 @@
       {#if onedit}<button class="btn primary" onclick={() => onedit()}><Icon name="edit" />{t("edit.edit")}</button>{/if}
     {:else if !compact}
       {#if !retired}
-        {#if releasedByMe}
-          <span class="released" title={t("life.releasedBy", { names: reviewers.join(", ") })}><Icon name="check" />{t("life.released")}</span>
-        {:else}
-          <button class="btn" disabled={hasErrors} title={hasErrors ? t("err.has_errors") : t("life.releaseHint")}
-            onclick={() => onaction?.("release")}><Icon name="check" />{reviewers.length ? t("life.releaseAlso") : t("life.release")}</button>
-        {/if}
         {#if editable}
           <button class="btn ghost details-toggle" class:on={details} aria-expanded={details} title={t(details ? "sheet.detailsHide" : "sheet.detailsShow")}
             onclick={() => (details = !details)}><Icon name="sliders" />{t("sheet.details")}<span class="details-chevron"><Icon name="chevron" /></span></button>
@@ -222,10 +287,6 @@
   <section class="preview-section">
     <dl class="meta">
       <dt>{t("q.meta.concept")}</dt><dd>{question.concept_name ?? data.concept}{#if question.concept_description}<span class="muted small concept-desc">{question.concept_description}</span>{/if}</dd>
-      {#if !can}
-      <dt>{t("q.meta.level")}</dt><dd>{t(`level.${data.level}`)}{#if isInherited("level")}<span class="muted small"> · {t("q.inherited")}</span>{/if}</dd>
-      <dt>{t("edit.time")}</dt><dd>{data.time_seconds ? formatTime(data.time_seconds) : t("q.noTime")}{#if isInherited("time_seconds")}<span class="muted small"> · {t("q.inherited")}</span>{/if}</dd>
-      {/if}
       {#if data.public}
         <dt>{t("q.variants")}</dt><dd>{variants.length ? variants.join(", ") : t("q.noVariant")}</dd>
       {/if}
