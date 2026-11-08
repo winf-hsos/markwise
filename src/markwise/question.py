@@ -28,7 +28,7 @@ FIELD_ORDER = (
     "created_by", "created_at", "changed_by", "changed_at",
     "coverage", "misconception", "session",
     "stem", "image", "images", "image_columns", "code", "code_language",
-    "options",
+    "options", "takeaway",
     "half_points", "lines", "expected", "marking_notes",
 )
 

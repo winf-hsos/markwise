@@ -25,7 +25,7 @@ EDITABLE = tuple(k for k in FIELD_ORDER if k not in ("id", "concept", "status", 
 OPTION_KEYS = ("id", "correct", "text", "feedback")
 # Fields that disappear from the file when the editor leaves them empty; all others always stay.
 OPTIONAL = ("variant_of", "coverage", "misconception", "session", "image", "images", "image_columns", "code",
-            "code_language", "time_seconds")
+            "code_language", "time_seconds", "takeaway")
 
 
 def _empty(value) -> bool:

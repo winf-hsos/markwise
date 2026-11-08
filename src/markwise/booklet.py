@@ -142,7 +142,7 @@ def item_of(pool: Pool, qid: str, lang: str, number: int = 0, points: float = 0)
                 "feedback": _pick(o.get("feedback"), lang)} for o in q.options if isinstance(o, dict)]
     return Item(
         number=number, id=q.id, points=points, type=q.type, stem=_pick(q.get("stem"), lang),
-        code=str(q.get("code") or ""), code_language=str(q.get("code_language") or ""), figures=figures,
+        code=_pick(q.get("code"), lang), code_language=str(q.get("code_language") or ""), figures=figures,
         image_columns=q.image_columns, options=options, lines=int(q.get("lines") or 8),
         half_points=q.get("half_points") is True, expected=_pick(q.get("expected"), lang),
         marking_notes=_pick(q.get("marking_notes"), lang),

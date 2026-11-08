@@ -63,6 +63,7 @@ image: decision-levels     # optional: one figure, a file in images/ (.svg, .png
 code: |                    # optional: a code block below the stem
   led.set_color(255, 0, 0)
 code_language: python      # optional: the language of the code, for highlighting; without it Markwise guesses
+# code: {de: 'print("kalt")', en: 'print("cold")'}   # code per language, where only its texts differ
 
 options:                   # single and multiple only
   - id: a
@@ -95,6 +96,10 @@ marking_notes: {de: "...", en: "..."}
 ```
 
 Points are not part of a question. They belong to an exam, which suggests them from the questions' times and fixes them when it is frozen (§ 5 (3) c of the general examination regulations); how difficult a question really is, the item analysis measures after an exam.
+
+A choice question may end in a `takeaway: {de: "...", en: "..."}`: the sentence a student should keep, shown in practice after the answer and never printed in an exam.
+
+A question meant only for practice (`exam` false) may have two or three options; one that may go into an exam needs at least four (§ 5 (3) a of the general examination regulations).
 
 Texts may use inline Markdown: `**bold**`, `*italic*` and `` `code` ``.
 

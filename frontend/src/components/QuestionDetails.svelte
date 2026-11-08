@@ -17,6 +17,10 @@
   let { question, data, lang, practice = [], save } = $props();
 
   const own = $derived(question.data);
+  // Code is one text for all languages, or one per language where only its texts differ (print("kalt") / print("cold")).
+  const perLanguage = $derived(Boolean(own.code) && typeof own.code === "object");
+  const code = $derived(perLanguage ? own.code[lang] ?? "" : own.code ?? "");
+  const saveCode = (text, language) => save({ code: perLanguage ? { [lang]: text } : text, code_language: language });
   const inherited = $derived(question.inherited ?? {});
   const isVariant = $derived(Boolean(own.variant_of));
   const parentId = $derived(question.parent?.id ?? own.variant_of ?? "");
@@ -39,9 +43,9 @@
   const languageName = (id) => CODE_LANGUAGES.find(([key]) => key === id)?.[1];
   const codeLanguageName = $derived(
     languageName(own.code_language) ??
-      (languageName(detectLanguage(own.code ?? "")) ? t("attach.detected", { name: languageName(detectLanguage(own.code)) }) : t("attach.unknownLanguage")),
+      (languageName(detectLanguage(code)) ? t("attach.detected", { name: languageName(detectLanguage(code)) }) : t("attach.unknownLanguage")),
   );
-  const codeLines = $derived(own.code ? own.code.split("\n").length : 0);
+  const codeLines = $derived(code ? code.split("\n").length : 0);
   const layoutName = $derived(
     images.length < 2 ? "" : columns === 1 ? t("attach.layoutRows")
       : columns >= images.length ? t("attach.layoutSide") : t("attach.layoutColumns", { n: columns }),
@@ -226,6 +230,6 @@
   {/if}
 </section>
 
-<CodeDialog bind:open={codeOpen} code={own.code ?? ""} language={own.code_language ?? ""} onapply={(code, language) => save({ code, code_language: language })} />
+<CodeDialog bind:open={codeOpen} {code} language={own.code_language ?? ""} onapply={saveCode} />
 <ImageDialog bind:open={imageOpen} pool={question.pool} current={images} {columns}
   onapply={(chosen, cols) => save({ images: chosen.map((f) => f.name), image_columns: cols })} />

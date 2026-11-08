@@ -237,7 +237,9 @@ def _question_text(fields: dict, languages: list[str]) -> str:
     lines.append(f"Question text:\n{texts(fields.get('stem'))}")
     if figure_names(fields):
         lines.append(f"Figures below the text: {', '.join(figure_names(fields))}")
-    if fields.get("code"):
+    if isinstance(fields.get("code"), dict):
+        lines.append(f"Code below the text, in each language (only its texts differ):\n{texts(fields['code'])}")
+    elif fields.get("code"):
         lines.append(f"Code below the text (the same in every language):\n{fields['code']}")
     for option in fields.get("options") or []:
         mark = "correct" if option.get("correct") else "wrong"

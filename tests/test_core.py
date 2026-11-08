@@ -152,7 +152,8 @@ def test_checks_find_broken_questions(imported):
     _, pool = imported
     q = pool.find("co-001")
     q.data["options"][1]["correct"] = True          # single choice with two correct options
-    q.data["options"].pop()                         # only three options left
+    q.data["options"].pop()                         # only three options left …
+    q.data["exam"] = True                           # … in a question meant for exams too
     q.data["stem"]["en"] = ""                       # a language missing
     q.save()
     v = pool.find("co-002")

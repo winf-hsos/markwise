@@ -264,6 +264,11 @@ class Exam:
                 add(WARNING, entry.id, "exam_practice_only", f"{entry.id} is meant for practice only", id=entry.id)
             if any(f.severity == ERROR for f in check_question(question, pool)):
                 add(ERROR, entry.id, "exam_question_errors", f"{entry.id} has errors", id=entry.id)
+            elif question.type in ("single", "multiple") and len(question.options) < pool.settings.min_options:
+                # Allowed for practice, never in an exam (§ 5 (3) a AT).
+                add(ERROR, entry.id, "exam_few_options", f"{entry.id} has {len(question.options)} options, an exam "
+                    f"needs {pool.settings.min_options}", id=entry.id, count=len(question.options),
+                    min=pool.settings.min_options)
             stem = question.get("stem")
             if not (isinstance(stem, dict) and str(stem.get(self.language) or "").strip()):
                 add(ERROR, entry.id, "exam_language", f"{entry.id} has no text in {self.language}", id=entry.id, lang=self.language)

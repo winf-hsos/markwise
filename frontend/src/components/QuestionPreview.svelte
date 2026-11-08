@@ -220,10 +220,11 @@
 
   {#if can}
     <div data-tour="q-stem"><InlineText class="stem" value={pick(question.data.stem)} placeholder={t("sheet.stem")} label={t("sheet.stem")} opened={fresh} onsave={(v) => setText("stem", v)} /></div>
-    {#if question.data.code}<InlineText code value={question.data.code} language={question.data.code_language} label={t("sheet.code")} onsave={(v) => save({ code: v })} />{/if}
+    {#if question.data.code}<InlineText code value={pick(question.data.code)} language={question.data.code_language} label={t("sheet.code")}
+      onsave={(v) => save({ code: typeof question.data.code === "object" ? { [shown]: v } : v })} />{/if}
   {:else}
     <div class="stem">{@html inline(pick(data.stem))}</div>
-    {#if data.code}<pre class="code-block hljs"><code>{@html highlight(data.code, data.code_language)}</code></pre>{/if}
+    {#if pick(data.code)}<pre class="code-block hljs"><code>{@html highlight(pick(data.code), data.code_language)}</code></pre>{/if}
   {/if}
   {#if question.figures?.length}
     <div class="figures" style="--columns: {question.figures.length > 1 ? question.image_columns ?? 1 : 1}">
@@ -264,6 +265,10 @@
     {#if (question.data.options ?? []).length < 10}
       <button type="button" class="btn btn-small ghost add-option" onclick={addOption}><Icon name="plus" />{t("sheet.addOption")}</button>
     {/if}
+    {#if details}
+      <h4 class="sub">{t("q.takeaway")}</h4>
+      <InlineText value={pick(question.data.takeaway)} placeholder={t("sheet.takeaway")} onsave={(v) => setText("takeaway", v)} />
+    {/if}
   {:else}
     <ol class="options" class:single={data.type === "single"}>
       {#each data.options ?? [] as option}
@@ -276,6 +281,7 @@
         </li>
       {/each}
     </ol>
+    {#if pick(data.takeaway)}<p class="takeaway">{@html inline(pick(data.takeaway))}</p>{/if}
   {/if}
 
   {#if can && details}

@@ -16,6 +16,7 @@ Markwise runs natively on Windows, needs neither Linux nor LaTeX, and is meant t
 - [Checking a pool](#checking-a-pool)
 - [Deleting and retiring questions](#deleting-and-retiring-questions)
 - [Importing an existing question bank](#importing-an-existing-question-bank)
+- [Importing quizzes of the platform](#importing-quizzes-of-the-platform)
 - [Modules](#modules)
 - [Command reference](#command-reference)
 - [Scan test](#scan-test)
@@ -167,7 +168,7 @@ These sit in the details below a question, on the Questions page and when a ques
 
 - Texts are read as Markdown, as on the course websites: `**bold**`, `*italic*` and `` `code` `` work, a single line break is only a space, and a blank line starts a new paragraph; list items, code blocks and a line ending in two spaces keep their line breaks.
 - **Add a figure or code** opens a menu of what a question can carry under its text, each added in a dialog of its own:
-  - **Code**: a code block with syntax highlighting. Choose the language (Python, JavaScript, Java, C, C++, C#, SQL, R, Shell, JSON) or let Markwise detect it; **Tab** indents by four spaces.
+  - **Code**: a code block with syntax highlighting. Choose the language (Python, JavaScript, Java, C, C++, C#, SQL, R, Shell, JSON) or let Markwise detect it; **Tab** indents by four spaces. Code is usually the same in every language; where only its texts differ (`print("kalt")` and `print("cold")`), the file holds one version per language, and the code shown and changed is the one of the language shown.
   - **Figures**: the pool's images as small previews. Click one or several; the numbers on them show the order. With two or more, choose the **layout**: one below the other, side by side, or in 2 or 3 columns. **Add image from file …** copies a PNG, SVG or JPEG file into the pool's `images` folder, under a name made from the file name, and selects it.
 
   What a question carries appears as a small card, with **Change** and **Remove**.
@@ -180,6 +181,8 @@ These sit in the details below a question, on the Questions page and when a ques
   - if the question has fewer options than the pool requires, it proposes as many new wrong options as are missing, each with feedback and the misconception it plays on.
 
   While the model works, which usually takes a few seconds, a spinner shows next to the button. Then the proposals appear below it, under a bar with **Apply all**; **Apply missing only** fills only the texts that are still empty. The findings come first, naming the part they concern. Below them each proposed text shows the old one struck through, marked **DE** or **EN** in a pool with several languages, with **Apply** for that part alone; a new wrong option has **Add**. What you apply is saved at once. The model never changes which options are correct; if a mark looks wrong, it says so.
+
+Below the options of a practice question, the details also hold its **takeaway**: the one sentence a student should keep, which the practice quiz shows after the answer and an exam never prints.
 
 Every change writes only what changed: every other line of the file stays as it was, including comments and fields Markwise does not know. If someone else saved the same file in the meantime, for example a colleague in a shared folder, Markwise says so and shows their version instead of saving over it. A **released** question stays released when you change it. Every question notes who created it and who changed it last, with the date, using your name from the settings or else your Windows user name; the details show both.
 
@@ -383,9 +386,9 @@ The window sets formulas with KaTeX, also while typing below the field, where a 
 
 | Kind | Meaning | Examples |
 |---|---|---|
-| **error** | the question cannot be used in an exam | a required field is missing; the identifier differs from the file name; a language is missing; fewer than four options; a single-choice question with two correct options; an image file is missing; an exam variant that is public or points to a missing question |
+| **error** | the question cannot be used in an exam | a required field is missing; the identifier differs from the file name; a language is missing; fewer than four options in a question that may go into an exam; a single-choice question with two correct options; an image file is missing; an exam variant that is public or points to a missing question |
 | **warning** | the question should be looked at | an option much longer than the others, which may give the answer away; feedback or an expected answer missing in a language |
-| **note** | worth knowing | a practice question without an exam variant; a concept without questions |
+| **note** | worth knowing | a practice question without an exam variant; two or three options in a question meant only for practice, which is enough there but not in an exam (§ 5 (3) a AT); a concept without questions |
 
 Notes are counted but not listed unless you add `--notes`. Retired questions are checked only for their identifier, concept and the basic fields, not for their content. The command ends with exit code 1 if there is at least one error, so it can be used in scripts.
 
@@ -420,6 +423,17 @@ The import can be run again at any time, for example while the old question bank
 
 The import remembers what it did in the file `.import.toml` inside the pool; leave it there.
 
+## Importing quizzes of the platform
+
+The quizzes of the Hands-on Computer Science platform hold their questions as Markdown, one file per language (`de.md`, `en.md`) in a folder per quiz. `markwise import-quiz` takes them into a pool:
+
+```
+markwise pool init "D:\Pools\computer-science" --name "Computer Science" --prefix hcs
+markwise import-quiz "D:\Pools\computer-science" "D:\platform\content\python-loops-quiz" --levels-from "D:\Teaching\LiFi\questions"
+```
+
+Each heading becomes a question, joined across the languages by its `{#id}` or, where a quiz has none, by its position; a question without an identifier gets a new one from the pool's prefix. The concept is the folder's name without `-quiz`, named after the quiz unless `--name` says otherwise. A hint such as *(Several answers may be correct.)* is taken out of the text, because the type says it; a code block below the text becomes the question's code, per language where the languages differ; the quote after the options becomes the **takeaway**. Every question arrives as a public draft. Its level comes from a question with the same identifier in a folder of the earlier format (`--levels-from`), otherwise it is *apply* for a question with code and *understand* for any other; its time is a minute, half a minute more for several correct answers and half a minute more for code. A question already in the pool, by identifier or by its text, code and options, is left as it is, so the import can run again.
+
 ## Modules
 
 ```
@@ -437,6 +451,7 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 |---|---|
 | `markwise pool init <folder> --name <name> [--languages de,en]` | create an empty pool |
 | `markwise pool languages <pool> [de,en]` | show the languages of a pool, or change them |
+| `markwise pool init <folder> --name <name> [--languages de,en] [--prefix <prefix>]` | create an empty pool; `--prefix` fixes the prefix of new identifiers |
 | `markwise pool unwrap <pool> [--yes]` | count, and with `--yes` join, text lines that were wrapped by hand into paragraphs |
 | `markwise question new <pool> --concept <concept> [--type single\|multiple\|free_text]` | create a question from the template of its type |
 | `markwise question list <pool or module> [--search] [--concept] [--status] [--type] [--level] [--use practice\|exam] [--public yes\|no] [--findings errors\|warnings\|none]` | list questions, searched and filtered; a module folder lists all its pools |
@@ -450,6 +465,7 @@ Every command accepts `--json` and then answers in JSON instead of text, for scr
 | `markwise question delete <pool> <id> --yes [--used-in-exam] [--variants delete\|detach]` | delete a draft, retire anything else; for a question with variants, delete them too or detach them |
 | `markwise check <pool> [--notes]` | check every question of a pool |
 | `markwise import <old pool.toml> <pool> [--update]` | import a question bank in the earlier format |
+| `markwise import-quiz <pool> <quiz folder>… [--concept] [--name] [--levels-from <folder>]` | import quizzes of the Hands-on Computer Science platform |
 | `markwise concept list <pool>` | list the concepts with name, description and number of questions |
 | `markwise concept add <pool> <name> [--description]` | add a concept; its identifier is made from the name |
 | `markwise concept edit <pool> <id> [--name] [--description]` | rename or describe a concept; identifier and folder stay |

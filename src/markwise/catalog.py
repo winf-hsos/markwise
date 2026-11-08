@@ -44,7 +44,8 @@ def _search_text(q: Question, *extra: str) -> str:
     stem = q.get("stem")
     if isinstance(stem, dict):
         parts.extend(str(v) for v in stem.values())
-    parts.append(str(q.get("code") or ""))
+    code = q.get("code")
+    parts.extend(str(v) for v in code.values()) if isinstance(code, dict) else parts.append(str(code or ""))
     parts.append(str(q.get("coverage") or ""))
     for option in q.options:
         if isinstance(option, dict):

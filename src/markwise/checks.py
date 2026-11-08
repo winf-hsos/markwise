@@ -15,6 +15,7 @@ ERROR, WARNING, NOTE = "error", "warning", "note"
 # An option this many times longer than the average of the others may give the answer away.
 LENGTH_FACTOR = 1.8
 LENGTH_MIN_CHARS = 25
+PRACTICE_MIN_OPTIONS = 2  # a question only for practice: a choice needs two options at least
 
 
 @dataclass
@@ -79,7 +80,7 @@ def check_question(q: Question, pool: Pool) -> list[Finding]:
         add(ERROR, "time_invalid", "time_seconds must be a whole number of seconds from 5 to 3600")
 
     # Formulas: a `$$` left open, or a formula the booklet could not set (unbalanced braces, an open environment).
-    texts = [q.data.get(key) for key in ("stem", "expected", "marking_notes")]
+    texts = [q.data.get(key) for key in ("stem", "expected", "marking_notes", "takeaway")]
     texts += [o.get(key) for o in (q.data.get("options") or []) if isinstance(o, dict) for key in ("text", "feedback")]
     for value in texts:
         for lang, text in (value.items() if isinstance(value, dict) else []):
@@ -94,6 +95,10 @@ def check_question(q: Question, pool: Pool) -> list[Finding]:
     missing = _texts(q.data.get("stem"), s.languages)
     if "stem" in q.data and missing:
         add(ERROR, "stem_missing", f"question text missing in {', '.join(missing)}", langs=", ".join(missing))
+
+    code = q.data.get("code")
+    if isinstance(code, dict) and (missing := _texts(code, s.languages)):
+        add(WARNING, "code_missing", f"code missing in {', '.join(missing)}", langs=", ".join(missing))
 
     for image in q.images:
         if pool.image_file(image) is None:
@@ -119,8 +124,13 @@ def _check_options(q: Question, pool: Pool, add) -> None:
         add(ERROR, "field_missing", "field 'options' is missing", field="options")
         return
     if not (s.min_options <= len(options) <= s.max_options):
-        add(ERROR, "option_count", f"{len(options)} options, allowed are {s.min_options} to {s.max_options}",
-            count=len(options), min=s.min_options, max=s.max_options)
+        if not q.exam and not q.variant_of and PRACTICE_MIN_OPTIONS <= len(options) <= s.max_options:
+            # The lower bound is the exam rule of § 5 (3) a AT; a question only for practice may have fewer.
+            add(NOTE, "option_count_practice", f"{len(options)} options: enough for practice, too few for an exam "
+                f"(at least {s.min_options})", count=len(options), min=s.min_options)
+        else:
+            add(ERROR, "option_count", f"{len(options)} options, allowed are {s.min_options} to {s.max_options}",
+                count=len(options), min=s.min_options, max=s.max_options)
     ids = [str(o.get("id")) for o in options if isinstance(o, dict)]
     if len(ids) != len(options):
         add(ERROR, "option_shape", "every option must be a mapping with id, correct, text and feedback")

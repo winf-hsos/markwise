@@ -54,8 +54,28 @@ def cmd_import(args) -> int:
     return 1 if report.conflicts or report.problems else 0
 
 
+def cmd_import_quiz(args) -> int:
+    from .quiz_import import import_quiz, legacy_levels
+    pool = Pool.open(args.pool)
+    levels = legacy_levels(args.levels_from) if args.levels_from else {}
+    if args.concept and len(args.quiz) > 1:
+        print("--concept and --name only go with a single quiz", file=sys.stderr)
+        return 2
+    reports = [import_quiz(pool, quiz, args.concept, args.name, levels).to_dict() for quiz in args.quiz]
+    if args.json:
+        _print_json(reports)
+    else:
+        for r in reports:
+            print(f"{r['concept']} (quiz {r['quiz_status'] or 'without status'}): {len(r['created'])} created, "
+                  f"{len(r['existing'])} already in the pool")
+            for problem in r["problems"]:
+                print(f"  {problem}")
+    return 1 if any(r["problems"] for r in reports) else 0
+
+
 def cmd_pool_init(args) -> int:
-    pool = Pool.create(args.folder, PoolSettings(name=args.name, languages=args.languages.split(",")))
+    pool = Pool.create(args.folder, PoolSettings(name=args.name, languages=args.languages.split(","),
+                                                 id_prefix=args.prefix or ""))
     print(json.dumps({"pool": str(pool.root)}) if args.json else f"Pool created in {pool.root}")
     return 0
 
@@ -521,11 +541,21 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--update", action="store_true", help="take over questions that changed in the source")
     p.set_defaults(func=cmd_import)
 
+    p = sub.add_parser("import-quiz", parents=[common],
+                       help="import quizzes of the Hands-on Computer Science platform (de.md and en.md per folder)")
+    p.add_argument("pool", help="folder of the Markwise pool")
+    p.add_argument("quiz", nargs="+", help="quiz folder(s), each with one Markdown file per language")
+    p.add_argument("--concept", help="concept of the questions (default: the folder name without -quiz)")
+    p.add_argument("--name", help="name of a new concept (default: the quiz title)")
+    p.add_argument("--levels-from", help="a question folder of the earlier YAML format to take levels from by id")
+    p.set_defaults(func=cmd_import_quiz)
+
     pool = sub.add_parser("pool", help="create pools and set their languages").add_subparsers(dest="action", required=True)
     p = pool.add_parser("init", parents=[common], help="create an empty pool")
     p.add_argument("folder")
     p.add_argument("--name", required=True)
     p.add_argument("--languages", default="de,en")
+    p.add_argument("--prefix", help="prefix of new identifiers (default: made from the name)")
     p.set_defaults(func=cmd_pool_init)
     p = pool.add_parser("unwrap", parents=[common],
                         help="join text lines wrapped by hand into paragraphs, as Markdown reads them")
