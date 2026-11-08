@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "pyyaml>=6"]  # PyYAML only to test that YAML 1.1 readers agree
 
 [project.scripts]
 markwise = "markwise.cli:main"

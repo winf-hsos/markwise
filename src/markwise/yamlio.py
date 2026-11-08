@@ -6,8 +6,8 @@ import io
 from pathlib import Path
 
 from ruamel.yaml import YAML
-from ruamel.yaml.comments import CommentedMap
-from ruamel.yaml.scalarstring import LiteralScalarString
+from ruamel.yaml.comments import CommentedMap, CommentedSeq
+from ruamel.yaml.scalarstring import DoubleQuotedScalarString, LiteralScalarString
 
 
 def _yaml() -> YAML:
@@ -26,7 +26,25 @@ def load(path: Path) -> CommentedMap:
     return data
 
 
+def _quote_flow(node, in_flow: bool = False):
+    """Put every plain text inside a flow mapping or sequence ({de: …, en: …}) in double quotes.
+
+    YAML 1.2 lets a plain scalar in a flow collection hold `?` or `:` where no space follows, and ruamel writes it
+    so; YAML 1.1 readers such as PyYAML stop there ("Worin liegt …?,"). Quoted, every reader agrees. Texts already
+    in quotes keep theirs, and block mappings stay as they are.
+    """
+    if isinstance(node, (CommentedMap, CommentedSeq)):
+        flow = in_flow or node.fa.flow_style()
+        items = node.items() if isinstance(node, CommentedMap) else enumerate(node)
+        for key, value in list(items):
+            if flow and type(value) is str:
+                node[key] = DoubleQuotedScalarString(value)
+            else:
+                _quote_flow(value, flow)
+
+
 def dumps(data: CommentedMap) -> str:
+    _quote_flow(data)
     buffer = io.StringIO()
     _yaml().dump(data, buffer)
     return buffer.getvalue()

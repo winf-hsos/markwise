@@ -397,3 +397,20 @@ def test_a_question_moves_to_another_concept_with_its_variants(pool):
     assert pool.new_question(shapes, "single", author="Examiner A").id == f"{prefix}-002"
     with pytest.raises(editing.MoveError):
         editing.move_to_concept(pool, "co-001", "no-such-concept")
+
+
+def test_texts_in_flow_mappings_are_quoted_so_that_yaml_1_1_readers_agree(tmp_path):
+    """PyYAML (YAML 1.1) stops at a plain `?` or `:` inside {de: …, en: …}; Markwise writes such texts in quotes."""
+    yaml = pytest.importorskip("yaml")
+    from ruamel.yaml.comments import CommentedMap
+
+    from markwise import yamlio
+
+    stem = CommentedMap(de="Worin liegt der Unterschied?", en="Why: because?")
+    stem.fa.set_flow_style()
+    path = tmp_path / "q.yaml"
+    yamlio.dump(CommentedMap(id="q-001", stem=stem, note="plain in a block: stays"), path)
+    text = path.read_text(encoding="utf-8")
+    assert 'de: "Worin liegt der Unterschied?"' in text and "note: 'plain in a block: stays'" in text
+    assert yaml.safe_load(text)["stem"] == {"de": "Worin liegt der Unterschied?", "en": "Why: because?"}
+    assert yamlio.dumps(yamlio.load(path)) == text  # stable on the next save
